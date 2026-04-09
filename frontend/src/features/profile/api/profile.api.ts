@@ -1,12 +1,24 @@
 import { axiosClient } from "@/lib/axios";
-import type { UserProfile } from "@/features/profile/types/profile.type";
+import type {
+  Department,
+  Position,
+  UserProfile,
+} from "@/features/profile/types/profile.type";
 
 export const profileApi = {
   getProfile() {
     return axiosClient.get<UserProfile>("/users/profile");
   },
 
+  getDepartments() {
+    return axiosClient.get<Department[]>("/departments");
+  },
+
+  getPositions() {
+    return axiosClient.get<Position[]>("/positions");
+  },
+
   updateProfile(payload: Partial<UserProfile>) {
-    return axiosClient.patch<UserProfile>("/users/profile", payload);
+    return axiosClient.put<UserProfile>("/users/profile", payload);
   },
 };

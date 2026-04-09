@@ -1,61 +1,40 @@
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { profileApi } from "@/features/profile/api/profile.api";
-import {
-  profileSchema,
-  type ProfileFormValues,
-} from "@/features/profile/schemas/profile.schema";
-import { useAuthStore } from "@/features/auth/store/auth.store";
+import { type ProfileFormValues } from "@/features/profile/schemas/profile.schema";
 import ProfileHeader from "../components/ProfileHeader";
 import InfoField from "../components/InfoField";
-import { BookUser, Mail, Phone, Shell, UserPen } from "lucide-react";
-
-export interface EmployeeData {
-  fullName: string;
-  displayName: string;
-  role: string;
-  department: string;
-  email: string;
-  phone: string;
-  bio: string;
-}
+import { BookUser, Mail, MapPin, Phone, Shell, UserPen } from "lucide-react";
+import type { Department, Position, UserProfile } from "../types/profile.type";
 
 export default function ProfilePage() {
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
   const [updating, setUpdating] = useState(false);
-  const setUser = useAuthStore((state) => state.setUser);
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileSchema),
-    defaultValues: {
-      fullName: "",
-      email: "",
-      phone: "",
-      address: "",
-      bio: "",
-      avatar: "",
-      birthdate: "",
-      gender: "male",
-    },
+  const [profile, setProfile] = useState<UserProfile>({
+    id: "",
+    fullName: "",
+    email: "",
+    departmentId: "",
+    positionId: "",
+    role: "EMPLOYEE",
+    phone: "",
+    address: "",
+    bio: "",
+    avatarUrl: "",
+    birthdate: "",
+    gender: "Nam",
   });
+
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [positions, setPositions] = useState<Position[]>([]);
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const res = await profileApi.getProfile();
-        reset(res.data);
-        setUser(res.data);
+        setProfile(res.data);
+        console.log("Fetched profile:", res.data);
       } catch {
         toast.error("Không tải được hồ sơ");
       } finally {
@@ -63,15 +42,41 @@ export default function ProfilePage() {
       }
     };
 
+    const fetchDepartments = async () => {
+      try {
+        const res = await profileApi.getDepartments();
+        setDepartments(res.data);
+      } catch {
+        toast.error("Không tải được phòng ban");
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+
+    const fetchPositions = async () => {
+      try {
+        const res = await profileApi.getPositions();
+        setPositions(res.data);
+      } catch {
+        toast.error("Không tải được chức vụ");
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+
     fetchProfile();
-  }, [reset, setUser]);
+    fetchDepartments();
+    fetchPositions();
+  }, []);
 
   const onSubmit = async (values: ProfileFormValues) => {
     try {
       setUpdating(true);
+      console.log("Submitting payload:", values);
       const res = await profileApi.updateProfile(values);
-      reset(res.data);
-      setUser(res.data);
+      setProfile(res.data);
+      console.log("Updated profile:", res.data);
+      setIsEditing(false);
       toast.success("Cập nhật hồ sơ thành công");
     } catch {
       toast.error("Cập nhật hồ sơ thất bại");
@@ -80,82 +85,248 @@ export default function ProfilePage() {
     }
   };
 
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
+  ) => {
+    const { name, value } = e.target;
+    setProfile((prev) => ({ ...prev, [name]: value }));
+  };
+
   if (loadingProfile) {
     return <div>Đang tải hồ sơ...</div>;
   }
 
-  const user: EmployeeData = {
-    fullName: "Trần Minh Quân",
-    displayName: "Quân Trần",
-    role: "Trưởng nhóm",
-    department: "Phòng Kinh doanh",
-    email: "tranminhquan@example.com",
-    phone: "+84 912 345 678",
-    bio: "Trần Minh Quân là một chuyên gia kinh doanh với hơn 10 năm kinh nghiệm trong ngành. Anh đã dẫn dắt nhiều dự án thành công và xây dựng mối quan hệ vững chắc với khách hàng. Với kỹ năng lãnh đạo xuất sắc và khả năng giải quyết vấn đề nhanh chóng, Quân luôn là người đứng đầu trong việc đạt được mục tiêu kinh doanh của công ty.",
-  };
-
   return (
     <div className="py-4 max-w-6xl mx-auto">
       <ProfileHeader
-        name={user.fullName}
-        role={user.role}
-        department={user.department}
+        name={profile?.fullName}
+        role={
+          profile?.positionId
+            ? positions.find((p) => p.id === profile.positionId)?.name
+            : "Nhân viên"
+        }
+        department={
+          profile?.departmentId
+            ? departments.find((d) => d.id === profile.departmentId)?.name
+            : "Chưa có phòng ban"
+        }
+        isEditing={isEditing}
+        updating={updating}
+        onEdit={() => setIsEditing(true)}
+        onCancel={() => setIsEditing(false)}
+        onSubmit={() => onSubmit(profile as ProfileFormValues)}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          {/* Section: Basic Info */}
-          <section className="bg-white dark:bg-slate-900 p-8 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-xl font-bold flex items-center gap-3">
-                <UserPen size={20} />
-                Thông tin cơ bản
-              </h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <InfoField label="Họ và tên" value={user.fullName} />
-              <InfoField label="Giới tính" value="Nam" />
-              <InfoField label="Ngày sinh" value="14/10/1988" />
-              <InfoField label="Phòng ban" value={user.department} />
-            </div>
-          </section>
-
-          {/* Section: Contact */}
-          <section className="bg-white dark:bg-slate-900 p-8 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
-            <h2 className="text-xl font-bold flex items-center gap-3 mb-8">
-              <BookUser size={20} />
-              Thông tin liên hệ
-            </h2>
-            <div className="space-y-6">
-              <div className="flex flex-col md:flex-row gap-6">
-                <InfoField
-                  label="Email"
-                  value={user.email}
-                  icon={<Mail size={20} />}
-                />
-                <InfoField
-                  label="Số điện thoại"
-                  value={user.phone}
-                  icon={<Phone size={20} />}
-                />
+      <form>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            {/* Section: Basic Info */}
+            <section className="bg-white dark:bg-slate-900 p-8 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-xl font-bold flex items-center gap-3">
+                  <UserPen size={20} />
+                  Thông tin cơ bản
+                </h2>
               </div>
-            </div>
-          </section>
-        </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {isEditing ? (
+                  <>
+                    <InfoField
+                      label="Họ và tên"
+                      value={profile?.fullName}
+                      placeholder="Nhập họ và tên"
+                      onChange={handleInputChange}
+                      name="fullName"
+                    />
+                    <InfoField
+                      label="Giới tính"
+                      name="gender"
+                      value={profile?.gender}
+                      options={[
+                        { id: "Nam", name: "Nam" },
+                        { id: "Nữ", name: "Nữ" },
+                        { id: "Khác", name: "Khác" },
+                      ]}
+                      onChange={handleInputChange}
+                    />
+                    <InfoField
+                      label="Ngày sinh"
+                      name="birthdate"
+                      value={profile?.birthdate}
+                      date={true}
+                      onChange={handleInputChange}
+                    />
+                    <InfoField
+                      label="Phòng ban"
+                      name="departmentId"
+                      value={profile?.departmentId}
+                      options={departments.map((d) => ({
+                        id: d.id,
+                        name: d.name,
+                      }))}
+                      onChange={handleInputChange}
+                    />
+                    <InfoField
+                      label="Chức vụ"
+                      name="positionId"
+                      value={profile?.positionId}
+                      options={positions.map((p) => ({
+                        id: p.id,
+                        name: p.name,
+                      }))}
+                      onChange={handleInputChange}
+                    />
+                    <InfoField
+                      label="Quyền hệ thống"
+                      name="role"
+                      value={profile?.role}
+                      disabled
+                    />
+                  </>
+                ) : (
+                  <>
+                    <InfoField
+                      label="Họ và tên"
+                      value={profile?.fullName}
+                      readonly={true}
+                    />
+                    <InfoField
+                      label="Giới tính"
+                      value={profile?.gender}
+                      readonly={true}
+                    />
+                    <InfoField
+                      label="Ngày sinh"
+                      value={profile?.birthdate}
+                      date={true}
+                      readonly={true}
+                    />
+                    <InfoField
+                      label="Phòng ban"
+                      value={profile?.departmentId}
+                      options={departments}
+                      disabled={true}
+                    />
+                    <InfoField
+                      label="Chức vụ"
+                      value={profile?.positionId}
+                      options={positions}
+                      disabled={true}
+                    />
+                    <InfoField
+                      label="Quyền hệ thống"
+                      value={profile?.role}
+                      disabled={true}
+                    />
+                  </>
+                )}
+              </div>
+            </section>
 
-        {/* Right Column: Bio */}
-        <div className="space-y-6">
-          <section className="bg-white dark:bg-slate-900 p-8 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 h-full">
-            <h2 className="text-xl font-bold flex items-center gap-3 mb-6">
-              <Shell size={20} />
-              Bio
-            </h2>
-            <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-sm">
-              {user.bio}
-            </p>
-          </section>
+            {/* Section: Contact */}
+            <section className="bg-white dark:bg-slate-900 p-8 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
+              <h2 className="text-xl font-bold flex items-center gap-3 mb-8">
+                <BookUser size={20} />
+                Thông tin liên hệ
+              </h2>
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {isEditing ? (
+                    <>
+                      <InfoField
+                        label="Email"
+                        name="email"
+                        value={profile?.email}
+                        icon={<Mail size={20} />}
+                        placeholder="Nhập email"
+                        onChange={handleInputChange}
+                      />
+                      <InfoField
+                        label="Số điện thoại"
+                        name="phone"
+                        value={profile?.phone}
+                        icon={<Phone size={20} />}
+                        placeholder="Nhập số điện thoại"
+                        onChange={handleInputChange}
+                      />
+                      <InfoField
+                        label="Địa chỉ"
+                        name="address"
+                        value={profile?.address}
+                        icon={<MapPin size={20} />}
+                        placeholder="Nhập địa chỉ"
+                        onChange={handleInputChange}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <InfoField
+                        label="Email"
+                        value={profile?.email}
+                        icon={<Mail size={20} />}
+                        readonly={true}
+                      />
+                      <InfoField
+                        label="Số điện thoại"
+                        value={profile?.phone}
+                        icon={<Phone size={20} />}
+                        readonly={true}
+                      />
+                      <InfoField
+                        label="Địa chỉ"
+                        value={profile?.address}
+                        icon={<MapPin size={20} />}
+                        readonly={true}
+                      />
+                    </>
+                  )}
+                </div>
+              </div>
+            </section>
+          </div>
+
+          {/* Right Column: Bio */}
+          <div className="space-y-6">
+            <section className="bg-white dark:bg-slate-900 p-8 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 h-full">
+              <h2 className="text-xl font-bold flex items-center gap-3 mb-6">
+                <Shell size={20} />
+                Bio
+              </h2>
+              {isEditing ? (
+                <textarea
+                  name="bio"
+                  value={profile?.bio || ""}
+                  onChange={handleInputChange}
+                  rows={10}
+                  className="
+                    w-full
+                    rounded-xl
+                    px-4 py-3
+                    bg-slate-50 dark:bg-slate-800
+                    text-slate-900 dark:text-slate-100
+                    placeholder:text-slate-400 dark:placeholder:text-slate-500
+                    border border-slate-200 dark:border-slate-700
+                    shadow-sm
+                    outline-none
+                    resize-none
+                    transition
+                    focus:ring-2 focus:ring-blue-500
+                    focus:border-blue-500
+                    text-sm
+                  "
+                  placeholder="Giới thiệu bản thân..."
+                />
+              ) : (
+                <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-sm">
+                  {profile?.bio}
+                </p>
+              )}
+            </section>
+          </div>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

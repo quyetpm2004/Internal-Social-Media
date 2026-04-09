@@ -3,10 +3,24 @@ export interface UserProfile {
   fullName: string;
   email: string;
   role: "EMPLOYEE" | "ADMIN" | "MANAGER";
-  phone?: string;
-  address?: string;
-  bio?: string;
-  avatar?: string;
-  birthdate?: string;
-  gender?: "male" | "female" | "other";
+  bio: string;
+  phone: string;
+  gender: "Nam" | "Nữ" | "Khác";
+  address: string;
+  birthdate: string;
+  avatarUrl: string;
+  departmentId: string;
+  positionId: string;
+}
+
+export interface Department {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface Position {
+  id: string;
+  name: string;
+  level: string;
 }

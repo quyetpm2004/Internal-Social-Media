@@ -23,7 +23,6 @@ model User {
   email        String         @unique
   password     String
   role         Role           @default(EMPLOYEE)
-  avatarUrl    String?
   refreshTokens RefreshToken[]
   departmentId Int?
   department    Department?    @relation("DepartmentMembers", fields: [departmentId], references: [id], onDelete: SetNull)
@@ -75,6 +74,7 @@ model Profile {
   gender  String?
   birthdate DateTime?
   address String?
+  avatarUrl String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

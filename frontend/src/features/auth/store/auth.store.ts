@@ -44,12 +44,9 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   login: async (payload) => {
     set({ isLoading: true });
-    console.log("Logging in with payload:", payload);
 
     try {
       const res = await authApi.login(payload);
-
-      console.log("Login response:", res.data);
 
       tokenStorage.setAccessToken(res.data.accessToken);
 

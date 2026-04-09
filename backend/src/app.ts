@@ -3,6 +3,8 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth.routes";
 import userRoutes from "./routes/user.routes";
+import departmentRoutes from "./routes/department.routes";
+import positionRoutes from "./routes/position.routes";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -25,5 +27,7 @@ app.get("/", (_req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/departments", departmentRoutes);
+app.use("/api/positions", positionRoutes);
 
 export default app;

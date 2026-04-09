@@ -8,7 +8,9 @@ export interface UpdateProfileInput {
   phone?: string;
   gender?: string;
   address?: string;
-  birthDate?: string | Date;
+  birthdate?: string | Date;
+  departmentId?: string;
+  positionId?: string;
 }
 
 export async function getProfile(userId: number) {
@@ -22,11 +24,14 @@ export async function getProfile(userId: number) {
       gender: true,
       birthdate: true,
       address: true,
+      avatarUrl: true,
       user: {
         select: {
           fullName: true,
           email: true,
           role: true,
+          departmentId: true,
+          positionId: true,
         },
       },
     },
@@ -36,7 +41,19 @@ export async function getProfile(userId: number) {
     throw new Error("Hồ sơ không tồn tại");
   }
 
-  return profile;
+  return {
+    fullName: profile.user.fullName,
+    email: profile.user.email,
+    role: profile.user.role,
+    bio: profile.bio,
+    phone: profile.phone,
+    gender: profile.gender,
+    birthdate: profile.birthdate,
+    address: profile.address,
+    avatarUrl: profile.avatarUrl,
+    departmentId: profile.user.departmentId,
+    positionId: profile.user.positionId,
+  };
 }
 
 export async function updateProfile(userId: number, data: UpdateProfileInput) {
@@ -49,6 +66,7 @@ export async function updateProfile(userId: number, data: UpdateProfileInput) {
     throw new Error("Người dùng không tồn tại");
   }
 
+  // Kiểm tra nếu email mới khác với email hiện tại
   if (data.email && data.email !== existingUser.email) {
     const emailExists = await prisma.user.findUnique({
       where: { email: data.email },
@@ -59,14 +77,16 @@ export async function updateProfile(userId: number, data: UpdateProfileInput) {
     }
   }
 
-  const birthDate = data.birthDate ? new Date(data.birthDate) : undefined;
+  const birthdate = data.birthdate ? new Date(data.birthdate) : undefined;
 
+  // Cập nhật thông tin người dùng và hồ sơ cá nhân
   const updatedUser = await prisma.user.update({
     where: { id: userId },
     data: {
       fullName: data.fullName,
       email: data.email,
-      avatarUrl: data.avatarUrl,
+      departmentId: data.departmentId ? parseInt(data.departmentId) : undefined,
+      positionId: data.positionId ? parseInt(data.positionId) : undefined,
       profile: {
         upsert: {
           create: {
@@ -74,14 +94,15 @@ export async function updateProfile(userId: number, data: UpdateProfileInput) {
             phone: data.phone,
             address: data.address,
             gender: data.gender,
-            birthDate: birthDate,
+            avatarUrl: data.avatarUrl,
+            birthdate: birthdate,
           },
           update: {
             bio: data.bio,
             phone: data.phone,
             address: data.address,
             gender: data.gender,
-            birthDate: birthDate,
+            birthdate: birthdate,
           },
         },
       },
@@ -91,6 +112,17 @@ export async function updateProfile(userId: number, data: UpdateProfileInput) {
     },
   });
 
-  const { password, ...userWithoutPassword } = updatedUser;
-  return userWithoutPassword;
+  return {
+    fullName: updatedUser.fullName,
+    email: updatedUser.email,
+    role: updatedUser.role,
+    bio: updatedUser.profile?.bio,
+    phone: updatedUser.profile?.phone,
+    gender: updatedUser.profile?.gender,
+    birthdate: updatedUser.profile?.birthdate,
+    address: updatedUser.profile?.address,
+    avatarUrl: updatedUser.profile?.avatarUrl,
+    departmentId: updatedUser.departmentId,
+    positionId: updatedUser.positionId,
+  };
 }

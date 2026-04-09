@@ -3,11 +3,25 @@ import React from "react";
 
 interface HeaderProps {
   name: string;
-  role: string;
-  department: string;
+  role: string | undefined;
+  department: string | undefined;
+  isEditing: boolean;
+  updating: boolean;
+  onEdit: () => void;
+  onCancel: () => void;
+  onSubmit: () => void;
 }
 
-const ProfileHeader: React.FC<HeaderProps> = ({ name, role, department }) => (
+const ProfileHeader: React.FC<HeaderProps> = ({
+  name,
+  role,
+  department,
+  isEditing,
+  updating,
+  onEdit,
+  onCancel,
+  onSubmit,
+}) => (
   <div className="relative bg-white dark:bg-slate-900 rounded-xl overflow-hidden mb-8 shadow-sm border border-slate-200 dark:border-slate-800">
     <div className="h-48 w-full bg-linear-to-r from-blue-700 to-blue-500 opacity-90 relative">
       <img
@@ -37,12 +51,31 @@ const ProfileHeader: React.FC<HeaderProps> = ({ name, role, department }) => (
         </p>
       </div>
       <div className="flex items-center gap-3 pb-2">
-        <button className="px-6 py-2.5 rounded-xl text-slate-600 bg-slate-100 font-semibold text-sm hover:bg-slate-200">
-          Hủy
-        </button>
-        <button className="px-6 py-2.5 rounded-xl bg-blue-700 text-white font-semibold text-sm shadow-lg hover:bg-blue-800 transition-all">
-          Cập nhật
-        </button>
+        {!isEditing ? (
+          <button
+            onClick={onEdit}
+            className="px-6 py-2.5 rounded-xl bg-blue-700 text-white font-semibold text-sm shadow-lg hover:bg-blue-800 transition-all"
+          >
+            Chỉnh sửa
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={onCancel}
+              disabled={updating}
+              className="px-6 py-2.5 rounded-xl text-slate-600 bg-slate-100 font-semibold text-sm hover:bg-slate-200"
+            >
+              Hủy
+            </button>
+            <button
+              onClick={onSubmit}
+              disabled={updating}
+              className="px-6 py-2.5 rounded-xl bg-blue-700 text-white font-semibold text-sm shadow-lg hover:bg-blue-800 transition-all"
+            >
+              {updating ? "Đang cập nhật..." : "Cập nhật"}
+            </button>
+          </>
+        )}
       </div>
     </div>
   </div>
