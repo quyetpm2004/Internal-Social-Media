@@ -1,0 +1,91 @@
+import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
+
+type SortType = "latest" | "trending";
+
+interface Author {
+  name: string;
+  avatar: string;
+}
+
+interface Stats {
+  likes: number;
+  comments: number;
+}
+
+interface Post {
+  id: number;
+  isPinned?: boolean;
+  author: Author;
+  role: string;
+  time: string;
+  content: string;
+  image?: string;
+  stats: Stats;
+}
+
+interface SidebarItemProps {
+  icon: LucideIcon;
+  label: string;
+  active?: boolean;
+}
+
+interface PostCardProps extends Post {}
+
+interface RightSidebarWidgetProps {
+  title: string;
+  icon: LucideIcon;
+  children: ReactNode;
+}
+
+interface GroupItemProps {
+  name: string;
+  members: number;
+  unread?: number;
+  iconBg: string;
+  icon: LucideIcon;
+}
+
+type ApiPost = {
+  id: number;
+  content: string;
+  isPinned: boolean;
+  createdAt: string;
+  user?: {
+    id: number;
+    fullName: string;
+    email: string;
+    avatar?: string;
+  };
+  attachments?: Array<{
+    id: number;
+    fileUrl?: string;
+    fileName: string;
+    fileType?: string;
+  }>;
+  _count?: {
+    comments: number;
+    reactions: number;
+  };
+};
+
+type GetPostsResponse = {
+  page: number;
+  limit: number;
+  sort: SortType;
+  hasMore: boolean;
+  pinnedPosts: ApiPost[];
+  posts: ApiPost[];
+};
+
+export type {
+  Author,
+  Stats,
+  Post,
+  ApiPost,
+  GetPostsResponse,
+  SidebarItemProps,
+  PostCardProps,
+  RightSidebarWidgetProps,
+  GroupItemProps,
+};

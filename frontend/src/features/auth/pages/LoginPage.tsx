@@ -25,7 +25,7 @@ import { Label } from "@/components/ui/label";
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const login = useAuthStore((state) => state.login);
+  const { login } = useAuthStore();
 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -51,7 +51,7 @@ export default function LoginPage() {
       setLoading(true);
       await login(values);
       toast.success("Đăng nhập thành công");
-      navigate(from, { replace: true });
+      navigate("/profile");
     } catch {
       toast.error("Đăng nhập thất bại");
     } finally {

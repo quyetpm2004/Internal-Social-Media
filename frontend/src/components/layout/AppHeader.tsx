@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/features/auth/store/auth.store";
+import { process } from "zod/v4/core";
 
 export default function AppHeader() {
   const navigate = useNavigate();

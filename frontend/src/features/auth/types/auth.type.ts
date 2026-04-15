@@ -1,5 +1,3 @@
-import type { UserProfile } from "@/features/profile/types/profile.type";
-
 export interface LoginPayload {
   email: string;
   password: string;
@@ -7,9 +5,16 @@ export interface LoginPayload {
 
 export interface LoginResponse {
   accessToken: string;
-  user: UserProfile;
+  user: UserPublicInfo;
 }
 
 export interface RefreshTokenResponse {
   accessToken: string;
+}
+
+export interface UserPublicInfo {
+  id: string;
+  fullName: string;
+  email: string;
+  role: "EMPLOYEE" | "ADMIN" | "MANAGER";
 }

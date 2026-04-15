@@ -40,9 +40,10 @@ export async function register(
   });
 
   const payload: JwtPayload = {
-    userId: user.id,
+    id: user.id,
     email: user.email,
     role: user.role,
+    fullName: user.fullName,
   };
 
   const tokens = generateTokens(payload);
@@ -85,9 +86,10 @@ export async function login(email: string, password: string) {
   }
 
   const payload: JwtPayload = {
-    userId: user.id,
+    id: user.id,
     email: user.email,
     role: user.role,
+    fullName: user.fullName,
   };
 
   const tokens = generateTokens(payload);
@@ -135,9 +137,10 @@ export async function refresh(refreshToken: string) {
   const decoded = verifyRefreshToken(refreshToken);
 
   const payload: JwtPayload = {
-    userId: decoded.userId,
+    id: decoded.id,
     email: decoded.email,
     role: decoded.role,
+    fullName: decoded.fullName,
   };
 
   const tokens = generateTokens(payload);
@@ -178,4 +181,21 @@ export async function logout(refreshToken: string) {
   });
 
   return true;
+}
+
+export async function getMe(userId: number) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new Error("Người dùng không tồn tại");
+  }
+
+  return {
+    id: user.id,
+    fullName: user.fullName,
+    email: user.email,
+    role: user.role,
+  };
 }

@@ -6,6 +6,8 @@ import userRoutes from "./routes/user.routes";
 import departmentRoutes from "./routes/department.routes";
 import positionRoutes from "./routes/position.routes";
 import dotenv from "dotenv";
+import postRoutes from "./routes/post.route";
+import commentRoutes from "./routes/comment.route";
 
 dotenv.config();
 
@@ -20,6 +22,7 @@ app.use(
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static("public"));
 
 app.get("/", (_req, res) => {
   res.json({ message: "API is running version 1.0.0" });
@@ -29,5 +32,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/departments", departmentRoutes);
 app.use("/api/positions", positionRoutes);
+app.use("/api/posts", postRoutes);
+app.use("/api/comments", commentRoutes);
 
 export default app;

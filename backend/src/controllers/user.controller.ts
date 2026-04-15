@@ -3,7 +3,7 @@ import * as userService from "../services/user.service";
 
 export async function getProfile(req: Request, res: Response): Promise<void> {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
 
     if (!userId) {
       res.status(401).json({ message: "Unauthorized" });
@@ -28,7 +28,7 @@ export async function updateProfile(
   res: Response,
 ): Promise<void> {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
 
     if (!userId) {
       res.status(401).json({ message: "Unauthorized" });

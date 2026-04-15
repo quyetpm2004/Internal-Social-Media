@@ -4,7 +4,7 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from "axios";
 import { APP_CONFIG } from "@/constants/app";
-import { tokenStorage } from "@/lib/token";
+import { useAuthStore } from "@/features/auth/store/auth.store";
 
 type FailedQueueItem = {
   resolve: (token: string) => void;
@@ -37,10 +37,21 @@ export const axiosClient = axios.create({
 // request interceptor to add access token to headers
 axiosClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const accessToken = tokenStorage.getAccessToken();
+    const persistedData = localStorage.getItem("auth-storage");
 
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
+    let token = null;
+    if (persistedData) {
+      try {
+        const parsed = JSON.parse(persistedData);
+        token = parsed?.state?.accessToken || null; // 👈 lấy đúng token
+      } catch (e) {
+        console.error("❌ Lỗi parse auth_storage:", e);
+      }
+    }
+
+    // Thêm header Authorization nếu có token
+    if (token) {
+      config.headers["Authorization"] = `Bearer ${token}`;
     }
 
     return config;
@@ -52,7 +63,8 @@ axiosClient.interceptors.request.use(
 axiosClient.interceptors.response.use(
   (response) => response.data,
   async (error: AxiosError) => {
-    // Lấy lại request gốc đã bị lỗi
+    const { setAccessToken, clearAuth } = useAuthStore.getState();
+
     const originalRequest = error.config as AxiosRequestConfig | undefined;
 
     // Nếu không có request gốc, trả về lỗi luôn
@@ -79,7 +91,7 @@ axiosClient.interceptors.response.use(
 
     // Nếu request đã retry rồi mà vẫn lỗi, xóa token và chuyển về trang login
     if (originalRequest._retry) {
-      tokenStorage.clearTokens();
+      clearAuth();
       window.location.href = "/login";
       return Promise.reject(error);
     }
@@ -107,7 +119,7 @@ axiosClient.interceptors.response.use(
 
     // Thử gọi API refresh token
     try {
-      const response = await axios.post<{ accessToken: string }>(
+      const response = await axios.post(
         `${APP_CONFIG.apiUrl}/auth/refresh-token`,
         {},
         {
@@ -119,10 +131,10 @@ axiosClient.interceptors.response.use(
       );
 
       // Lấy access token mới từ response
-      const newAccessToken = response.data.accessToken;
+      const newAccessToken = response.data.data.accessToken;
 
       // Lưu lại access token mới vào storage
-      tokenStorage.setAccessToken(newAccessToken);
+      setAccessToken(newAccessToken);
 
       // Xử lý lại các request đang chờ refresh token
       processQueue(null, newAccessToken);
@@ -138,7 +150,7 @@ axiosClient.interceptors.response.use(
     } catch (refreshError) {
       // Nếu refresh token thất bại, clear token và chuyển về trang login
       processQueue(refreshError, null);
-      tokenStorage.clearTokens();
+      clearAuth();
       window.location.href = "/login";
       return Promise.reject(refreshError);
     } finally {

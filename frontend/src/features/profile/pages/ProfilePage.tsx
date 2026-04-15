@@ -4,7 +4,7 @@ import { profileApi } from "@/features/profile/api/profile.api";
 import { type ProfileFormValues } from "@/features/profile/schemas/profile.schema";
 import ProfileHeader from "../components/ProfileHeader";
 import InfoField from "../components/InfoField";
-import { BookUser, Mail, MapPin, Phone, Shell, UserPen } from "lucide-react";
+import { BookUser, Shell, UserPen } from "lucide-react";
 import type { Department, Position, UserProfile } from "../types/profile.type";
 
 export default function ProfilePage() {
@@ -34,7 +34,6 @@ export default function ProfilePage() {
       try {
         const res = await profileApi.getProfile();
         setProfile(res.data);
-        console.log("Fetched profile:", res.data);
       } catch {
         toast.error("Không tải được hồ sơ");
       } finally {
@@ -232,54 +231,56 @@ export default function ProfilePage() {
                 Thông tin liên hệ
               </h2>
               <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
                   {isEditing ? (
                     <>
-                      <InfoField
-                        label="Email"
-                        name="email"
-                        value={profile?.email}
-                        icon={<Mail size={20} />}
-                        placeholder="Nhập email"
-                        onChange={handleInputChange}
-                      />
-                      <InfoField
-                        label="Số điện thoại"
-                        name="phone"
-                        value={profile?.phone}
-                        icon={<Phone size={20} />}
-                        placeholder="Nhập số điện thoại"
-                        onChange={handleInputChange}
-                      />
-                      <InfoField
-                        label="Địa chỉ"
-                        name="address"
-                        value={profile?.address}
-                        icon={<MapPin size={20} />}
-                        placeholder="Nhập địa chỉ"
-                        onChange={handleInputChange}
-                      />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <InfoField
+                          label="Email"
+                          name="email"
+                          value={profile?.email}
+                          placeholder="Nhập email"
+                          onChange={handleInputChange}
+                        />
+                        <InfoField
+                          label="Số điện thoại"
+                          name="phone"
+                          value={profile?.phone}
+                          placeholder="Nhập số điện thoại"
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 mt-6">
+                        <InfoField
+                          label="Địa chỉ"
+                          name="address"
+                          value={profile?.address}
+                          placeholder="Nhập địa chỉ"
+                          onChange={handleInputChange}
+                        />
+                      </div>
                     </>
                   ) : (
                     <>
-                      <InfoField
-                        label="Email"
-                        value={profile?.email}
-                        icon={<Mail size={20} />}
-                        readonly={true}
-                      />
-                      <InfoField
-                        label="Số điện thoại"
-                        value={profile?.phone}
-                        icon={<Phone size={20} />}
-                        readonly={true}
-                      />
-                      <InfoField
-                        label="Địa chỉ"
-                        value={profile?.address}
-                        icon={<MapPin size={20} />}
-                        readonly={true}
-                      />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <InfoField
+                          label="Email"
+                          value={profile?.email}
+                          readonly={true}
+                        />
+                        <InfoField
+                          label="Số điện thoại"
+                          value={profile?.phone}
+                          readonly={true}
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 mt-6">
+                        <InfoField
+                          label="Địa chỉ"
+                          value={profile?.address}
+                          readonly={true}
+                        />
+                      </div>
                     </>
                   )}
                 </div>
@@ -300,26 +301,12 @@ export default function ProfilePage() {
                   value={profile?.bio || ""}
                   onChange={handleInputChange}
                   rows={10}
-                  className="
-                    w-full
-                    rounded-xl
-                    px-4 py-3
-                    bg-slate-50 dark:bg-slate-800
-                    text-slate-900 dark:text-slate-100
-                    placeholder:text-slate-400 dark:placeholder:text-slate-500
-                    border border-slate-200 dark:border-slate-700
-                    shadow-sm
-                    outline-none
-                    resize-none
-                    transition
-                    focus:ring-2 focus:ring-blue-500
-                    focus:border-blue-500
-                    text-sm
+                  className=" w-full rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200 dark:border-slate-700 shadow-sm outline-none resize-none transition focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm
                   "
                   placeholder="Giới thiệu bản thân..."
                 />
               ) : (
-                <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-sm">
+                <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-sm whitespace-pre-line">
                   {profile?.bio}
                 </p>
               )}

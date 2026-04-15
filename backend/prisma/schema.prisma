@@ -17,22 +17,83 @@ enum Status {
   INACTIVE
 }
 
+enum GroupType {
+  PUBLIC
+  PRIVATE
+  DEPARTMENT
+}
+
+enum GroupStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum GroupMemberRole {
+  MEMBER
+  MODERATOR
+  ADMIN
+}
+
+enum PostVisibility {
+  PUBLIC
+  PRIVATE
+  DEPARTMENT
+  GROUP
+}
+
+enum PostStatus {
+  ACTIVE
+  HIDDEN
+  DELETED
+}
+
+enum CommentStatus {
+  ACTIVE
+  HIDDEN
+  DELETED
+}
+
+enum ReactionType {
+  LIKE
+  LOVE
+  HAHA
+  WOW
+  SAD
+  ANGRY
+}
+
 model User {
-  id           Int            @id @default(autoincrement())
-  fullName     String
-  email        String         @unique
-  password     String
-  role         Role           @default(EMPLOYEE)
-  refreshTokens RefreshToken[]
-  departmentId Int?
-  department    Department?    @relation("DepartmentMembers", fields: [departmentId], references: [id], onDelete: SetNull)
-  managedDepartment Department? @relation("DepartmentManager")
-  positionId   Int?
-  position     Position?   @relation(fields: [positionId], references: [id], onDelete: SetNull)
-  profile      Profile?
-  status       Status       @default(ACTIVE)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id                 Int               @id @default(autoincrement())
+  fullName           String
+  email              String            @unique
+  password           String
+  role               Role              @default(EMPLOYEE)
+
+  refreshTokens      RefreshToken[]
+
+  departmentId       Int?
+  department         Department?       @relation("DepartmentMembers", fields: [departmentId], references: [id], onDelete: SetNull)
+  managedDepartment  Department?       @relation("DepartmentManager")
+
+  positionId         Int?
+  position           Position?         @relation(fields: [positionId], references: [id], onDelete: SetNull)
+
+  profile            Profile?
+  status             Status            @default(ACTIVE)
+
+  posts              Post[]
+  comments           Comment[]
+  reactions          Reaction[]
+
+  postMentions       PostMention[]     @relation("PostMentionedUser")
+  commentMentions    CommentMention[]  @relation("CommentMentionedUser")
+
+  createdGroups      Group[]           @relation("GroupCreator")
+  groupMembers       GroupMember[]
+
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 }
 
 model RefreshToken {
@@ -46,23 +107,26 @@ model RefreshToken {
 }
 
 model Department {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
   description String?
+
   users       User[]   @relation("DepartmentMembers")
-  managerId Int? @unique
+
+  managerId   Int?     @unique
   manager     User?    @relation("DepartmentManager", fields: [managerId], references: [id], onDelete: SetNull)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Position {
-  id          Int      @id @default(autoincrement())
-  name       String   
-  level Int
-  user User[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  name      String
+  level     Int
+  user      User[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Profile {
@@ -70,11 +134,161 @@ model Profile {
   userId    Int      @unique
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   bio       String?
-  phone    String?
-  gender  String?
+  phone     String?
+  gender    String?
   birthdate DateTime?
-  address String?
+  address   String?
   avatarUrl String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Group {
+  id          Int           @id @default(autoincrement()) @map("group_id")
+  groupName   String        @map("group_name")
+  description String?       @db.Text
+  groupType   GroupType     @default(PUBLIC) @map("group_type")
+  createdBy   Int           @map("created_by")
+  status      GroupStatus   @default(ACTIVE)
+
+  creator     User          @relation("GroupCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  posts       Post[]
+  members     GroupMember[]
+
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  @@index([createdBy])
+  @@map("groups")
+}
+
+model GroupMember {
+  id          Int              @id @default(autoincrement()) @map("group_member_id")
+  groupId     Int              @map("group_id")
+  userId      Int              @map("user_id")
+  memberRole  GroupMemberRole  @default(MEMBER) @map("member_role")
+  joinedAt    DateTime         @default(now()) @map("joined_at")
+
+  group       Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@index([userId])
+  @@unique([groupId, userId])
+  @@map("group_members")
+}
+
+model Post {
+  id          Int               @id @default(autoincrement()) @map("post_id")
+  userId      Int               @map("user_id")
+  groupId     Int?              @map("group_id")
+  content     String            @db.Text
+  visibility  PostVisibility    @default(PUBLIC)
+  viewCount   Int               @default(0) @map("view_count")
+  isPinned    Boolean           @default(false) @map("is_pinned")
+  status      PostStatus        @default(ACTIVE)
+
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group       Group?            @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  comments    Comment[]
+  attachments PostAttachment[]
+  reactions   Reaction[]
+  mentions    PostMention[]
+
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([groupId])
+  @@map("posts")
+}
+
+model Comment {
+  id               Int               @id @default(autoincrement()) @map("comment_id")
+  postId           Int               @map("post_id")
+  userId           Int               @map("user_id")
+  parentCommentId  Int?              @map("parent_comment_id")
+  content          String            @db.Text
+  status           CommentStatus     @default(ACTIVE)
+
+  post             Post              @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  parentComment    Comment?          @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: SetNull)
+  replies          Comment[]         @relation("CommentReplies")
+
+  reactions        Reaction[]
+  mentions         CommentMention[]
+
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  @@index([postId])
+  @@index([userId])
+  @@index([parentCommentId])
+  @@map("comments")
+}
+
+model PostMention {
+  id               Int      @id @default(autoincrement()) @map("mention_id")
+  postId           Int      @map("post_id")
+  mentionedUserId  Int      @map("mentioned_user_id")
+
+  post             Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  mentionedUser    User     @relation("PostMentionedUser", fields: [mentionedUserId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@index([mentionedUserId])
+  @@unique([postId, mentionedUserId])
+  @@map("post_mentions")
+}
+
+model CommentMention {
+  id               Int      @id @default(autoincrement()) @map("mention_id")
+  commentId        Int      @map("comment_id")
+  mentionedUserId  Int      @map("mentioned_user_id")
+
+  comment          Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  mentionedUser    User     @relation("CommentMentionedUser", fields: [mentionedUserId], references: [id], onDelete: Cascade)
+
+  @@index([commentId])
+  @@index([mentionedUserId])
+  @@unique([commentId, mentionedUserId])
+  @@map("comment_mentions")
+}
+
+model PostAttachment {
+  id          Int      @id @default(autoincrement()) @map("attachment_id")
+  postId      Int      @map("post_id")
+  fileName    String   @map("file_name")
+  fileUrl     String   @map("file_url")
+  fileType    String   @map("file_type")
+  uploadedAt  DateTime @default(now()) @map("uploaded_at")
+
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@map("post_attachments")
+}
+
+model Reaction {
+  id           Int           @id @default(autoincrement()) @map("reaction_id")
+  userId       Int           @map("user_id")
+  postId       Int?          @map("post_id")
+  commentId    Int?          @map("comment_id")
+  reactionType ReactionType  @map("reaction_type")
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post         Post?         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment      Comment?      @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([postId])
+  @@index([commentId])
+
+  @@unique([userId, postId])
+  @@unique([userId, commentId])
+
+  @@map("reactions")
 }

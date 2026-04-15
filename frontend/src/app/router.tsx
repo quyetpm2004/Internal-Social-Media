@@ -5,6 +5,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import LoginPage from "@/features/auth/pages/LoginPage";
 import ProfilePage from "@/features/profile/pages/ProfilePage";
 import NotFoundPage from "@/features/not-found/pages/NotFoundPage";
+import NewFeedPage from "@/features/new-feed/pages/NewFeedPage";
 
 export const router = createBrowserRouter([
   {
@@ -29,6 +30,10 @@ export const router = createBrowserRouter([
           {
             path: "/profile",
             element: <ProfilePage />,
+          },
+          {
+            path: "/news-feed",
+            element: <NewFeedPage />,
           },
         ],
       },

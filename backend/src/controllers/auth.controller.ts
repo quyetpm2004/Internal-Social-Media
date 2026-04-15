@@ -46,6 +46,7 @@ export async function login(req: Request, res: Response): Promise<void> {
     });
     // Remove refreshToken from response body
     const { refreshToken, ...responseData } = result;
+    console.log("User info set in request:", req.user);
     res.status(200).json({
       message: "Đăng nhập thành công",
       data: responseData,
@@ -101,6 +102,27 @@ export async function logout(req: Request, res: Response): Promise<void> {
   } catch (error) {
     res.status(400).json({
       message: error instanceof Error ? error.message : "Logout failed",
+    });
+  }
+}
+
+export async function getMe(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({
+        message: "Unauthorized",
+      });
+      return;
+    }
+    const user = await authService.getMe(userId);
+    res.status(200).json({
+      message: "Lấy thông tin người dùng thành công",
+      data: user,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: error instanceof Error ? error.message : "Get user info failed",
     });
   }
 }

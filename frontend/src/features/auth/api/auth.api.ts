@@ -3,6 +3,7 @@ import type {
   LoginPayload,
   LoginResponse,
   RefreshTokenResponse,
+  UserPublicInfo,
 } from "@/features/auth/types/auth.type";
 
 export const authApi = {
@@ -20,5 +21,9 @@ export const authApi = {
     return axiosClient.post("/auth/logout", {}, {
       skipAuthRefresh: true,
     } as any);
+  },
+
+  getMe() {
+    return axiosClient.get<UserPublicInfo>("/auth/me");
   },
 };
