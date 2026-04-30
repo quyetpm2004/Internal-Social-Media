@@ -3,7 +3,6 @@ import prisma from "../utils/prisma";
 export interface UpdateProfileInput {
   fullName?: string;
   email?: string;
-  avatarUrl?: string;
   bio?: string;
   phone?: string;
   gender?: string;
@@ -94,7 +93,6 @@ export async function updateProfile(userId: number, data: UpdateProfileInput) {
             phone: data.phone,
             address: data.address,
             gender: data.gender,
-            avatarUrl: data.avatarUrl,
             birthdate: birthdate,
           },
           update: {
@@ -121,7 +119,6 @@ export async function updateProfile(userId: number, data: UpdateProfileInput) {
     gender: updatedUser.profile?.gender,
     birthdate: updatedUser.profile?.birthdate,
     address: updatedUser.profile?.address,
-    avatarUrl: updatedUser.profile?.avatarUrl,
     departmentId: updatedUser.departmentId,
     positionId: updatedUser.positionId,
   };

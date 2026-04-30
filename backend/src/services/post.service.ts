@@ -14,7 +14,8 @@ export const getPostListService = async ({
   limit = 10,
   sort = "latest",
   groupId,
-}: GetPostListParams) => {
+  userId,
+}: GetPostListParams & { userId: number }) => {
   const skip = (page - 1) * limit;
 
   const where: Prisma.PostWhereInput = {
@@ -44,12 +45,25 @@ export const getPostListService = async ({
             id: true,
             fullName: true,
             email: true,
+            profile: {
+              select: {
+                avatarUrl: true,
+              },
+            },
           },
         },
         group: {
           select: {
             id: true,
             groupName: true,
+          },
+        },
+        reactions: {
+          where: {
+            userId: userId,
+          },
+          select: {
+            reactionType: true,
           },
         },
         attachments: true,
@@ -88,12 +102,25 @@ export const getPostListService = async ({
           id: true,
           fullName: true,
           email: true,
+          profile: {
+            select: {
+              avatarUrl: true,
+            },
+          },
         },
       },
       group: {
         select: {
           id: true,
           groupName: true,
+        },
+      },
+      reactions: {
+        where: {
+          userId: userId,
+        },
+        select: {
+          reactionType: true,
         },
       },
       attachments: true,

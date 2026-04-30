@@ -35,29 +35,25 @@ const formatTimeAgo = (dateString: string) => {
 };
 
 const mapApiPostToPostCard = (post: ApiPost): Post => {
-  const firstImage = post.attachments?.find((item) =>
-    (item.fileType || "").toLowerCase().includes("image"),
-  )?.fileUrl;
-
   return {
     id: post.id,
     isPinned: post.isPinned,
     author: {
       name: post.user?.fullName || "Người dùng",
-      avatar:
-        post.user?.avatar ||
-        "https://ui-avatars.com/api/?name=" +
+      avatar: post.user?.profile?.avatarUrl
+        ? `${import.meta.env.VITE_BASE_URL_BACKEND}/uploads/avatar/${post.user?.profile?.avatarUrl}`
+        : "https://ui-avatars.com/api/?name=" +
           encodeURIComponent(post.user?.fullName || "User"),
     },
     role: "Nhân viên",
     time: formatTimeAgo(post.createdAt),
     content: post.content,
     image: post.attachments?.[0]?.fileName,
-    // image: firstImage,
     stats: {
       likes: post._count?.reactions || 0,
       comments: post._count?.comments || 0,
     },
+    currentReaction: post.reactions?.[0]?.reactionType || null, // API chưa trả về reaction của user nên tạm để null
   };
 };
 
@@ -191,7 +187,12 @@ const NewFeedPage = () => {
     <main className="flex-1 py-8">
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-6">
-          <PostCreator />
+          <PostCreator
+            onPostCreated={(newPost) => {
+              const newPostCreated = mapApiPostToPostCard(newPost);
+              setPosts((prev) => [newPostCreated, ...prev]);
+            }}
+          />
 
           {initialLoading && (
             <div className="rounded-xl border border-slate-200 p-4 text-sm text-slate-500">
@@ -202,14 +203,28 @@ const NewFeedPage = () => {
           {!initialLoading && pinnedPosts.length > 0 && (
             <div className="space-y-6">
               {pinnedPosts.map((post) => (
-                <PostCard key={`pinned-${post.id}`} {...post} />
+                <PostCard
+                  key={`pinned-${post.id}`}
+                  {...post}
+                  onDeleted={(postId) => {
+                    setPosts((prev) =>
+                      prev.filter((item) => item.id !== postId),
+                    );
+                  }}
+                />
               ))}
             </div>
           )}
 
           <div className="space-y-6">
             {posts.map((post) => (
-              <PostCard key={post.id} {...post} />
+              <PostCard
+                key={post.id}
+                {...post}
+                onDeleted={(postId) => {
+                  setPosts((prev) => prev.filter((item) => item.id !== postId));
+                }}
+              />
             ))}
           </div>
 

@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import type { ReactionType } from "../api/reaction.api";
 
 type SortType = "latest" | "trending";
 
@@ -22,6 +23,7 @@ interface Post {
   content: string;
   image?: string;
   stats: Stats;
+  currentReaction: ReactionType | null;
 }
 
 interface SidebarItemProps {
@@ -30,7 +32,10 @@ interface SidebarItemProps {
   active?: boolean;
 }
 
-interface PostCardProps extends Post {}
+interface PostCardProps extends Post {
+  onDeleted?: (postId: number) => void;
+  onUpdated?: (postId: number, content: string) => void;
+}
 
 interface RightSidebarWidgetProps {
   title: string;
@@ -55,7 +60,9 @@ type ApiPost = {
     id: number;
     fullName: string;
     email: string;
-    avatar?: string;
+    profile: {
+      avatarUrl: string;
+    };
   };
   attachments?: Array<{
     id: number;
@@ -67,6 +74,9 @@ type ApiPost = {
     comments: number;
     reactions: number;
   };
+  reactions?: {
+    reactionType: ReactionType;
+  }[];
 };
 
 type GetPostsResponse = {

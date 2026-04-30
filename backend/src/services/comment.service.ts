@@ -3,12 +3,14 @@ import { PrismaClient, ReactionType } from "@prisma/client";
 import prisma from "../utils/prisma";
 
 type GetPostCommentsParams = {
+  userId: number;
   postId: number;
   page?: number;
   limit?: number;
 };
 
 type GetCommentRepliesParams = {
+  userId: number;
   commentId: number;
   page?: number;
   limit?: number;
@@ -59,6 +61,7 @@ const formatCommentResponse = (comment: any) => ({
   mentions: comment.mentions,
   replyCount: comment._count?.replies ?? 0,
   reactionCount: comment._count?.reactions ?? 0,
+  currentReaction: comment.reactions?.[0]?.reactionType ?? null,
 });
 
 const getCommentReactionStats = async (commentId: number) => {
@@ -105,6 +108,7 @@ const getCommentReactionStats = async (commentId: number) => {
 };
 
 export const getPostCommentsService = async ({
+  userId,
   postId,
   page = 1,
   limit = 10,
@@ -146,6 +150,14 @@ export const getPostCommentsService = async ({
           email: true,
         },
       },
+      reactions: {
+        where: {
+          userId: userId,
+        },
+        select: {
+          reactionType: true,
+        },
+      },
       mentions: {
         include: {
           mentionedUser: {
@@ -182,6 +194,7 @@ export const getPostCommentsService = async ({
 };
 
 export const getCommentRepliesService = async ({
+  userId,
   commentId,
   page = 1,
   limit = 10,
@@ -231,6 +244,14 @@ export const getCommentRepliesService = async ({
               email: true,
             },
           },
+        },
+      },
+      reactions: {
+        where: {
+          userId: userId,
+        },
+        select: {
+          reactionType: true,
         },
       },
       _count: {

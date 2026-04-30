@@ -13,47 +13,44 @@ import { authMiddleware } from "../middlewares/auth.middleware";
 const commentRoutes = Router();
 
 /**
- * GET /api/posts/:postId
- * Lấy comment cấp 1 của bài viết
- */
-commentRoutes.get("/posts/:postId", authMiddleware, getPostCommentsController);
-
-/**
- * GET /api/:commentId/replies
+ * GET /api/comments/:commentId/replies
  * Lấy replies của một comment
  */
 commentRoutes.get(
-  "/replies/:commentId",
+  "/:commentId/replies",
   authMiddleware,
   getCommentRepliesController,
 );
 
 /**
- * POST - tạo comment cấp 1
- */
-commentRoutes.post("/posts/:postId", authMiddleware, createCommentController);
-
-/**
- * POST - reply comment
+ * POST /api/comments/:commentId/replies
+ * Reply vào một comment
  */
 commentRoutes.post(
-  "/replies/:commentId",
+  "/:commentId/replies",
   authMiddleware,
   replyCommentController,
 );
 
 /**
- * POST - react comment
+ * POST /api/comments/:commentId/reactions
+ * React vào comment
  */
-commentRoutes.post("/react/:commentId", authMiddleware, reactCommentController);
+commentRoutes.post(
+  "/:commentId/reactions",
+  authMiddleware,
+  reactCommentController,
+);
 
 /**
- * PATCH - sửa comment
+ * PATCH /api/comments/:commentId
+ * Sửa comment
  */
 commentRoutes.patch("/:commentId", authMiddleware, updateCommentController);
 
 /**
- * DELETE - xóa comment
+ * DELETE /api/comments/:commentId
+ * Xóa comment
  */
 commentRoutes.delete("/:commentId", authMiddleware, deleteCommentController);
 

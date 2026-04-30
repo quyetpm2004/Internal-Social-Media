@@ -15,6 +15,7 @@ export const getPostCommentsController = async (
   next: NextFunction,
 ) => {
   try {
+    const userId = Number(req.user?.id);
     const postId = Number(req.params.postId);
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 10;
@@ -23,7 +24,12 @@ export const getPostCommentsController = async (
       return res.status(400).json({ message: "postId không hợp lệ" });
     }
 
-    const result = await getPostCommentsService({ postId, page, limit });
+    const result = await getPostCommentsService({
+      userId,
+      postId,
+      page,
+      limit,
+    });
 
     return res.status(200).json({
       message: "Lấy danh sách comment cấp 1 thành công",
@@ -40,6 +46,7 @@ export const getCommentRepliesController = async (
   next: NextFunction,
 ) => {
   try {
+    const userId = Number(req.user?.id);
     const commentId = Number(req.params.commentId);
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 10;
@@ -48,7 +55,12 @@ export const getCommentRepliesController = async (
       return res.status(400).json({ message: "commentId không hợp lệ" });
     }
 
-    const result = await getCommentRepliesService({ commentId, page, limit });
+    const result = await getCommentRepliesService({
+      userId,
+      commentId,
+      page,
+      limit,
+    });
 
     return res.status(200).json({
       message: "Lấy danh sách replies thành công",

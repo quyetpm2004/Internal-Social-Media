@@ -25,7 +25,7 @@ const AppSidebar: React.FC = () => {
               />
             </div>
           }
-          label="Nguyễn Văn A"
+          label="System Admin 123"
           path="/profile"
         />
         <NavItem icon={<Home size={24} />} label="Trang chủ" path="/" />

@@ -7,6 +7,10 @@ import {
 } from "../controllers/post.controller";
 import { authMiddleware } from "../middlewares/auth.middleware";
 import { createUploadMiddleware } from "../middlewares/upload.middleware";
+import {
+  createCommentController,
+  getPostCommentsController,
+} from "../controllers/comment.controller";
 
 const postRoutes = Router();
 
@@ -22,10 +26,22 @@ postRoutes.get("/new-feed", authMiddleware, getPostListController);
 postRoutes.post(
   "/",
   authMiddleware,
-  createUploadMiddleware("post").array("images", 5),
+  createUploadMiddleware("post").array("files", 5),
   createPostController,
 );
-postRoutes.post("/:postId/react", authMiddleware, reactPostController);
+postRoutes.post("/:postId/reactions", authMiddleware, reactPostController);
 postRoutes.delete("/:postId", authMiddleware, deletePostController);
+
+/**
+ * GET /api/:postId/comments
+ * Lấy comment cấp 1 của bài viết
+ */
+postRoutes.get("/:postId/comments", authMiddleware, getPostCommentsController);
+
+/**
+ * POST /api/:postId/comments
+ * Tạo comment cấp 1 cho bài viết
+ */
+postRoutes.post("/:postId/comments", authMiddleware, createCommentController);
 
 export default postRoutes;

@@ -25,7 +25,7 @@ export const router = createBrowserRouter([
         children: [
           {
             path: "/",
-            element: <Navigate to="/profile" replace />,
+            element: <Navigate to="/news-feed" replace />,
           },
           {
             path: "/profile",
