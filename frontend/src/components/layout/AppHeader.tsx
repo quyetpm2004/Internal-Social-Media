@@ -5,11 +5,9 @@ import {
   Mail,
   Search,
   Settings,
-  User,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/features/auth/store/auth.store";
-import { process } from "zod/v4/core";
 
 export default function AppHeader() {
   const navigate = useNavigate();
@@ -52,7 +50,10 @@ export default function AppHeader() {
               alt="User profile"
               className="h-full w-full object-cover"
               data-alt="professional headshot of a smiling architect in a modern office setting with soft natural light"
-              src="https://khoanhdep.com/wp-content/uploads/2025/09/anh-anime-nam-2.jpg"
+              src={
+                user?.avatarUrl ||
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || "User")}&background=0D8ABC&color=fff&size=128`
+              }
             />
           </div>
         </div>

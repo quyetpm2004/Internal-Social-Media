@@ -1,4 +1,7 @@
+import { s3 } from "../lib/s3";
 import prisma from "../utils/prisma";
+import { getFileUrl } from "./file.service";
+import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 export interface UpdateProfileInput {
   fullName?: string;
@@ -23,7 +26,7 @@ export async function getProfile(userId: number) {
       gender: true,
       birthdate: true,
       address: true,
-      avatarUrl: true,
+      avatarKey: true,
       user: {
         select: {
           fullName: true,
@@ -40,6 +43,11 @@ export async function getProfile(userId: number) {
     throw new Error("Hồ sơ không tồn tại");
   }
 
+  // 🔥 tạo presigned URL nếu có avatar
+  const avatarUrl = profile.avatarKey
+    ? await getFileUrl(profile.avatarKey)
+    : null;
+
   return {
     fullName: profile.user.fullName,
     email: profile.user.email,
@@ -49,7 +57,7 @@ export async function getProfile(userId: number) {
     gender: profile.gender,
     birthdate: profile.birthdate,
     address: profile.address,
-    avatarUrl: profile.avatarUrl,
+    avatarUrl,
     departmentId: profile.user.departmentId,
     positionId: profile.user.positionId,
   };
@@ -121,5 +129,37 @@ export async function updateProfile(userId: number, data: UpdateProfileInput) {
     address: updatedUser.profile?.address,
     departmentId: updatedUser.departmentId,
     positionId: updatedUser.positionId,
+  };
+}
+
+export async function deleteAvatar(userId: string) {
+  const profile = await prisma.profile.findUnique({
+    where: {
+      userId: +userId,
+    },
+  });
+
+  if (!profile?.avatarKey) {
+    throw new Error("AVATAR_NOT_FOUND");
+  }
+
+  await s3.send(
+    new DeleteObjectCommand({
+      Bucket: process.env.AWS_S3_BUCKET!,
+      Key: profile.avatarKey,
+    }),
+  );
+
+  await prisma.profile.update({
+    where: {
+      userId: +userId,
+    },
+    data: {
+      avatarKey: null,
+    },
+  });
+
+  return {
+    success: true,
   };
 }

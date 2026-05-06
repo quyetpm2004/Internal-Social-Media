@@ -148,6 +148,11 @@ export const getPostCommentsService = async ({
           id: true,
           fullName: true,
           email: true,
+          profile: {
+            select: {
+              avatarUrl: true,
+            },
+          },
         },
       },
       reactions: {
@@ -233,6 +238,11 @@ export const getCommentRepliesService = async ({
           id: true,
           fullName: true,
           email: true,
+          profile: {
+            select: {
+              avatarUrl: true,
+            },
+          },
         },
       },
       mentions: {
@@ -347,6 +357,11 @@ export const createCommentService = async ({
           id: true,
           fullName: true,
           email: true,
+          profile: {
+            select: {
+              avatarUrl: true,
+            },
+          },
         },
       },
       mentions: {
@@ -449,6 +464,11 @@ export const replyCommentService = async ({
           id: true,
           fullName: true,
           email: true,
+          profile: {
+            select: {
+              avatarUrl: true,
+            },
+          },
         },
       },
       mentions: {
@@ -658,6 +678,11 @@ export const updateCommentService = async ({
           id: true,
           fullName: true,
           email: true,
+          profile: {
+            select: {
+              avatarUrl: true,
+            },
+          },
         },
       },
       mentions: {

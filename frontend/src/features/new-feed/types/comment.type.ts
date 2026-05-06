@@ -4,7 +4,9 @@ export type CommentUser = {
   id: number;
   fullName: string;
   email: string;
-  avatar?: string | null;
+  profile: {
+    avatarUrl?: string | null;
+  };
 };
 
 export type CommentItemType = {

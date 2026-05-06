@@ -203,6 +203,11 @@ export const createPostService = async ({
           id: true,
           fullName: true,
           email: true,
+          profile: {
+            select: {
+              avatarUrl: true,
+            },
+          },
         },
       },
       group: {

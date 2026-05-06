@@ -17,4 +17,5 @@ export interface UserPublicInfo {
   fullName: string;
   email: string;
   role: "EMPLOYEE" | "ADMIN" | "MANAGER";
+  avatarUrl?: string;
 }

@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { profileApi } from "@/features/profile/api/profile.api";
-import { type ProfileFormValues } from "@/features/profile/schemas/profile.schema";
 import ProfileHeader from "../components/ProfileHeader";
 import InfoField from "../components/InfoField";
 import { BookUser, Shell, UserPen } from "lucide-react";
 import type { Department, Position, UserProfile } from "../types/profile.type";
+import { uploadApi } from "@/features/uploads/api/upload.api";
 
 export default function ProfilePage() {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [profile, setProfile] = useState<UserProfile>({
     id: "",
     fullName: "",
@@ -68,13 +69,22 @@ export default function ProfilePage() {
     fetchPositions();
   }, []);
 
-  const onSubmit = async (values: ProfileFormValues) => {
+  const onSubmit = async () => {
     try {
       setUpdating(true);
-      console.log("Submitting payload:", values);
-      const res = await profileApi.updateProfile(values);
-      setProfile(res.data);
+
+      const { avatarUrl, id, role, ...profilePayload } = profile;
+
+      const res = await profileApi.updateProfile(profilePayload);
+
       console.log("Updated profile:", res.data);
+
+      setProfile((prev) => ({
+        ...prev,
+        ...res.data,
+        avatarUrl: prev.avatarUrl,
+      }));
+
       setIsEditing(false);
       toast.success("Cập nhật hồ sơ thành công");
     } catch {
@@ -93,14 +103,79 @@ export default function ProfilePage() {
     setProfile((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleAvatarChange = async (file: File) => {
+    try {
+      setAvatarUploading(true);
+
+      const presignRes = await uploadApi.presign({
+        purpose: "avatar",
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+      });
+
+      const { uploadUrl, key } = presignRes.data;
+
+      await fetch(uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": file.type,
+        },
+        body: file,
+      });
+
+      const confirmRes = await uploadApi.confirm({
+        purpose: "avatar",
+        key,
+        fileName: file.name,
+      });
+
+      const newAvatarUrl = confirmRes.data.avatarUrl;
+
+      setProfile((prev) => ({
+        ...prev,
+        avatarUrl: newAvatarUrl,
+      }));
+
+      toast.success("Cập nhật ảnh đại diện thành công");
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      toast.error("Cập nhật ảnh đại diện thất bại");
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleDeleteAvatar = async () => {
+    try {
+      setAvatarUploading(true);
+
+      await profileApi.deleteAvatar();
+
+      setProfile((prev) => ({
+        ...prev,
+        avatarUrl: "",
+      }));
+
+      toast.success("Đã xóa ảnh đại diện");
+    } catch (error) {
+      toast.error("Xóa ảnh đại diện thất bại");
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
   if (loadingProfile) {
     return <div>Đang tải hồ sơ...</div>;
   }
+
+  // Update avatar state
 
   return (
     <div className="py-4 max-w-6xl mx-auto">
       <ProfileHeader
         name={profile?.fullName}
+        avatarUrl={profile?.avatarUrl}
         role={
           profile?.positionId
             ? positions.find((p) => p.id === profile.positionId)?.name
@@ -113,9 +188,12 @@ export default function ProfilePage() {
         }
         isEditing={isEditing}
         updating={updating}
+        avatarUploading={avatarUploading}
         onEdit={() => setIsEditing(true)}
         onCancel={() => setIsEditing(false)}
-        onSubmit={() => onSubmit(profile as ProfileFormValues)}
+        onSubmit={onSubmit}
+        onAvatarChange={handleAvatarChange}
+        onAvatarDelete={handleDeleteAvatar}
       />
 
       <form>

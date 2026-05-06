@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import * as userService from "../services/user.service";
+import { deleteAvatar } from "../services/user.service";
 
 export async function getProfile(req: Request, res: Response): Promise<void> {
   try {
@@ -44,6 +45,22 @@ export async function updateProfile(
   } catch (error) {
     res.status(400).json({
       message: error instanceof Error ? error.message : "Update profile failed",
+    });
+  }
+}
+
+export async function deleteAvatarController(req: Request, res: Response) {
+  try {
+    const userId = req.user?.id;
+
+    await deleteAvatar(String(userId));
+
+    return res.status(200).json({
+      message: "Avatar deleted successfully",
+    });
+  } catch (error: any) {
+    return res.status(400).json({
+      message: error.message || "Cannot delete avatar",
     });
   }
 }

@@ -7,6 +7,7 @@ import {
   verifyRefreshToken,
 } from "../utils/jwt";
 import { Role } from "@prisma/client";
+import { getFileUrl } from "./file.service";
 
 function generateTokens(payload: JwtPayload) {
   const accessToken = signAccessToken(payload);
@@ -186,7 +187,18 @@ export async function logout(refreshToken: string) {
 export async function getMe(userId: number) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
+    include: {
+      profile: {
+        select: {
+          avatarKey: true,
+        },
+      },
+    },
   });
+
+  const avatarUrl = user?.profile?.avatarKey
+    ? await getFileUrl(user.profile.avatarKey)
+    : null;
 
   if (!user) {
     throw new Error("Người dùng không tồn tại");
@@ -197,5 +209,6 @@ export async function getMe(userId: number) {
     fullName: user.fullName,
     email: user.email,
     role: user.role,
+    avatarUrl,
   };
 }

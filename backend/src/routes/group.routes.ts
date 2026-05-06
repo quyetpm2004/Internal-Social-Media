@@ -1,0 +1,36 @@
+import express from "express";
+import * as groupController from "../controllers/group.controller";
+import { authMiddleware } from "../middlewares/auth.middleware";
+
+const router = express.Router();
+
+router.use(authMiddleware);
+
+// Group CRUD
+router.post("/", groupController.createGroup);
+router.get("/", groupController.getGroups);
+router.get("/:groupId", groupController.getGroupById);
+router.put("/:groupId", groupController.updateGroup);
+router.delete("/:groupId", groupController.deleteGroup);
+
+// Group members
+router.post("/:groupId/members", groupController.addMemberToGroup);
+router.get("/:groupId/members", groupController.getGroupMembers);
+router.delete(
+  "/:groupId/members/:userId",
+  groupController.removeMemberFromGroup,
+);
+router.patch(
+  "/:groupId/members/:userId/role",
+  groupController.updateMemberRole,
+);
+
+// Join / Leave
+router.post("/:groupId/join", groupController.joinGroup);
+router.post("/:groupId/leave", groupController.leaveGroup);
+
+// Group posts
+router.post("/:groupId/posts", groupController.createGroupPost);
+router.get("/:groupId/posts", groupController.getGroupPosts);
+
+export default router;

@@ -21,4 +21,8 @@ export const profileApi = {
   updateProfile(payload: Partial<UserProfile>) {
     return axiosClient.put<UserProfile>("/users/profile", payload);
   },
+
+  deleteAvatar() {
+    return axiosClient.delete("/users/profile/avatar");
+  },
 };

@@ -9,8 +9,10 @@ import {
   Plus,
   User,
 } from "lucide-react";
+import { useAuthStore } from "@/features/auth/store/auth.store";
 
 const AppSidebar: React.FC = () => {
+  const user = useAuthStore((state) => state.user);
   return (
     <aside className="hidden md:flex flex-col gap-2 p-4 fixed left-0 top-16 h-[calc(100vh-64px)] w-80 bg-slate-50 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800">
       <nav className="flex-1 space-y-1">
@@ -21,11 +23,14 @@ const AppSidebar: React.FC = () => {
                 alt="User profile"
                 className="h-full w-full object-cover"
                 data-alt="professional headshot of a smiling architect in a modern office setting with soft natural light"
-                src="https://khoanhdep.com/wp-content/uploads/2025/09/anh-anime-nam-2.jpg"
+                src={
+                  user?.avatarUrl ||
+                  `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || "User")}&background=0D8ABC&color=fff&size=128`
+                }
               />
             </div>
           }
-          label="System Admin 123"
+          label={user?.fullName || "Tài khoản"}
           path="/profile"
         />
         <NavItem icon={<Home size={24} />} label="Trang chủ" path="/" />

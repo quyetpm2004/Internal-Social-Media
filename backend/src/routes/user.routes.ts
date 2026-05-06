@@ -6,7 +6,10 @@ const router = Router();
 
 router.get("/profile", authMiddleware, userController.getProfile);
 router.put("/profile", authMiddleware, userController.updateProfile);
-router.patch("/profile/avatar", authMiddleware, userController.updateProfile);
-router.delete("/profile/avatar", authMiddleware, userController.updateProfile);
+router.delete(
+  "/profile/avatar",
+  authMiddleware,
+  userController.deleteAvatarController,
+);
 
 export default router;

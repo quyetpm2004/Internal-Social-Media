@@ -109,8 +109,10 @@ const CommentItem = ({
     }
   };
 
-  const avatarSrc = comment.user.avatar
-    ? `${import.meta.env.VITE_BASE_URL_BACKEND}/uploads/avatar/${comment.user.avatar}`
+  console.log("avatarUrl", comment.user.profile.avatarUrl);
+
+  const avatarSrc = comment.user.profile.avatarUrl
+    ? `${import.meta.env.VITE_BASE_URL_BACKEND}/uploads/avatar/${comment.user.profile.avatarUrl}`
     : `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.user.fullName)}`;
 
   return (

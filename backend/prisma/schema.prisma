@@ -63,6 +63,18 @@ enum ReactionType {
   ANGRY
 }
 
+enum AttachmentType {
+  IMAGE
+  VIDEO
+  FILE
+}
+
+enum GroupMemberStatus {
+  PENDING
+  ACTIVE
+  BLOCKED
+}
+
 model User {
   id                 Int               @id @default(autoincrement())
   fullName           String
@@ -116,6 +128,8 @@ model Department {
   managerId   Int?     @unique
   manager     User?    @relation("DepartmentManager", fields: [managerId], references: [id], onDelete: SetNull)
 
+  groups      Group[]
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -138,7 +152,7 @@ model Profile {
   gender    String?
   birthdate DateTime?
   address   String?
-  avatarUrl String?
+  avatarKey String?  @map("avatar_key")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -155,8 +169,17 @@ model Group {
   posts       Post[]
   members     GroupMember[]
 
-  createdAt   DateTime      @default(now()) @map("created_at")
+  departmentId Int?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
 
+  avatarKey String? @map("avatar_key")
+  coverKey  String? @map("cover_key")
+
+
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@index([departmentId])
   @@index([createdBy])
   @@map("groups")
 }
@@ -170,6 +193,8 @@ model GroupMember {
 
   group       Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
   user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status GroupMemberStatus @default(ACTIVE)
 
   @@index([groupId])
   @@index([userId])
@@ -261,11 +286,12 @@ model PostAttachment {
   id          Int      @id @default(autoincrement()) @map("attachment_id")
   postId      Int      @map("post_id")
   fileName    String   @map("file_name")
-  fileUrl     String   @map("file_url")
-  fileType    String   @map("file_type")
-  uploadedAt  DateTime @default(now()) @map("uploaded_at")
-  fileSize    String?
+  fileKey     String   @map("file_key")
+  mimeType    String   @map("mime_type")
+  fileSize    Int      @map("file_size")
+  attachmentType AttachmentType @map("attachment_type")
 
+  uploadedAt  DateTime @default(now()) @map("uploaded_at")
   post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@index([postId])

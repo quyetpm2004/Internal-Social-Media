@@ -8,7 +8,9 @@ import positionRoutes from "./routes/position.routes";
 import dotenv from "dotenv";
 import postRoutes from "./routes/post.route";
 import commentRoutes from "./routes/comment.route";
-
+import uploadRoutes from "./routes/upload.routes";
+import fileRoutes from "./routes/file.routes";
+import groupRoutes from "./routes/group.routes";
 dotenv.config();
 
 const app = express();
@@ -34,5 +36,8 @@ app.use("/api/departments", departmentRoutes);
 app.use("/api/positions", positionRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/comments", commentRoutes);
+app.use("/api/uploads", uploadRoutes);
+app.use("/api/file-url", fileRoutes);
+app.use("/api/groups", groupRoutes);
 
 export default app;
