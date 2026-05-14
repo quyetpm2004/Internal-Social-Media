@@ -1,6 +1,7 @@
 import { PostVisibility, Prisma, ReactionType } from "@prisma/client";
 
 import prisma from "../utils/prisma";
+import { getFileUrl } from "./file.service";
 
 type GetPostListParams = {
   page?: number;
@@ -20,9 +21,14 @@ export const getPostListService = async ({
 
   const where: Prisma.PostWhereInput = {
     status: "ACTIVE",
-    ...(groupId ? { groupId } : {}),
     visibility: "PUBLIC",
   };
+
+  if (groupId) {
+    where.groupId = groupId;
+  } else {
+    where.groupId = null;
+  }
   /**
    * pinnedPosts:
    * - chỉ lấy ở page=1 để tránh lặp lại khi infinite scroll
@@ -47,7 +53,7 @@ export const getPostListService = async ({
             email: true,
             profile: {
               select: {
-                avatarUrl: true,
+                avatarKey: true,
               },
             },
           },
@@ -104,7 +110,7 @@ export const getPostListService = async ({
           email: true,
           profile: {
             select: {
-              avatarUrl: true,
+              avatarKey: true,
             },
           },
         },
@@ -134,7 +140,26 @@ export const getPostListService = async ({
   });
 
   const hasMore = posts.length > limit;
+
   const normalizedPosts = hasMore ? posts.slice(0, limit) : posts;
+
+  const normalizePostsWithUrlAttachments = await Promise.all(
+    normalizedPosts.map(async (post) => {
+      const attachmentsWithUrl = await Promise.all(
+        post.attachments.map(async (attachment) => {
+          const url = await getFileUrl(attachment.fileKey, 7 * 24 * 60 * 60); // 7 ngày
+          return {
+            ...attachment,
+            fileUrl: url,
+          };
+        }),
+      );
+      return {
+        ...post,
+        attachments: attachmentsWithUrl,
+      };
+    }),
+  );
 
   return {
     page,
@@ -142,7 +167,7 @@ export const getPostListService = async ({
     sort,
     hasMore,
     pinnedPosts,
-    posts: normalizedPosts,
+    posts: normalizePostsWithUrlAttachments,
   };
 };
 
@@ -151,7 +176,7 @@ type CreatePostParams = {
   content: string;
   visibility?: PostVisibility;
   groupId?: number;
-  files?: Express.Multer.File[];
+  attachmentIds?: number[];
 };
 
 export const createPostService = async ({
@@ -159,71 +184,144 @@ export const createPostService = async ({
   content,
   visibility = "PUBLIC",
   groupId,
-  files = [],
+  attachmentIds = [],
 }: CreatePostParams) => {
+  /**
+   * Validate group
+   */
   if (groupId) {
     const existingGroup = await prisma.group.findUnique({
-      where: { id: groupId },
-      select: { id: true },
+      where: {
+        id: groupId,
+      },
+
+      select: {
+        id: true,
+      },
     });
 
     if (!existingGroup) {
-      throw new Error("Nhóm không tồn tại");
+      throw new Error("GROUP_NOT_FOUND");
     }
   }
 
-  const uploadedImages = files.map((file) => {
-    return {
-      fileUrl: `/uploads/posts/${file.filename}`,
-      fileType: file.mimetype,
-      fileName: file.filename,
-    };
-  });
+  /**
+   * Validate attachments
+   */
+  if (attachmentIds.length > 0) {
+    const attachments = await prisma.postAttachment.findMany({
+      where: {
+        id: {
+          in: attachmentIds,
+        },
 
-  const post = await prisma.post.create({
-    data: {
-      userId,
-      groupId: groupId || null,
-      content,
-      visibility,
-      isPinned: false,
-      status: "ACTIVE",
-      viewCount: 0,
-      attachments: {
-        create: uploadedImages.map((image) => ({
-          fileUrl: image.fileUrl,
-          fileType: image.fileType,
-          fileName: image.fileName,
-        })),
+        uploadedById: userId,
+
+        status: "READY",
       },
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-          profile: {
-            select: {
-              avatarUrl: true,
+
+      select: {
+        id: true,
+      },
+    });
+
+    if (attachments.length !== attachmentIds.length) {
+      throw new Error("INVALID_ATTACHMENTS");
+    }
+  }
+
+  /**
+   * Transaction
+   */
+  const post = await prisma.$transaction(async (tx) => {
+    /**
+     * Create post
+     */
+    const createdPost = await tx.post.create({
+      data: {
+        userId,
+
+        groupId: groupId || null,
+
+        content,
+
+        visibility,
+
+        isPinned: false,
+
+        status: "ACTIVE",
+
+        viewCount: 0,
+      },
+    });
+
+    /**
+     * Activate attachments
+     */
+    if (attachmentIds.length > 0) {
+      await tx.postAttachment.updateMany({
+        where: {
+          id: {
+            in: attachmentIds,
+          },
+
+          uploadedById: userId,
+
+          status: "READY",
+        },
+
+        data: {
+          postId: createdPost.id,
+
+          status: "ACTIVE",
+        },
+      });
+    }
+
+    /**
+     * Return full post
+     */
+    return tx.post.findUnique({
+      where: {
+        id: createdPost.id,
+      },
+
+      include: {
+        user: {
+          select: {
+            id: true,
+
+            fullName: true,
+
+            email: true,
+
+            profile: {
+              select: {
+                avatarKey: true,
+              },
             },
           },
         },
-      },
-      group: {
-        select: {
-          id: true,
-          groupName: true,
+
+        group: {
+          select: {
+            id: true,
+
+            groupName: true,
+          },
+        },
+
+        attachments: true,
+
+        _count: {
+          select: {
+            comments: true,
+
+            reactions: true,
+          },
         },
       },
-      attachments: true,
-      _count: {
-        select: {
-          comments: true,
-          reactions: true,
-        },
-      },
-    },
+    });
   });
 
   return post;

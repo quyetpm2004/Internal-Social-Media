@@ -6,6 +6,8 @@ import {
   PostStatus,
   PostVisibility,
 } from "@prisma/client";
+import { getFileUrl } from "./file.service";
+import { join } from "path";
 
 const checkGroupExists = async (groupId: number) => {
   const group = await prisma.group.findUnique({
@@ -128,24 +130,51 @@ export const createGroup = async (userId: number, data: any) => {
   return group;
 };
 
-export const getGroups = async (query: any) => {
-  const { search, groupType, departmentId } = query;
+export const getGroups = async (query: any, userId: number) => {
+  const { search = "", groupType, departmentId, page = 1, limit = 6 } = query;
 
-  const groups = await prisma.group.findMany({
-    where: {
-      status: GroupStatus.ACTIVE,
-      ...(search && {
-        groupName: {
-          contains: String(search),
+  const currentPage = Math.max(Number(page), 1);
+  const take = Math.max(Number(limit), 1);
+  const skip = (currentPage - 1) * take;
+
+  // where condition
+  const whereCondition: any = {
+    status: GroupStatus.ACTIVE,
+
+    ...(search && {
+      OR: [
+        {
+          groupName: {
+            contains: String(search),
+          },
         },
-      }),
-      ...(groupType && {
-        groupType: groupType as GroupType,
-      }),
-      ...(departmentId && {
-        departmentId: Number(departmentId),
-      }),
-    },
+        {
+          description: {
+            contains: String(search),
+          },
+        },
+      ],
+    }),
+
+    ...(groupType && {
+      groupType: groupType as GroupType,
+    }),
+
+    ...(departmentId && {
+      departmentId: Number(departmentId),
+    }),
+  };
+
+  // lấy total để pagination
+  const totalGroups = await prisma.group.count({
+    where: whereCondition,
+  });
+
+  // lấy groups theo page
+  const groups = await prisma.group.findMany({
+    where: whereCondition,
+    skip,
+    take,
     include: {
       creator: {
         select: {
@@ -162,15 +191,56 @@ export const getGroups = async (query: any) => {
         },
       },
     },
+
     orderBy: {
       createdAt: "desc",
     },
   });
 
-  return groups;
+  // xử lý membership + signed url
+  const groupWithMembership = await Promise.all(
+    groups.map(async (group) => {
+      const isMember = await prisma.groupMember.findUnique({
+        where: {
+          groupId_userId: {
+            groupId: group.id,
+            userId,
+          },
+        },
+      });
+
+      const avatarUrl = group.avatarKey
+        ? await getFileUrl(group.avatarKey, 24 * 60 * 60)
+        : null;
+
+      const coverUrl = group.coverKey
+        ? await getFileUrl(group.coverKey, 24 * 60 * 60)
+        : null;
+
+      return {
+        ...group,
+        isMember: !!isMember,
+        avatarUrl,
+        coverUrl,
+      };
+    }),
+  );
+
+  return {
+    groups: groupWithMembership,
+
+    pagination: {
+      total: totalGroups,
+      page: currentPage,
+      limit: take,
+      totalPages: Math.ceil(totalGroups / take),
+      hasNextPage: currentPage < Math.ceil(totalGroups / take),
+      hasPrevPage: currentPage > 1,
+    },
+  };
 };
 
-export const getGroupById = async (groupId: number) => {
+export const getGroupById = async (groupId: number, userId: number) => {
   const group = await prisma.group.findUnique({
     where: { id: groupId },
     include: {
@@ -208,11 +278,22 @@ export const getGroupById = async (groupId: number) => {
     },
   });
 
+  const avatarUrl = group?.avatarKey
+    ? await getFileUrl(group.avatarKey, 24 * 60 * 60)
+    : null;
+  const coverUrl = group?.coverKey
+    ? await getFileUrl(group.coverKey, 24 * 60 * 60)
+    : null;
+
+  const isMember = await checkIsGroupMember(groupId, userId)
+    .then(() => true)
+    .catch(() => false);
+
   if (!group) {
     throw new Error("Không tìm thấy nhóm");
   }
 
-  return group;
+  return { ...group, avatarUrl, coverUrl, isMember };
 };
 
 export const updateGroup = async (
@@ -331,32 +412,95 @@ export const addMemberToGroup = async (
   return member;
 };
 
-export const getGroupMembers = async (groupId: number) => {
+// service
+export const getGroupMembers = async (
+  groupId: number,
+  page: number = 1,
+  limit: number = 10,
+  search?: string,
+  role?: string,
+) => {
   await checkGroupExists(groupId);
 
-  const members = await prisma.groupMember.findMany({
-    where: { groupId },
-    include: {
-      user: {
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-          role: true,
-          profile: {
-            select: {
-              avatarKey: true,
+  const where = {
+    groupId,
+    ...(role
+      ? {
+          memberRole: role as any,
+        }
+      : {}),
+    ...(search
+      ? {
+          user: {
+            OR: [
+              {
+                fullName: {
+                  contains: search,
+                },
+              },
+              {
+                email: {
+                  contains: search,
+                },
+              },
+            ],
+          },
+        }
+      : {}),
+  };
+
+  const [members, total] = await Promise.all([
+    prisma.groupMember.findMany({
+      where,
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            role: true,
+            profile: {
+              select: {
+                avatarKey: true,
+              },
             },
           },
         },
       },
-    },
-    orderBy: {
-      joinedAt: "asc",
-    },
-  });
+      orderBy: {
+        joinedAt: "asc",
+      },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
 
-  return members;
+    prisma.groupMember.count({
+      where,
+    }),
+  ]);
+
+  return {
+    members: await Promise.all(
+      members.map(async (member) => ({
+        id: member.user.id,
+        fullName: member.user.fullName,
+        email: member.user.email,
+        memberRole: member.memberRole,
+        joinedAt: member.joinedAt,
+        status: member.status,
+        avatarUrl: member.user.profile?.avatarKey
+          ? await getFileUrl(member.user.profile.avatarKey, 24 * 60 * 60)
+          : null,
+      })),
+    ),
+
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
 };
 
 export const removeMemberFromGroup = async (

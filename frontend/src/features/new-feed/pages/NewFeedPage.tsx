@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ApiPost, Post } from "../types/new-feed.type";
-import PostCreator from "../components/PostCreator";
-import PostCard from "../components/PostCard";
+import type { ApiPost, Post } from "@/features/new-feed/types/new-feed.type";
+import PostCreator from "@/features/new-feed/components/PostCreator";
+import PostCard from "@/features/new-feed/components/PostCard";
 import {
   Bell,
   Cake,
@@ -12,27 +12,13 @@ import {
   Users2,
   Zap,
 } from "lucide-react";
-import RightSidebarWidget from "../components/RightSidebarWidget";
-import GroupItem from "../components/GroupItem";
-import { PostsApi } from "../api/new-feed.api";
+import RightSidebarWidget from "@/features/new-feed/components/RightSidebarWidget";
+import GroupItem from "@/features/new-feed/components/GroupItem";
+import { PostsApi } from "@/features/new-feed/api/new-feed.api";
+import { formatTimeAgo } from "@/utils/formatTimeAgo";
 
 type SortType = "latest" | "trending";
 const LIMIT = 10;
-
-const formatTimeAgo = (dateString: string) => {
-  const now = new Date();
-  const createdAt = new Date(dateString);
-  const diffMs = now.getTime() - createdAt.getTime();
-
-  const minutes = Math.floor(diffMs / (1000 * 60));
-  const hours = Math.floor(diffMs / (1000 * 60 * 60));
-  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (minutes < 1) return "Vừa xong";
-  if (minutes < 60) return `${minutes} phút trước`;
-  if (hours < 24) return `${hours} giờ trước`;
-  return `${days} ngày trước`;
-};
 
 const mapApiPostToPostCard = (post: ApiPost): Post => {
   return {
@@ -48,7 +34,12 @@ const mapApiPostToPostCard = (post: ApiPost): Post => {
     role: "Nhân viên",
     time: formatTimeAgo(post.createdAt),
     content: post.content,
-    image: post.attachments?.[0]?.fileName,
+    attachments:
+      post.attachments?.map((attachment) => ({
+        fileUrl: attachment.fileUrl,
+        attachmentType: attachment.attachmentType,
+        fileName: attachment.fileName,
+      })) || [],
     stats: {
       likes: post._count?.reactions || 0,
       comments: post._count?.comments || 0,
@@ -187,12 +178,7 @@ const NewFeedPage = () => {
     <main className="flex-1 py-8">
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-6">
-          <PostCreator
-            onPostCreated={(newPost) => {
-              const newPostCreated = mapApiPostToPostCard(newPost);
-              setPosts((prev) => [newPostCreated, ...prev]);
-            }}
-          />
+          <PostCreator fetchPosts={fetchPosts} />
 
           {initialLoading && (
             <div className="rounded-xl border border-slate-200 p-4 text-sm text-slate-500">

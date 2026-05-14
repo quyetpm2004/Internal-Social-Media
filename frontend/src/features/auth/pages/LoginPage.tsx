@@ -51,7 +51,7 @@ export default function LoginPage() {
       setLoading(true);
       await login(values);
       toast.success("Đăng nhập thành công");
-      navigate("/profile");
+      navigate("/news-feed");
     } catch {
       toast.error("Đăng nhập thất bại");
     } finally {

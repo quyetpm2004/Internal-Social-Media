@@ -75,6 +75,14 @@ enum GroupMemberStatus {
   BLOCKED
 }
 
+enum MediaStatus {
+  PENDING
+  READY
+  ACTIVE
+  FAILED
+  DELETED
+}
+
 model User {
   id                 Int               @id @default(autoincrement())
   fullName           String
@@ -284,19 +292,23 @@ model CommentMention {
 
 model PostAttachment {
   id          Int      @id @default(autoincrement()) @map("attachment_id")
-  postId      Int      @map("post_id")
+  postId      Int?      @map("post_id")
   fileName    String   @map("file_name")
   fileKey     String   @map("file_key")
   mimeType    String   @map("mime_type")
   fileSize    Int      @map("file_size")
   attachmentType AttachmentType @map("attachment_type")
+  status      MediaStatus @default(PENDING)
+  uploadedById  Int?   @map("uploaded_by_id")
 
   uploadedAt  DateTime @default(now()) @map("uploaded_at")
-  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post        Post?     @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@index([postId])
   @@map("post_attachments")
 }
+
+
 
 model Reaction {
   id           Int           @id @default(autoincrement()) @map("reaction_id")

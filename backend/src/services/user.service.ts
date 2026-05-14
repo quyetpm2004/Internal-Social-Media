@@ -29,6 +29,7 @@ export async function getProfile(userId: number) {
       avatarKey: true,
       user: {
         select: {
+          id: true,
           fullName: true,
           email: true,
           role: true,
@@ -45,10 +46,11 @@ export async function getProfile(userId: number) {
 
   // 🔥 tạo presigned URL nếu có avatar
   const avatarUrl = profile.avatarKey
-    ? await getFileUrl(profile.avatarKey)
+    ? await getFileUrl(profile.avatarKey, 7 * 24 * 60 * 60) // 7 ngày
     : null;
 
   return {
+    id: profile.user.id,
     fullName: profile.user.fullName,
     email: profile.user.email,
     role: profile.user.role,

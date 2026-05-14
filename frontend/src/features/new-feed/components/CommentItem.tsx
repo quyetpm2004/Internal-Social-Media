@@ -9,9 +9,12 @@ import {
   ThumbsUp,
   Trash2,
 } from "lucide-react";
-import { CommentApi, type CommentReactionType } from "../api/comment.api";
-import type { CommentItemType } from "../types/comment.type";
-import CommentInput from "./CommentInput";
+import {
+  CommentApi,
+  type CommentReactionType,
+} from "@/features/new-feed/api/comment.api";
+import type { CommentItemType } from "@/features/new-feed/types/comment.type";
+import CommentInput from "@/features/new-feed/components/CommentInput";
 
 const reactions: {
   type: CommentReactionType;
@@ -109,11 +112,9 @@ const CommentItem = ({
     }
   };
 
-  console.log("avatarUrl", comment.user.profile.avatarUrl);
-
-  const avatarSrc = comment.user.profile.avatarUrl
-    ? `${import.meta.env.VITE_BASE_URL_BACKEND}/uploads/avatar/${comment.user.profile.avatarUrl}`
-    : `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.user.fullName)}`;
+  const avatarSrc =
+    comment.user.profile.avatarUrl ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.user.fullName)}`;
 
   return (
     <div className={`flex gap-2 ${isReply ? "ml-10" : ""}`}>

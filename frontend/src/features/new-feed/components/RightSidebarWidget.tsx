@@ -1,4 +1,4 @@
-import type { RightSidebarWidgetProps } from "../types/new-feed.type";
+import type { RightSidebarWidgetProps } from "@/features/new-feed/types/new-feed.type";
 
 const RightSidebarWidget: React.FC<RightSidebarWidgetProps> = ({
   title,

@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import * as groupService from "../services/group.service";
+import { getPostListService } from "../services/post.service";
 
 export const createGroup = async (req: Request, res: Response) => {
   try {
@@ -20,7 +21,11 @@ export const createGroup = async (req: Request, res: Response) => {
 
 export const getGroups = async (req: Request, res: Response) => {
   try {
-    const groups = await groupService.getGroups(req.query);
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const groups = await groupService.getGroups(req.query, userId);
 
     return res.status(200).json({
       message: "Lấy danh sách nhóm thành công",
@@ -33,8 +38,12 @@ export const getGroups = async (req: Request, res: Response) => {
 
 export const getGroupById = async (req: Request, res: Response) => {
   try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
     const groupId = Number(req.params.groupId);
-    const group = await groupService.getGroupById(groupId);
+    const group = await groupService.getGroupById(groupId, userId);
 
     return res.status(200).json({
       message: "Lấy thông tin nhóm thành công",
@@ -103,17 +112,29 @@ export const addMemberToGroup = async (req: Request, res: Response) => {
   }
 };
 
+// controller
 export const getGroupMembers = async (req: Request, res: Response) => {
   try {
     const groupId = Number(req.params.groupId);
-    const members = await groupService.getGroupMembers(groupId);
+
+    const { page = 1, limit = 10, search = "", role } = req.query;
+
+    const members = await groupService.getGroupMembers(
+      groupId,
+      +page,
+      +limit,
+      search as string,
+      role as string,
+    );
 
     return res.status(200).json({
       message: "Lấy danh sách thành viên thành công",
       data: members,
     });
   } catch (error: any) {
-    return res.status(400).json({ message: error.message });
+    return res.status(400).json({
+      message: error.message,
+    });
   }
 };
 
@@ -218,12 +239,45 @@ export const createGroupPost = async (req: Request, res: Response) => {
 
 export const getGroupPosts = async (req: Request, res: Response) => {
   try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({
+        message: "Người dùng chưa đăng nhập",
+      });
+    }
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+    const sort = (req.query.sort as "latest" | "trending") || "latest";
     const groupId = Number(req.params.groupId);
-    const posts = await groupService.getGroupPosts(groupId);
+    if (page < 1) {
+      return res.status(400).json({
+        message: "page phải lớn hơn hoặc bằng 1",
+      });
+    }
+
+    if (limit < 1 || limit > 50) {
+      return res.status(400).json({
+        message: "limit phải từ 1 đến 50",
+      });
+    }
+
+    if (!["latest", "trending"].includes(sort)) {
+      return res.status(400).json({
+        message: "sort chỉ chấp nhận latest hoặc trending",
+      });
+    }
+
+    const result = await getPostListService({
+      userId,
+      page,
+      limit,
+      sort,
+      groupId,
+    });
 
     return res.status(200).json({
       message: "Lấy bài viết trong nhóm thành công",
-      data: posts,
+      data: result,
     });
   } catch (error: any) {
     return res.status(400).json({ message: error.message });

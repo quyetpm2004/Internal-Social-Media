@@ -1,30 +1,25 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { confirmUpload, createUploadUrl } from "../services/upload.service";
+import { confirmUploads, createUploadUrls } from "../services/upload.service";
 
-const createUploadUrlSchema = z
-  .object({
-    purpose: z.enum(["avatar", "post-image", "post-video", "post-file"]),
-    fileName: z.string().min(1),
-    fileType: z.string().min(1),
-    fileSize: z.number().int().positive(),
-    postId: z.string().optional().nullable(), // Chấp nhận null hoặc undefined
-  })
-  .superRefine((data, ctx) => {
-    if (data.purpose !== "avatar" && !data.postId) {
-      ctx.addIssue({
-        code: "custom",
-        message: "postId is required for post-related uploads",
-        path: ["postId"],
-      });
-    }
-  });
-
-const confirmUploadSchema = z.object({
-  key: z.string().min(1),
-  purpose: z.enum(["avatar", "post-image", "post-video", "post-file"]),
-  postId: z.number().int().positive().optional(),
-  fileName: z.string().optional(),
+const createUploadUrlSchema = z.object({
+  files: z
+    .array(
+      z.object({
+        purpose: z.enum([
+          "avatar",
+          "post-image",
+          "post-video",
+          "post-file",
+          "group-avatar",
+          "group-cover",
+        ]),
+        fileName: z.string(),
+        fileType: z.string(),
+        fileSize: z.number(),
+      }),
+    )
+    .max(10),
 });
 
 export async function createUploadUrlController(req: Request, res: Response) {
@@ -33,46 +28,64 @@ export async function createUploadUrlController(req: Request, res: Response) {
 
     const body = createUploadUrlSchema.parse(req.body);
 
-    const result = await createUploadUrl({
+    const result = await createUploadUrls({
       userId: String(userId),
-      purpose: body.purpose,
-      fileName: body.fileName,
-      fileType: body.fileType,
-      fileSize: body.fileSize,
-      postId: body.postId ? String(body.postId) : undefined,
+      files: body.files,
     });
 
     return res.status(200).json({
-      message: "Presigned URL created successfully",
+      message: "Presigned URLs created successfully",
       data: result,
     });
   } catch (error: any) {
     if (error.message === "FILE_TYPE_NOT_ALLOWED") {
-      return res.status(400).json({ message: "File type not allowed" });
+      return res.status(400).json({
+        message: "File type not allowed",
+      });
     }
 
     if (error.message === "FILE_TOO_LARGE") {
-      return res.status(400).json({ message: "File too large" });
+      return res.status(400).json({
+        message: "File too large",
+      });
     }
 
     return res.status(400).json({
-      message: "Cannot create upload URL",
+      message: "Cannot create upload URLs",
     });
   }
 }
 
+export const confirmUploadSchema = z.object({
+  items: z.array(
+    z.object({
+      purpose: z.enum([
+        "avatar",
+        "post-image",
+        "post-video",
+        "post-file",
+        "group-avatar",
+        "group-cover",
+      ]),
+
+      key: z.string(),
+
+      attachmentId: z.number().optional(),
+
+      groupId: z.number().optional(),
+    }),
+  ),
+});
+
 export async function confirmUploadController(req: Request, res: Response) {
   try {
-    const user = req.user;
+    const userId = Number(req.user?.id);
 
     const body = confirmUploadSchema.parse(req.body);
 
-    const result = await confirmUpload({
-      userId: String(user?.id),
-      key: body.key,
-      purpose: body.purpose,
-      postId: body.postId,
-      fileName: body.fileName,
+    const result = await confirmUploads({
+      userId,
+      items: body.items as any[],
     });
 
     return res.status(200).json({

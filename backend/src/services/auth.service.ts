@@ -197,7 +197,7 @@ export async function getMe(userId: number) {
   });
 
   const avatarUrl = user?.profile?.avatarKey
-    ? await getFileUrl(user.profile.avatarKey)
+    ? await getFileUrl(user.profile.avatarKey, 7 * 24 * 60 * 60)
     : null;
 
   if (!user) {

@@ -6,6 +6,10 @@ import LoginPage from "@/features/auth/pages/LoginPage";
 import ProfilePage from "@/features/profile/pages/ProfilePage";
 import NotFoundPage from "@/features/not-found/pages/NotFoundPage";
 import NewFeedPage from "@/features/new-feed/pages/NewFeedPage";
+import GroupListPage from "@/features/group/pages/GroupListPage";
+import GroupDetailLayout from "@/features/group/pages/GroupDetailLayout";
+import GroupFeedPage from "@/features/group/pages/GroupFeedPage";
+import { GroupMembersPage } from "@/features/group/pages/GroupMembersPage";
 
 export const router = createBrowserRouter([
   {
@@ -28,12 +32,31 @@ export const router = createBrowserRouter([
             element: <Navigate to="/news-feed" replace />,
           },
           {
-            path: "/profile",
+            path: "/profile/:userId",
             element: <ProfilePage />,
           },
           {
             path: "/news-feed",
             element: <NewFeedPage />,
+          },
+          {
+            path: "/groups",
+            element: <GroupListPage />,
+          },
+          {
+            path: "/groups/:groupId",
+            element: <GroupDetailLayout />,
+            children: [
+              {
+                index: true,
+                element: <GroupFeedPage />,
+              },
+
+              {
+                path: "members",
+                element: <GroupMembersPage />,
+              },
+            ],
           },
         ],
       },

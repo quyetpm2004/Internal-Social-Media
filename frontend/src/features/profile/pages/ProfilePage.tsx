@@ -1,13 +1,23 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { profileApi } from "@/features/profile/api/profile.api";
-import ProfileHeader from "../components/ProfileHeader";
-import InfoField from "../components/InfoField";
+import ProfileHeader from "@/features/profile/components/ProfileHeader";
+import InfoField from "@/features/profile/components/InfoField";
 import { BookUser, Shell, UserPen } from "lucide-react";
-import type { Department, Position, UserProfile } from "../types/profile.type";
+import type {
+  Department,
+  Position,
+  UserProfile,
+} from "@/features/profile/types/profile.type";
 import { uploadApi } from "@/features/uploads/api/upload.api";
+import { useParams } from "react-router-dom";
+import NotFoundPage from "@/features/not-found/pages/NotFoundPage";
+import { useAuthStore } from "@/features/auth/store/auth.store";
 
 export default function ProfilePage() {
+  const { userId } = useParams();
+  const user = useAuthStore((state) => state.user);
+
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -30,18 +40,22 @@ export default function ProfilePage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const res = await profileApi.getProfile();
-        setProfile(res.data);
-      } catch {
-        toast.error("Không tải được hồ sơ");
-      } finally {
-        setLoadingProfile(false);
-      }
-    };
+  if (!userId) {
+    return <NotFoundPage />;
+  }
 
+  const fetchProfile = async () => {
+    try {
+      const res = await profileApi.getProfile(userId);
+      setProfile(res.data);
+    } catch {
+      toast.error("Không tải được hồ sơ");
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  useEffect(() => {
     const fetchDepartments = async () => {
       try {
         const res = await profileApi.getDepartments();
@@ -77,8 +91,6 @@ export default function ProfilePage() {
 
       const res = await profileApi.updateProfile(profilePayload);
 
-      console.log("Updated profile:", res.data);
-
       setProfile((prev) => ({
         ...prev,
         ...res.data,
@@ -107,14 +119,16 @@ export default function ProfilePage() {
     try {
       setAvatarUploading(true);
 
-      const presignRes = await uploadApi.presign({
-        purpose: "avatar",
-        fileName: file.name,
-        fileType: file.type,
-        fileSize: file.size,
-      });
+      const presignRes = await uploadApi.presign([
+        {
+          purpose: "avatar",
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+        },
+      ]);
 
-      const { uploadUrl, key } = presignRes.data;
+      const { uploadUrl, key } = presignRes.data.items[0];
 
       await fetch(uploadUrl, {
         method: "PUT",
@@ -124,18 +138,14 @@ export default function ProfilePage() {
         body: file,
       });
 
-      const confirmRes = await uploadApi.confirm({
-        purpose: "avatar",
-        key,
-        fileName: file.name,
-      });
+      await uploadApi.confirm([
+        {
+          purpose: "avatar",
+          key,
+        },
+      ]);
 
-      const newAvatarUrl = confirmRes.data.avatarUrl;
-
-      setProfile((prev) => ({
-        ...prev,
-        avatarUrl: newAvatarUrl,
-      }));
+      fetchProfile();
 
       toast.success("Cập nhật ảnh đại diện thành công");
     } catch (error) {
@@ -174,6 +184,7 @@ export default function ProfilePage() {
   return (
     <div className="py-4 max-w-6xl mx-auto">
       <ProfileHeader
+        isOwner={userId === String(user?.id)}
         name={profile?.fullName}
         avatarUrl={profile?.avatarUrl}
         role={

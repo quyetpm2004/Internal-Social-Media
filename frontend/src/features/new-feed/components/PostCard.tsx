@@ -1,62 +1,64 @@
 import { useState } from "react";
 import {
-  Angry,
-  Frown,
-  Heart,
-  Laugh,
+  Download,
+  FileText,
   MessageSquare,
   Pin,
   Share2,
-  SmilePlus,
   ThumbsUp,
 } from "lucide-react";
-import type { PostCardProps } from "../types/new-feed.type";
-import { ReactionApi, type ReactionType } from "../api/reaction.api";
-import CommentSection from "./CommentSection";
+import type { PostCardProps } from "@/features/new-feed/types/new-feed.type";
+import {
+  ReactionApi,
+  type ReactionType,
+} from "@/features/new-feed/api/reaction.api";
+import CommentSection from "@/features/new-feed/components/CommentSection";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
-import { PostsApi } from "../api/new-feed.api";
+import { PostsApi } from "@/features/new-feed/api/new-feed.api";
+import Lightbox from "yet-another-react-lightbox";
+import "yet-another-react-lightbox/styles.css";
 
 const reactionOptions: {
   type: ReactionType;
   label: string;
-  icon: React.ElementType;
+  icon: string;
   className: string;
 }[] = [
   {
     type: "LIKE",
     label: "Thích",
-    icon: ThumbsUp,
-    className: "text-blue-600",
+    icon: "/icons/like.png",
+    className: "",
   },
   {
     type: "LOVE",
     label: "Yêu thích",
-    icon: Heart,
-    className: "text-red-500",
+    icon: "/icons/love.png",
+    className: "",
   },
   {
     type: "HAHA",
     label: "Haha",
-    icon: Laugh,
-    className: "text-yellow-500",
+    icon: "/icons/haha.png",
+    className: "",
   },
   {
     type: "WOW",
     label: "Wow",
-    icon: SmilePlus,
-    className: "text-yellow-500",
+    icon: "/icons/wow.png",
+    className: "",
   },
   {
     type: "SAD",
     label: "Buồn",
-    icon: Frown,
-    className: "text-yellow-600",
+    icon: "/icons/sad.png",
+    className: "",
   },
   {
     type: "ANGRY",
     label: "Phẫn nộ",
-    icon: Angry,
-    className: "text-orange-600",
+    icon: "/icons/angry.png",
+    className: "",
   },
 ];
 
@@ -66,7 +68,7 @@ const PostCard: React.FC<PostCardProps> = ({
   role,
   time,
   content,
-  image,
+  attachments = [],
   isPinned = false,
   stats,
   currentReaction: initialReaction = null,
@@ -78,15 +80,28 @@ const PostCard: React.FC<PostCardProps> = ({
   const [currentReaction, setCurrentReaction] = useState<ReactionType | null>(
     initialReaction,
   );
-  const [showReactions, setShowReactions] = useState(false);
   const [loadingReaction, setLoadingReaction] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [editingPost, setEditingPost] = useState(false);
   const [editContent, setEditContent] = useState(content);
 
-  const selectedReaction = reactionOptions.find(
+  const selectedReactionData = reactionOptions.find(
     (item) => item.type === currentReaction,
   );
+
+  const imageAttachments = attachments.filter(
+    (item) => item.attachmentType === "IMAGE",
+  );
+
+  const videoAttachments = attachments.filter(
+    (item) => item.attachmentType === "VIDEO",
+  );
+
+  const fileAttachments = attachments.filter(
+    (item) => item.attachmentType === "FILE",
+  );
+
+  const [index, setIndex] = useState(-1);
 
   const handleReactPost = async (reactionType: ReactionType) => {
     if (loadingReaction) return;
@@ -100,15 +115,12 @@ const PostCard: React.FC<PostCardProps> = ({
 
       setCurrentReaction(data.currentReaction);
       setReactionCount(data.reactionCount);
-      setShowReactions(false);
     } catch (error) {
       console.error("Thả cảm xúc thất bại:", error);
     } finally {
       setLoadingReaction(false);
     }
   };
-
-  const ReactionIcon = selectedReaction?.icon ?? ThumbsUp;
 
   const handleUpdatePost = async () => {
     if (!editContent.trim()) return;
@@ -234,13 +246,82 @@ const PostCard: React.FC<PostCardProps> = ({
           </p>
         )}
 
-        {image && (
-          <div className="rounded-lg overflow-hidden mb-4 bg-slate-100 aspect-video">
-            <img
-              src={`${import.meta.env.VITE_BASE_URL_BACKEND}/uploads/post/${image}`}
-              className="w-full h-full object-cover"
-              alt="Post content"
-            />
+        {imageAttachments.length > 0 && (
+          <div
+            className={`grid gap-1 rounded-xl overflow-hidden mb-4 ${
+              imageAttachments.length === 1 ? "grid-cols-1" : "grid-cols-2"
+            }`}
+          >
+            {imageAttachments.slice(0, 4).map((item, index) => (
+              <div
+                key={index}
+                className={`relative bg-slate-100 overflow-hidden ${
+                  imageAttachments.length === 3 && index === 0
+                    ? "row-span-2"
+                    : ""
+                } ${
+                  imageAttachments.length === 1
+                    ? "aspect-auto"
+                    : "aspect-square"
+                }`}
+                onClick={() => setIndex(index)}
+              >
+                <img
+                  src={item.fileUrl}
+                  className="w-full h-full object-cover hover:brightness-90 transition-all cursor-pointer"
+                  alt={`Post content ${index + 1}`}
+                />
+
+                {imageAttachments.length > 4 && index === 3 && (
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center pointer-events-none">
+                    <span className="text-white text-2xl font-bold">
+                      +{imageAttachments.length - 4}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {videoAttachments.length > 0 && (
+          <div className="space-y-3 mb-4">
+            {videoAttachments.map((video, index) => (
+              <div
+                key={index}
+                className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700"
+              >
+                <video controls className="w-full max-h-[500px] bg-black">
+                  <source src={video.fileUrl} />
+                  Trình duyệt không hỗ trợ video.
+                </video>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {fileAttachments.length > 0 && (
+          <div className="space-y-2 mb-4">
+            {fileAttachments.map((file, index) => (
+              <a
+                key={index}
+                href={file.fileUrl}
+                download
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <FileText size={18} className="text-slate-500 shrink-0" />
+
+                  <span className="text-sm truncate">
+                    {file.fileName || "Tệp đính kèm"}
+                  </span>
+                </div>
+
+                <Download size={18} className="text-slate-500 shrink-0" />
+              </a>
+            ))}
           </div>
         )}
 
@@ -248,10 +329,8 @@ const PostCard: React.FC<PostCardProps> = ({
           <div className="relative group">
             <div className="absolute bottom-full left-0 hidden group-hover:block h-3 w-52" />
 
-            <div className="absolute bottom-full left-0 mb-2 hidden group-hover:flex gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-lg px-3 py-2 z-20">
+            <div className="absolute bottom-full left-0 mb-2 group-hover:flex w-max gap-2 bg-white hidden dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-lg px-3 py-2 z-20">
               {reactionOptions.map((reaction) => {
-                const Icon = reaction.icon;
-
                 return (
                   <button
                     key={reaction.type}
@@ -261,7 +340,11 @@ const PostCard: React.FC<PostCardProps> = ({
                     className={`p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-transform hover:scale-125 ${reaction.className}`}
                     title={reaction.label}
                   >
-                    <Icon size={22} />
+                    <img
+                      src={reaction.icon}
+                      alt={reaction.label}
+                      className="w-6 h-6 shrink-0 object-contain"
+                    />
                   </button>
                 );
               })}
@@ -272,12 +355,21 @@ const PostCard: React.FC<PostCardProps> = ({
               disabled={loadingReaction}
               onClick={() => handleReactPost(currentReaction ?? "LIKE")}
               className={`flex items-center gap-2 transition-colors disabled:opacity-60 ${
-                selectedReaction
-                  ? selectedReaction.className
+                selectedReactionData
+                  ? "text-slate-700 dark:text-slate-200"
                   : "text-slate-500 hover:text-blue-700"
               }`}
             >
-              <ReactionIcon size={18} />
+              {selectedReactionData ? (
+                <img
+                  src={selectedReactionData.icon}
+                  alt={selectedReactionData.label}
+                  className="w-6 h-6 object-contain shrink-0"
+                />
+              ) : (
+                <ThumbsUp size={18} />
+              )}
+
               <span className="text-xs font-semibold">{reactionCount}</span>
             </button>
           </div>
@@ -302,6 +394,12 @@ const PostCard: React.FC<PostCardProps> = ({
           </div>
         )}
       </div>
+      <Lightbox
+        index={index}
+        open={index >= 0}
+        close={() => setIndex(-1)}
+        slides={imageAttachments.map((item) => ({ src: item.fileUrl }))}
+      />
     </div>
   );
 };

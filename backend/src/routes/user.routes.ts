@@ -4,7 +4,7 @@ import { authMiddleware } from "../middlewares/auth.middleware";
 
 const router = Router();
 
-router.get("/profile", authMiddleware, userController.getProfile);
+router.get("/profile/:userId", authMiddleware, userController.getProfile);
 router.put("/profile", authMiddleware, userController.updateProfile);
 router.delete(
   "/profile/avatar",

@@ -5,15 +5,22 @@ import { s3 } from "../lib/s3";
 import prisma from "../utils/prisma";
 import { getFileUrl } from "./file.service";
 
-type UploadPurpose = "avatar" | "post-image" | "post-video" | "post-file";
+type UploadPurpose =
+  | "avatar"
+  | "post-image"
+  | "post-video"
+  | "post-file"
+  | "group-avatar"
+  | "group-cover";
 
-type CreateUploadUrlInput = {
+type CreateUploadUrlsInput = {
   userId: string;
-  purpose: UploadPurpose;
-  fileName: string;
-  fileType: string;
-  fileSize: number;
-  postId?: string;
+  files: {
+    purpose: UploadPurpose;
+    fileName: string;
+    fileType: string;
+    fileSize: number;
+  }[];
 };
 
 interface UploadRule {
@@ -22,181 +29,275 @@ interface UploadRule {
   folder: string;
 }
 
-function buildObjectKey(params: {
-  userId: string;
-  purpose: UploadPurpose;
-  fileName: string;
-  postId?: string;
-}) {
-  const ext = params.fileName.split(".").pop()?.toLowerCase() || "bin";
-  const id = randomUUID();
+export async function createUploadUrls(input: CreateUploadUrlsInput) {
+  const { userId, files } = input;
 
-  if (params.purpose === "avatar") {
-    return `users/${params.userId}/avatar/${id}.${ext}`;
-  }
-
-  if (!params.postId) {
-    throw new Error("POST_ID_REQUIRED");
-  }
-
-  return `posts/${params.postId}/${params.purpose}/${id}.${ext}`;
-}
-
-export async function createUploadUrl(input: CreateUploadUrlInput) {
-  const { userId, purpose, fileName, fileType, fileSize, postId } = input;
-
-  // Validate file type and size based on purpose
   const uploadRules: Record<UploadPurpose, UploadRule> = {
     avatar: {
       maxSize: 2 * 1024 * 1024,
       allowedTypes: ["image/jpeg", "image/png", "image/webp"],
-      folder: "avatars",
+      folder: "users/avatar",
     },
+
+    "group-avatar": {
+      maxSize: 2 * 1024 * 1024,
+      allowedTypes: ["image/jpeg", "image/png", "image/webp"],
+      folder: "groups/avatar",
+    },
+
+    "group-cover": {
+      maxSize: 10 * 1024 * 1024,
+      allowedTypes: ["image/jpeg", "image/png", "image/webp"],
+      folder: "groups/cover",
+    },
+
     "post-image": {
       maxSize: 10 * 1024 * 1024,
       allowedTypes: ["image/jpeg", "image/png", "image/webp"],
       folder: "posts/images",
     },
+
     "post-video": {
       maxSize: 200 * 1024 * 1024,
-      allowedTypes: ["video/mp4", "video/webm", "video/quicktime"],
+      allowedTypes: ["video/mp4", "video/webm"],
       folder: "posts/videos",
     },
+
     "post-file": {
       maxSize: 20 * 1024 * 1024,
       allowedTypes: [
         "application/pdf",
         "application/zip",
-        "text/plain",
+        "application/msword",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-powerpoint",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "application/vnd.oasis.opendocument.text",
+        "application/vnd.oasis.opendocument.spreadsheet",
+        "application/vnd.oasis.opendocument.presentation",
       ],
       folder: "posts/files",
     },
-  } as const;
+  };
 
-  const { maxSize, allowedTypes, folder } = uploadRules[purpose];
+  const items = await Promise.all(
+    files.map(async (file) => {
+      const rule = uploadRules[file.purpose];
 
-  if (!allowedTypes.includes(fileType)) {
-    throw new Error("FILE_TYPE_NOT_ALLOWED");
-  }
+      if (!rule.allowedTypes.includes(file.fileType)) {
+        throw new Error("FILE_TYPE_NOT_ALLOWED");
+      }
 
-  if (fileSize > maxSize) {
-    throw new Error("FILE_TOO_LARGE");
-  }
+      if (file.fileSize > rule.maxSize) {
+        throw new Error("FILE_TOO_LARGE");
+      }
 
-  const key = buildObjectKey({
-    userId,
-    purpose,
-    fileName,
-    postId,
-  });
+      const extension = file.fileName.split(".").pop();
 
-  const command = new PutObjectCommand({
-    Bucket: process.env.AWS_S3_BUCKET!,
-    Key: key,
-  });
+      const key = `${rule.folder}/${userId}/${crypto.randomUUID()}.${extension}`;
 
-  // Generate a presigned URL valid for 5 minutes
-  const uploadUrl = await getSignedUrl(s3, command, {
-    expiresIn: 60 * 60,
-  });
+      let attachmentId: number | null = null;
+
+      /**
+       * Only create DB record for post media
+       */
+      if (file.purpose.startsWith("post-")) {
+        const attachment = await prisma.postAttachment.create({
+          data: {
+            fileName: file.fileName,
+            fileKey: key,
+            attachmentType:
+              file.purpose === "post-image"
+                ? "IMAGE"
+                : file.purpose === "post-video"
+                  ? "VIDEO"
+                  : "FILE",
+            mimeType: file.fileType,
+            uploadedById: +userId,
+            fileSize: file.fileSize,
+            status: "PENDING",
+          },
+        });
+
+        attachmentId = attachment.id;
+      }
+
+      const command = new PutObjectCommand({
+        Bucket: process.env.AWS_S3_BUCKET!,
+        Key: key,
+        ContentType: file.fileType,
+      });
+
+      const uploadUrl = await getSignedUrl(s3, command, {
+        expiresIn: 60 * 15,
+      });
+
+      return {
+        attachmentId,
+        key,
+        uploadUrl,
+        method: "PUT",
+        headers: {
+          "Content-Type": file.fileType,
+        },
+      };
+    }),
+  );
 
   return {
-    uploadUrl,
-    key,
-    method: "PUT",
-    headers: {
-      "Content-Type": fileType,
-    },
+    items,
   };
 }
 
 type ConfirmUploadInput = {
-  userId: string;
-  key: string;
-  purpose: UploadPurpose;
-  postId?: number;
-  fileName?: string;
+  userId: number;
+  items: {
+    key: string;
+    purpose: UploadPurpose;
+    attachmentId: number;
+    groupId: string;
+  }[];
 };
 
-export async function confirmUpload(input: ConfirmUploadInput) {
-  const { userId, key, purpose, postId, fileName } = input;
+export async function confirmUploads(input: ConfirmUploadInput) {
+  const { userId, items } = input;
 
-  const headObject = await s3.send(
-    new HeadObjectCommand({
-      Bucket: process.env.AWS_S3_BUCKET!,
-      Key: key,
-    }),
-  );
+  const results = [];
 
-  if (!headObject.ContentLength || !headObject.ContentType) {
-    throw new Error("INVALID_UPLOADED_FILE");
-  }
+  for (const item of items) {
+    const { purpose, key, attachmentId, groupId } = item;
 
-  if (purpose === "avatar") {
-    if (!key.startsWith(`users/${userId}/avatar/`)) {
-      throw new Error("INVALID_FILE_KEY");
+    const headObject = await s3.send(
+      new HeadObjectCommand({
+        Bucket: process.env.AWS_S3_BUCKET!,
+        Key: key,
+      }),
+    );
+
+    if (!headObject.ContentLength || !headObject.ContentType) {
+      throw new Error("INVALID_FILE");
     }
 
-    await prisma.profile.upsert({
+    /**
+     * AVATAR
+     */
+    if (purpose === "avatar") {
+      await prisma.profile.upsert({
+        where: {
+          userId: userId,
+        },
+
+        update: {
+          avatarKey: key,
+        },
+
+        create: {
+          userId: userId,
+          avatarKey: key,
+        },
+      });
+
+      results.push({
+        type: "avatar",
+        key,
+      });
+
+      continue;
+    }
+
+    /**
+     * GROUP AVATAR
+     */
+    if (purpose === "group-avatar") {
+      if (!groupId) {
+        throw new Error("GROUP_ID_REQUIRED");
+      }
+
+      await prisma.group.update({
+        where: {
+          id: +groupId,
+        },
+
+        data: {
+          avatarKey: key,
+        },
+      });
+
+      results.push({
+        type: "group-avatar",
+        key,
+      });
+
+      continue;
+    }
+
+    /**
+     * GROUP COVER
+     */
+    if (purpose === "group-cover") {
+      if (!groupId) {
+        throw new Error("GROUP_ID_REQUIRED");
+      }
+
+      await prisma.group.update({
+        where: {
+          id: +groupId,
+        },
+
+        data: {
+          coverKey: key,
+        },
+      });
+
+      results.push({
+        type: "group-cover",
+        key,
+      });
+
+      continue;
+    }
+
+    /**
+     * POST MEDIA
+     */
+    if (!attachmentId) {
+      throw new Error("ATTACHMENT_ID_REQUIRED");
+    }
+
+    const attachment = await prisma.postAttachment.findFirst({
       where: {
-        userId: +userId,
-      },
-      update: {
-        avatarKey: key,
-      },
-      create: {
-        userId: +userId,
-        avatarKey: key,
+        id: attachmentId,
+        status: "PENDING",
       },
     });
 
-    const avatarUrl = await getFileUrl(key);
+    if (!attachment) {
+      throw new Error("ATTACHMENT_NOT_FOUND");
+    }
 
-    return {
-      type: "avatar",
-      avatarUrl,
-    };
+    const updatedAttachment = await prisma.postAttachment.update({
+      where: {
+        id: attachment.id,
+      },
+
+      data: {
+        mimeType: headObject.ContentType,
+
+        fileSize: headObject.ContentLength,
+
+        status: "READY",
+      },
+    });
+
+    results.push({
+      type: "post-attachment",
+      attachment: updatedAttachment,
+    });
   }
-
-  if (!postId) {
-    throw new Error("POST_ID_REQUIRED");
-  }
-
-  const post = await prisma.post.findFirst({
-    where: {
-      id: postId,
-      userId: +userId,
-      status: "ACTIVE",
-    },
-  });
-
-  if (!post) {
-    throw new Error("POST_NOT_FOUND");
-  }
-
-  if (!key.startsWith(`posts/${postId}/`)) {
-    throw new Error("INVALID_FILE_KEY");
-  }
-
-  const attachment = await prisma.postAttachment.create({
-    data: {
-      postId,
-      fileName: fileName || "unknown",
-      fileKey: key,
-      mimeType: headObject.ContentType,
-      fileSize: headObject.ContentLength,
-      attachmentType:
-        purpose === "post-image"
-          ? "IMAGE"
-          : purpose === "post-video"
-            ? "VIDEO"
-            : "FILE",
-    },
-  });
 
   return {
-    type: "post-attachment",
-    attachment,
+    items: results,
   };
 }

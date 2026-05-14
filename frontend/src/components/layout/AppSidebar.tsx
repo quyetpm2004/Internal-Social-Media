@@ -1,14 +1,6 @@
 import React from "react";
 import NavItem from "@/components/common/NavItem"; // Component NavItem đã tạo ở bước trước
-import {
-  BarChart,
-  Bookmark,
-  Group,
-  Home,
-  LayoutDashboard,
-  Plus,
-  User,
-} from "lucide-react";
+import { Bookmark, Group, Home, Plus, User } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 
 const AppSidebar: React.FC = () => {
@@ -33,14 +25,14 @@ const AppSidebar: React.FC = () => {
           label={user?.fullName || "Tài khoản"}
           path="/profile"
         />
-        <NavItem icon={<Home size={24} />} label="Trang chủ" path="/" />
+        <NavItem icon={<Home size={22} />} label="Trang chủ" path="/" />
         <NavItem
-          icon={<Group size={24} />}
-          label="Nhóm của tôi"
-          path="/projects"
+          icon={<Group size={22} />}
+          label="Không gian nhóm"
+          path="/groups"
         />
-        <NavItem icon={<User size={24} />} label="Bạn bè" path="/people" />
-        <NavItem icon={<Bookmark size={24} />} label="Đã lưu" path="/stats" />
+        <NavItem icon={<User size={22} />} label="Bạn bè" path="/people" />
+        <NavItem icon={<Bookmark size={22} />} label="Đã lưu" path="/stats" />
       </nav>
 
       <button className="mt-auto mb-4 w-full bg-linear-to-br cursor-pointer from-blue-700 to-blue-800 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg hover:shadow-blue-500/20 active:scale-95 transition-all">

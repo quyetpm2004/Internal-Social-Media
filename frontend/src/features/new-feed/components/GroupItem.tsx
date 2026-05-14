@@ -1,5 +1,5 @@
 import { MessageCircle } from "lucide-react";
-import type { GroupItemProps } from "../types/new-feed.type";
+import type { GroupItemProps } from "@/features/new-feed/types/new-feed.type";
 
 const GroupItem: React.FC<GroupItemProps> = ({
   name,

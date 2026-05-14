@@ -30,7 +30,7 @@ export async function seedPosts(prisma: PrismaClient) {
       attachments: {
         create: {
           fileName: "welcome.png",
-          fileKey: "uploads/welcome_key",
+          fileKey: "uploads/welcome_key.png",
           mimeType: "image/png",
           fileSize: 102455,
           attachmentType: AttachmentType.IMAGE,

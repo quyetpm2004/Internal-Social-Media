@@ -1,5 +1,6 @@
 import { axiosClient } from "@/lib/axios";
-import type { GetPostsResponse } from "../types/new-feed.type";
+import type { GetPostsResponse } from "@/features/new-feed/types/new-feed.type";
+import { data } from "react-router-dom";
 
 export const PostsApi = {
   getPostInNewFeed(page: number, limit: number, sort: "latest" | "trending") {
@@ -12,20 +13,13 @@ export const PostsApi = {
     });
   },
 
-  createPost(
-    content: string,
-    visibility: "PUBLIC" | "PRIVATE",
-    groupId: string | null,
-    attachments: File[],
-  ) {
-    const formData = new FormData();
-    formData.append("content", content);
-    formData.append("visibility", visibility);
-    if (groupId) {
-      formData.append("groupId", groupId);
-    }
-    attachments.forEach((file) => formData.append("files", file));
-    return axiosClient.post("/posts", formData);
+  createPost(data: {
+    content: string;
+    visibility: "PUBLIC" | "GROUP";
+    groupId?: number;
+    attachmentIds: number[];
+  }) {
+    return axiosClient.post("/posts", data);
   },
 
   deletePost(postId: number) {

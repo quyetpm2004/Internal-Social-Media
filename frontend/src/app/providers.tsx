@@ -11,7 +11,6 @@ export default function AppProviders() {
     : null;
 
   const setUser = useAuthStore((state) => state.setUser);
-  const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
     const initAuth = async () => {

@@ -1,6 +1,7 @@
 import { PrismaClient, ReactionType } from "@prisma/client";
 
 import prisma from "../utils/prisma";
+import { getFileUrl } from "./file.service";
 
 type GetPostCommentsParams = {
   userId: number;
@@ -48,7 +49,7 @@ type DeleteCommentParams = {
   commentId: number;
 };
 
-const formatCommentResponse = (comment: any) => ({
+const formatCommentResponse = async (comment: any) => ({
   id: comment.id,
   postId: comment.postId,
   userId: comment.userId,
@@ -57,7 +58,17 @@ const formatCommentResponse = (comment: any) => ({
   status: comment.status,
   createdAt: comment.createdAt,
   updatedAt: comment.updatedAt,
-  user: comment.user,
+  user: {
+    ...comment.user,
+    profile: comment.user?.profile
+      ? {
+          ...comment.user.profile,
+          avatarUrl: comment.user.profile.avatarKey
+            ? await getFileUrl(comment.user.profile.avatarKey, 24 * 60 * 60)
+            : null,
+        }
+      : null,
+  },
   mentions: comment.mentions,
   replyCount: comment._count?.replies ?? 0,
   reactionCount: comment._count?.reactions ?? 0,
@@ -150,7 +161,7 @@ export const getPostCommentsService = async ({
           email: true,
           profile: {
             select: {
-              avatarUrl: true,
+              avatarKey: true,
             },
           },
         },
@@ -194,7 +205,7 @@ export const getPostCommentsService = async ({
     page,
     limit,
     hasMore,
-    comments: normalizedComments.map(formatCommentResponse),
+    comments: await Promise.all(normalizedComments.map(formatCommentResponse)),
   };
 };
 
@@ -240,7 +251,7 @@ export const getCommentRepliesService = async ({
           email: true,
           profile: {
             select: {
-              avatarUrl: true,
+              avatarKey: true,
             },
           },
         },
@@ -284,7 +295,7 @@ export const getCommentRepliesService = async ({
     page,
     limit,
     hasMore,
-    replies: normalizedReplies.map(formatCommentResponse),
+    replies: await Promise.all(normalizedReplies.map(formatCommentResponse)),
   };
 };
 
@@ -359,7 +370,7 @@ export const createCommentService = async ({
           email: true,
           profile: {
             select: {
-              avatarUrl: true,
+              avatarKey: true,
             },
           },
         },
@@ -388,7 +399,7 @@ export const createCommentService = async ({
     },
   });
 
-  return formatCommentResponse(comment);
+  return await formatCommentResponse(comment);
 };
 
 export const replyCommentService = async ({
@@ -466,7 +477,7 @@ export const replyCommentService = async ({
           email: true,
           profile: {
             select: {
-              avatarUrl: true,
+              avatarKey: true,
             },
           },
         },
@@ -495,7 +506,7 @@ export const replyCommentService = async ({
     },
   });
 
-  return formatCommentResponse(reply);
+  return await formatCommentResponse(reply);
 };
 
 export const reactCommentService = async ({
@@ -680,7 +691,7 @@ export const updateCommentService = async ({
           email: true,
           profile: {
             select: {
-              avatarUrl: true,
+              avatarKey: true,
             },
           },
         },
@@ -709,7 +720,7 @@ export const updateCommentService = async ({
     },
   });
 
-  return formatCommentResponse(updatedComment);
+  return await formatCommentResponse(updatedComment);
 };
 
 export const deleteCommentService = async ({

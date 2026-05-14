@@ -1,16 +1,38 @@
 import { axiosClient } from "@/lib/axios";
 
 export const uploadApi = {
-  presign(data: {
-    purpose: "avatar";
-    fileName: string;
-    fileType: string;
-    fileSize: number;
-  }) {
-    return axiosClient.post("/uploads/presign", data);
+  presign(
+    files: {
+      purpose: string;
+      fileName: string;
+      fileType: string;
+      fileSize: number;
+    }[],
+  ) {
+    return axiosClient.post("/uploads/presign", {
+      files,
+    });
   },
 
-  confirm(data: { purpose: "avatar"; key: string; fileName: string }) {
-    return axiosClient.post("/uploads/confirm", data);
+  confirm(
+    items: {
+      purpose:
+        | "avatar"
+        | "group-avatar"
+        | "group-cover"
+        | "post-image"
+        | "post-video"
+        | "post-file";
+
+      key: string;
+
+      attachmentId?: number;
+
+      groupId?: number;
+    }[],
+  ) {
+    return axiosClient.post("/uploads/confirm", {
+      items,
+    });
   },
 };

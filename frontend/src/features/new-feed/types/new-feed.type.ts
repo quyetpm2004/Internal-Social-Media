@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import type { ReactionType } from "../api/reaction.api";
+import type { ReactionType } from "@/features/new-feed/api/reaction.api";
 
 type SortType = "latest" | "trending";
 
@@ -21,7 +21,11 @@ interface Post {
   role: string;
   time: string;
   content: string;
-  image?: string;
+  attachments?: {
+    fileUrl: string;
+    fileName: string;
+    attachmentType: string;
+  }[];
   stats: Stats;
   currentReaction: ReactionType | null;
 }
@@ -66,9 +70,9 @@ type ApiPost = {
   };
   attachments?: Array<{
     id: number;
-    fileUrl?: string;
+    fileUrl: string;
     fileName: string;
-    fileType?: string;
+    attachmentType: string;
   }>;
   _count?: {
     comments: number;

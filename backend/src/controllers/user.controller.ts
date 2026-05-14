@@ -4,14 +4,14 @@ import { deleteAvatar } from "../services/user.service";
 
 export async function getProfile(req: Request, res: Response): Promise<void> {
   try {
-    const userId = req.user?.id;
+    const userId = req.params?.userId;
 
     if (!userId) {
       res.status(401).json({ message: "Unauthorized" });
       return;
     }
 
-    const profile = await userService.getProfile(userId);
+    const profile = await userService.getProfile(+userId);
 
     res.status(200).json({
       message: "Lấy profile thành công",

@@ -1,4 +1,4 @@
-import type { CommentReactionType } from "../api/comment.api";
+import type { CommentReactionType } from "@/features/new-feed/api/comment.api";
 
 export type CommentUser = {
   id: number;

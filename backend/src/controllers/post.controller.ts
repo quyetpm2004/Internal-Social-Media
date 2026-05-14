@@ -5,6 +5,7 @@ import {
   getPostListService,
   reactPostService,
 } from "../services/post.service";
+import z from "zod";
 
 export const getPostListController = async (
   req: Request,
@@ -58,6 +59,16 @@ export const getPostListController = async (
   }
 };
 
+const createPostSchema = z.object({
+  content: z.string().trim().min(1).max(5000),
+
+  visibility: z.enum(["PUBLIC", "PRIVATE", "GROUP"]).default("PUBLIC"),
+
+  groupId: z.number().optional(),
+
+  attachmentIds: z.array(z.number()).optional(),
+});
+
 export const createPostController = async (
   req: Request,
   res: Response,
@@ -65,8 +76,6 @@ export const createPostController = async (
 ) => {
   try {
     const userId = req.user?.id;
-    const { content, visibility = "PUBLIC", groupId } = req.body;
-    const files = req.files as Express.Multer.File[] | undefined;
 
     if (!userId) {
       return res.status(401).json({
@@ -74,30 +83,14 @@ export const createPostController = async (
       });
     }
 
-    if (!content || typeof content !== "string" || !content.trim()) {
-      return res.status(400).json({
-        message: "Nội dung bài viết không được để trống",
-      });
-    }
-
-    if (content.trim().length > 5000) {
-      return res.status(400).json({
-        message: "Nội dung bài viết không được vượt quá 5000 ký tự",
-      });
-    }
-
-    if (!["PUBLIC", "PRIVATE", "GROUP"].includes(visibility)) {
-      return res.status(400).json({
-        message: "visibility không hợp lệ",
-      });
-    }
+    const body = createPostSchema.parse(req.body);
 
     const newPost = await createPostService({
       userId,
-      content: content.trim(),
-      visibility,
-      groupId: groupId ? Number(groupId) : 6, // tạm thời gán groupId mặc định để test
-      files: files || [],
+      content: body.content,
+      visibility: body.visibility,
+      groupId: body.groupId,
+      attachmentIds: body.attachmentIds || [],
     });
 
     return res.status(201).json({

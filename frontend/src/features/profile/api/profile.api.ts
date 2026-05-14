@@ -6,8 +6,8 @@ import type {
 } from "@/features/profile/types/profile.type";
 
 export const profileApi = {
-  getProfile() {
-    return axiosClient.get<UserProfile>("/users/profile");
+  getProfile(userId: string) {
+    return axiosClient.get<UserProfile>(`/users/profile/${userId}`);
   },
 
   getDepartments() {

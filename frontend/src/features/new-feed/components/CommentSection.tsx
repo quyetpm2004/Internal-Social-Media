@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { CommentApi } from "../api/comment.api";
-import type { CommentItemType } from "../types/comment.type";
-import CommentInput from "./CommentInput";
-import CommentItem from "./CommentItem";
+import { CommentApi } from "@/features/new-feed/api/comment.api";
+import type { CommentItemType } from "@/features/new-feed/types/comment.type";
+import CommentInput from "@/features/new-feed/components/CommentInput";
+import CommentItem from "@/features/new-feed/components/CommentItem";
 
 type CommentSectionProps = {
   postId: number;
@@ -156,23 +156,6 @@ const CommentSection = ({ postId }: CommentSectionProps) => {
 
     loadComments(1);
   }, [postId]);
-
-  useEffect(() => {
-    const target = observerRef.current;
-    if (!target) return;
-
-    const observer = new IntersectionObserver((entries) => {
-      const first = entries[0];
-
-      if (first.isIntersecting && hasMore && !loading) {
-        loadComments(page + 1);
-      }
-    });
-
-    observer.observe(target);
-
-    return () => observer.disconnect();
-  }, [page, hasMore, loading]);
 
   return (
     <div className="space-y-4">
