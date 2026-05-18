@@ -4,6 +4,7 @@ import { FilterSection } from "@/features/group/components/group-detail/member-l
 import { MemberTable } from "@/features/group/components/group-detail/member-list/MemberTable";
 import { groupApi } from "../apis/group.api";
 import { useParams } from "react-router-dom";
+import { toast } from "sonner";
 
 export const GroupMembersPage = () => {
   const { groupId } = useParams();
@@ -36,8 +37,13 @@ export const GroupMembersPage = () => {
       setMembers(res.data.members);
 
       setPagination(res.data.pagination);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch members:", error);
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Có lỗi xảy ra. Vui lòng thử lại.";
+      toast.error(message);
     }
   };
 
@@ -56,8 +62,13 @@ export const GroupMembersPage = () => {
     try {
       await groupApi.removeMember(groupId, memberId);
       fetchMembers();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to remove member:", error);
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Có lỗi xảy ra. Vui lòng thử lại.";
+      toast.error(message);
     }
   };
 

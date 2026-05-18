@@ -41,8 +41,13 @@ const GroupListPage = () => {
       setGroups(response.data.groups);
 
       setTotalPages(response.data.pagination.totalPages);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch groups:", error);
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Có lỗi xảy ra. Vui lòng thử lại.";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -71,8 +76,13 @@ const GroupListPage = () => {
       });
       setOnCreateGroupOpen(false);
       await fetchGroups();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to create group:", error);
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Có lỗi xảy ra. Vui lòng thử lại.";
+      toast.error(message);
     }
   };
 
@@ -81,8 +91,13 @@ const GroupListPage = () => {
       await groupApi.joinGroup(groupId);
       fetchGroups();
       toast.success("Tham gia nhóm thành công");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Cannot join this group: ", error);
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Có lỗi xảy ra. Vui lòng thử lại.";
+      toast.error(message);
     }
   };
 

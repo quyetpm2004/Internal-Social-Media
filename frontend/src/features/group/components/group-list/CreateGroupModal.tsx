@@ -2,6 +2,7 @@ import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { X } from "lucide-react";
 import type { Department } from "@/features/profile/types/profile.type";
 import { profileApi } from "@/features/profile/api/profile.api";
+import { toast } from "sonner";
 
 type CreateGroupModalProps = {
   open: boolean;
@@ -34,9 +35,13 @@ const CreateGroupModal = ({
       try {
         const response = await profileApi.getDepartments();
         setDepartments(response.data);
-        console.log("Fetched departments:", response.data);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to fetch departments:", error);
+        const message =
+          error?.response?.data?.message ||
+          error?.message ||
+          "Có lỗi xảy ra. Vui lòng thử lại.";
+        toast.error(message);
       }
     };
 

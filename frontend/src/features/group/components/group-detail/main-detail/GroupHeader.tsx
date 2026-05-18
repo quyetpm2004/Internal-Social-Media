@@ -50,7 +50,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
       await navigator.clipboard.writeText(window.location.href);
 
       toast.success("Đã copy link nhóm");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Copy failed:", error);
       toast.error("Copy link thất bại");
     }

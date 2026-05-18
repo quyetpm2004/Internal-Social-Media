@@ -17,6 +17,7 @@ import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { PostsApi } from "@/features/new-feed/api/new-feed.api";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
+import { toast } from "sonner";
 
 const reactionOptions: {
   type: ReactionType;
@@ -115,8 +116,13 @@ const PostCard: React.FC<PostCardProps> = ({
 
       setCurrentReaction(data.currentReaction);
       setReactionCount(data.reactionCount);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Thả cảm xúc thất bại:", error);
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Có lỗi xảy ra. Vui lòng thử lại.";
+      toast.error(message);
     } finally {
       setLoadingReaction(false);
     }
@@ -129,8 +135,13 @@ const PostCard: React.FC<PostCardProps> = ({
       await PostsApi.updatePost(postId, editContent.trim());
       onUpdated?.(postId, editContent.trim());
       setEditingPost(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Sửa bài viết thất bại:", error);
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Có lỗi xảy ra. Vui lòng thử lại.";
+      toast.error(message);
     }
   };
 
@@ -141,8 +152,13 @@ const PostCard: React.FC<PostCardProps> = ({
     try {
       await PostsApi.deletePost(postId);
       onDeleted?.(postId);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Xóa bài viết thất bại:", error);
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Có lỗi xảy ra. Vui lòng thử lại.";
+      toast.error(message);
     }
   };
 

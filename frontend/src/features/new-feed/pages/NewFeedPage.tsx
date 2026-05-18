@@ -16,6 +16,7 @@ import RightSidebarWidget from "@/features/new-feed/components/RightSidebarWidge
 import GroupItem from "@/features/new-feed/components/GroupItem";
 import { PostsApi } from "@/features/new-feed/api/new-feed.api";
 import { formatTimeAgo } from "@/utils/formatTimeAgo";
+import { toast } from "sonner";
 
 type SortType = "latest" | "trending";
 const LIMIT = 10;
@@ -117,8 +118,13 @@ const NewFeedPage = () => {
         }
 
         setHasMore(Boolean(responseData.hasMore));
-      } catch (error) {
+      } catch (error: any) {
         console.error("Lỗi khi lấy danh sách bài viết:", error);
+        const message =
+          error?.response?.data?.message ||
+          error?.message ||
+          "Có lỗi xảy ra. Vui lòng thử lại.";
+        toast.error(message);
       } finally {
         isFetchingRef.current = false;
         setLoading(false);

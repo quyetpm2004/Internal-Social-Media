@@ -53,7 +53,7 @@ export default function LoginPage() {
       toast.success("Đăng nhập thành công");
       navigate("/news-feed");
     } catch {
-      toast.error("Đăng nhập thất bại");
+      toast.error("Email hoặc mật khẩu không chính xác!");
     } finally {
       setLoading(false);
     }

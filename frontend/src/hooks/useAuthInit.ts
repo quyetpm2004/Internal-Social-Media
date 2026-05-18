@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { authApi } from "@/features/auth/api/auth.api";
+import { toast } from "sonner";
 
 export function useAuthInit() {
   const setUser = useAuthStore((state) => state.setUser);
@@ -31,8 +32,13 @@ export function useAuthInit() {
 
           setUser(user);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error fetching user profile:", error);
+        const message =
+          error?.response?.data?.message ||
+          error?.message ||
+          "Có lỗi xảy ra. Vui lòng thử lại.";
+        toast.error(message);
 
         useAuthStore.setState({
           user: null,

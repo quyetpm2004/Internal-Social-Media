@@ -148,9 +148,13 @@ export default function ProfilePage() {
       fetchProfile();
 
       toast.success("Cập nhật ảnh đại diện thành công");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error uploading avatar:", error);
-      toast.error("Cập nhật ảnh đại diện thất bại");
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Có lỗi xảy ra. Vui lòng thử lại.";
+      toast.error(message);
     } finally {
       setAvatarUploading(false);
     }
@@ -168,8 +172,13 @@ export default function ProfilePage() {
       }));
 
       toast.success("Đã xóa ảnh đại diện");
-    } catch (error) {
+    } catch (error: any) {
       toast.error("Xóa ảnh đại diện thất bại");
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Có lỗi xảy ra. Vui lòng thử lại.";
+      toast.error(message);
     } finally {
       setAvatarUploading(false);
     }

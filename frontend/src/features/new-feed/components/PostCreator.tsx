@@ -13,6 +13,7 @@ import {
 import { PostsApi } from "@/features/new-feed/api/new-feed.api";
 import { uploadApi } from "@/features/uploads/api/upload.api";
 import { useAuthStore } from "@/features/auth/store/auth.store";
+import { toast } from "sonner";
 
 type PostCreatorProps = {
   fetchPosts: (currentPage: number) => Promise<void>;
@@ -143,8 +144,13 @@ const PostCreator = ({ fetchPosts }: PostCreatorProps) => {
       setContent("");
       setAttachments([]);
       await fetchPosts(1);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Lỗi khi tạo bài viết:", error);
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Có lỗi xảy ra. Vui lòng thử lại.";
+      toast.error(message);
     } finally {
       setLoading(false);
     }

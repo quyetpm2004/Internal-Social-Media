@@ -3,6 +3,7 @@ import { CommentApi } from "@/features/new-feed/api/comment.api";
 import type { CommentItemType } from "@/features/new-feed/types/comment.type";
 import CommentInput from "@/features/new-feed/components/CommentInput";
 import CommentItem from "@/features/new-feed/components/CommentItem";
+import { toast } from "sonner";
 
 type CommentSectionProps = {
   postId: number;
@@ -44,8 +45,13 @@ const CommentSection = ({ postId }: CommentSectionProps) => {
 
       setPage(payload.page ?? nextPage);
       setHasMore(hasMoreValue);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Lấy comment thất bại:", error);
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Có lỗi xảy ra. Vui lòng thử lại.";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -59,8 +65,13 @@ const CommentSection = ({ postId }: CommentSectionProps) => {
       const newComment = res.data;
 
       setComments((prev) => [newComment, ...prev]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Tạo comment thất bại:", error);
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Có lỗi xảy ra. Vui lòng thử lại.";
+      toast.error(message);
     } finally {
       setCreating(false);
     }
@@ -89,8 +100,13 @@ const CommentSection = ({ postId }: CommentSectionProps) => {
         ...prev,
         [commentId]: hasMoreValue,
       }));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Lấy replies thất bại:", error);
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Có lỗi xảy ra. Vui lòng thử lại.";
+      toast.error(message);
     }
   };
 

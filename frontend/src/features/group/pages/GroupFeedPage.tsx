@@ -7,6 +7,7 @@ import { formatTimeAgo } from "@/utils/formatTimeAgo";
 import { groupApi } from "@/features/group/apis/group.api";
 import { useOutletContext, useParams } from "react-router-dom";
 import AboutSidebar from "@/features/group/components/group-detail/main-detail/AboutSidebar";
+import { toast } from "sonner";
 
 const LIMIT = 10;
 
@@ -105,8 +106,13 @@ const GroupFeedPage: React.FC = () => {
         }
 
         setHasMore(Boolean(responseData.hasMore));
-      } catch (error) {
+      } catch (error: any) {
         console.error("Lỗi khi lấy bài viết group:", error);
+        const message =
+          error?.response?.data?.message ||
+          error?.message ||
+          "Có lỗi xảy ra. Vui lòng thử lại.";
+        toast.error(message);
       } finally {
         isFetchingRef.current = false;
         setLoading(false);

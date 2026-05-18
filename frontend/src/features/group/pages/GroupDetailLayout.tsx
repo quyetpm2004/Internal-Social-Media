@@ -17,9 +17,13 @@ const GroupDetailLayout = () => {
         setLoading(true);
         const response = await groupApi.getGroupDetail(groupId);
         setGroupDetail(response.data);
-      } catch (error) {
+      } catch (error: any) {
         toast.error("Failed to fetch group detail:");
-        console.error("Failed to fetch group detail:", error);
+        const message =
+          error?.response?.data?.message ||
+          error?.message ||
+          "Có lỗi xảy ra. Vui lòng thử lại.";
+        toast.error(message);
       } finally {
         setLoading(false);
       }
@@ -55,9 +59,13 @@ const GroupDetailLayout = () => {
         );
         toast.success("Tham gia nhóm thành công");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to join/leave group:", error);
-      toast.error("Có lỗi xảy ra. Vui lòng thử lại.");
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Có lỗi xảy ra. Vui lòng thử lại.";
+      toast.error(message);
     }
   };
 

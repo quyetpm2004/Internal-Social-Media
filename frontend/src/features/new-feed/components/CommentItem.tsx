@@ -15,6 +15,7 @@ import {
 } from "@/features/new-feed/api/comment.api";
 import type { CommentItemType } from "@/features/new-feed/types/comment.type";
 import CommentInput from "@/features/new-feed/components/CommentInput";
+import { toast } from "sonner";
 
 const reactions: {
   type: CommentReactionType;
@@ -74,8 +75,13 @@ const CommentItem = ({
 
       setCurrentReaction(data.currentReaction);
       setReactionCount(data.reactionCount);
-    } catch (error) {
+    } catch (error: any) {
       console.error("React comment thất bại:", error);
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Có lỗi xảy ra. Vui lòng thử lại.";
+      toast.error(message);
     }
   };
 
@@ -86,8 +92,13 @@ const CommentItem = ({
       await CommentApi.updateComment(comment.id, editContent.trim());
       onUpdated(comment.id, editContent.trim());
       setEditing(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Sửa comment thất bại:", error);
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Có lỗi xảy ra. Vui lòng thử lại.";
+      toast.error(message);
     }
   };
 
@@ -95,8 +106,13 @@ const CommentItem = ({
     try {
       await CommentApi.deleteComment(comment.id);
       onDeleted(comment.id);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Xóa comment thất bại:", error);
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Có lỗi xảy ra. Vui lòng thử lại.";
+      toast.error(message);
     }
   };
 
@@ -107,8 +123,13 @@ const CommentItem = ({
 
       onReplyCreated?.(comment.id, newReply);
       setShowReplyInput(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Reply comment thất bại:", error);
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Có lỗi xảy ra. Vui lòng thử lại.";
+      toast.error(message);
     }
   };
 
