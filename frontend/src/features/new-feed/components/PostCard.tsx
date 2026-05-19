@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Download,
   FileText,
@@ -13,11 +13,18 @@ import {
   type ReactionType,
 } from "@/features/new-feed/api/reaction.api";
 import CommentSection from "@/features/new-feed/components/CommentSection";
+import RichTextContent from "@/features/new-feed/components/RichTextContent";
+import RichTextEditor from "@/features/new-feed/components/RichTextEditor";
+import {
+  isRichTextEmpty,
+  sanitizePostHtml,
+} from "@/features/new-feed/utils/rich-text";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { PostsApi } from "@/features/new-feed/api/new-feed.api";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { toast } from "sonner";
+import { useAuthStore } from "@/features/auth/store/auth.store";
 
 const reactionOptions: {
   type: ReactionType;
@@ -69,12 +76,14 @@ const PostCard: React.FC<PostCardProps> = ({
   role,
   time,
   content,
+  contentFormat,
   attachments = [],
   isPinned = false,
   stats,
   currentReaction: initialReaction = null,
   onDeleted,
   onUpdated,
+  onCopied,
 }) => {
   const [showComments, setShowComments] = useState(false);
   const [reactionCount, setReactionCount] = useState(stats.likes);
@@ -85,6 +94,17 @@ const PostCard: React.FC<PostCardProps> = ({
   const [showMenu, setShowMenu] = useState(false);
   const [editingPost, setEditingPost] = useState(false);
   const [editContent, setEditContent] = useState(content);
+  const [displayContent, setDisplayContent] = useState(content);
+  const [displayFormat, setDisplayFormat] = useState(contentFormat);
+  const user = useAuthStore((state) => state.user);
+
+  useEffect(() => {
+    if (!editingPost) {
+      setEditContent(content);
+      setDisplayContent(content);
+      setDisplayFormat(contentFormat);
+    }
+  }, [content, contentFormat, editingPost]);
 
   const selectedReactionData = reactionOptions.find(
     (item) => item.type === currentReaction,
@@ -129,11 +149,15 @@ const PostCard: React.FC<PostCardProps> = ({
   };
 
   const handleUpdatePost = async () => {
-    if (!editContent.trim()) return;
+    if (isRichTextEmpty(editContent)) return;
+
+    const sanitizedContent = sanitizePostHtml(editContent);
 
     try {
-      await PostsApi.updatePost(postId, editContent.trim());
-      onUpdated?.(postId, editContent.trim());
+      await PostsApi.updatePost(postId, sanitizedContent, "HTML");
+      setDisplayContent(sanitizedContent);
+      setDisplayFormat("HTML");
+      onUpdated?.(postId, sanitizedContent, "HTML");
       setEditingPost(false);
     } catch (error: any) {
       console.error("Sửa bài viết thất bại:", error);
@@ -190,49 +214,50 @@ const PostCard: React.FC<PostCardProps> = ({
             </p>
           </div>
 
-          <div className="relative ml-auto">
-            <button
-              type="button"
-              onClick={() => setShowMenu((prev) => !prev)}
-              className="p-2 rounded-lg"
-            >
-              <MoreHorizontal size={18} />
-            </button>
+          {user?.id === author.id && (
+            <div className="relative ml-auto">
+              <button
+                type="button"
+                onClick={() => setShowMenu((prev) => !prev)}
+                className="p-2 rounded-lg"
+              >
+                <MoreHorizontal size={18} />
+              </button>
 
-            {showMenu && (
-              <div className="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-30 overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingPost(true);
-                    setShowMenu(false);
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700"
-                >
-                  <Pencil size={14} />
-                  Sửa bài viết
-                </button>
+              {showMenu && (
+                <div className="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-30 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingPost(true);
+                      setShowMenu(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700"
+                  >
+                    <Pencil size={14} />
+                    Sửa bài viết
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={handleDeletePost}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                >
-                  <Trash2 size={14} />
-                  Xóa bài viết
-                </button>
-              </div>
-            )}
-          </div>
+                  <button
+                    type="button"
+                    onClick={handleDeletePost}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    <Trash2 size={14} />
+                    Xóa bài viết
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {editingPost ? (
           <div className="mb-4">
-            <textarea
+            <RichTextEditor
               value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              rows={3}
-              className="w-full bg-slate-50 dark:bg-slate-800 rounded-lg p-3 text-sm outline-none text-slate-900 dark:text-slate-100"
+              onChange={setEditContent}
+              minRows={3}
             />
 
             <div className="flex justify-end gap-2 mt-2">
@@ -257,9 +282,11 @@ const PostCard: React.FC<PostCardProps> = ({
             </div>
           </div>
         ) : (
-          <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-sm mb-4">
-            {content}
-          </p>
+          <RichTextContent
+            content={displayContent}
+            contentFormat={displayFormat}
+            className="mb-4"
+          />
         )}
 
         {imageAttachments.length > 0 && (
@@ -399,9 +426,13 @@ const PostCard: React.FC<PostCardProps> = ({
             <span className="text-xs font-semibold">{stats.comments}</span>
           </button>
 
-          <button className="flex items-center gap-2 text-slate-500 hover:text-blue-700 transition-colors ml-auto">
+          <button
+            type="button"
+            onClick={() => onCopied?.(postId as number)}
+            className="flex items-center gap-2 text-slate-500 hover:text-blue-700 transition-colors ml-auto"
+          >
             <Share2 size={18} />
-            <span className="text-xs font-semibold">Chia sẻ</span>
+            <span className="text-xs font-semibold">Sao chép liên kết</span>
           </button>
         </div>
         {showComments && (

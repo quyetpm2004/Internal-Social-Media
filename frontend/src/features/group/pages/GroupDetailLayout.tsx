@@ -1,15 +1,31 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import GroupHeader from "@/features/group/components/group-detail/main-detail/GroupHeader";
 import { Lock, Plus, Users } from "lucide-react";
 import { Outlet, useParams } from "react-router-dom";
 import type { GroupDetail } from "@/features/group/types/group.type";
 import { groupApi } from "@/features/group/apis/group.api";
 import { toast } from "sonner";
+import { useAuthStore } from "@/features/auth/store/auth.store";
+import {
+  canManageGroupMembers,
+  type GroupMemberRole,
+} from "@/features/group/utils/group-member";
 
 const GroupDetailLayout = () => {
   const { groupId } = useParams();
+  const currentUser = useAuthStore((state) => state.user);
   const [groupDetail, setGroupDetail] = useState<GroupDetail | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const currentMemberRole = useMemo((): GroupMemberRole | null => {
+    if (!groupDetail || !currentUser) return null;
+    const member = groupDetail.members.find(
+      (m) => m.user.id === currentUser.id,
+    );
+    return member?.memberRole ?? null;
+  }, [groupDetail, currentUser]);
+
+  const canManageMembers = canManageGroupMembers(currentMemberRole);
   useEffect(() => {
     const fetchGroupDetail = async () => {
       if (!groupId) return;
@@ -126,6 +142,8 @@ const GroupDetailLayout = () => {
                 context={{
                   isMember: groupDetail?.isMember || false,
                   groupDetail,
+                  currentMemberRole,
+                  canManageMembers,
                 }}
               />
             )}

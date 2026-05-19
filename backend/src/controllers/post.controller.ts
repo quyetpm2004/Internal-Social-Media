@@ -2,9 +2,12 @@ import { Request, Response, NextFunction } from "express";
 import {
   createPostService,
   deletePostService,
+  getPostById,
   getPostListService,
   reactPostService,
+  updatePostService,
 } from "../services/post.service";
+import { PostContentError } from "../utils/post-content-error";
 import z from "zod";
 
 export const getPostListController = async (
@@ -59,15 +62,27 @@ export const getPostListController = async (
   }
 };
 
+const contentFormatSchema = z.enum(["PLAIN", "HTML"]);
+
 const createPostSchema = z.object({
-  content: z.string().trim().min(1).max(5000),
-
+  content: z.string().trim().min(1).max(20000),
+  contentFormat: contentFormatSchema.default("HTML"),
   visibility: z.enum(["PUBLIC", "PRIVATE", "GROUP"]).default("PUBLIC"),
-
   groupId: z.number().optional(),
-
   attachmentIds: z.array(z.number()).optional(),
 });
+
+const updatePostSchema = z.object({
+  content: z.string().trim().min(1).max(20000),
+  contentFormat: contentFormatSchema.default("HTML"),
+});
+
+function handlePostContentError(error: unknown, res: Response) {
+  if (error instanceof PostContentError) {
+    return res.status(400).json({ message: error.message });
+  }
+  return null;
+}
 
 export const createPostController = async (
   req: Request,
@@ -88,6 +103,7 @@ export const createPostController = async (
     const newPost = await createPostService({
       userId,
       content: body.content,
+      contentFormat: body.contentFormat,
       visibility: body.visibility,
       groupId: body.groupId,
       attachmentIds: body.attachmentIds || [],
@@ -98,6 +114,57 @@ export const createPostController = async (
       data: newPost,
     });
   } catch (error) {
+    if (handlePostContentError(error, res)) return;
+    next(error);
+  }
+};
+
+export const updatePostController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        message: "Người dùng chưa đăng nhập",
+      });
+    }
+
+    const postId = Number(req.params.postId);
+
+    if (!Number.isInteger(postId) || postId <= 0) {
+      return res.status(400).json({
+        message: "postId không hợp lệ",
+      });
+    }
+
+    const body = updatePostSchema.parse(req.body);
+
+    const updatedPost = await updatePostService({
+      userId,
+      postId,
+      content: body.content,
+      contentFormat: body.contentFormat,
+    });
+
+    return res.status(200).json({
+      message: "Cập nhật bài viết thành công",
+      data: updatedPost,
+    });
+  } catch (error: any) {
+    if (handlePostContentError(error, res)) return;
+
+    if (error?.message?.includes("không có quyền")) {
+      return res.status(403).json({ message: error.message });
+    }
+
+    if (error?.message?.includes("không tồn tại")) {
+      return res.status(404).json({ message: error.message });
+    }
+
     next(error);
   }
 };
@@ -110,7 +177,7 @@ export const reactPostController = async (
   try {
     const userId = Number(req.user?.id);
     const postId = Number(req.params.postId);
-    const { reactionType } = req.body;
+    const { reactionType } = req.body 
 
     if (!Number.isInteger(userId) || userId <= 0) {
       return res.status(401).json({
@@ -177,5 +244,26 @@ export const deletePostController = async (
       });
   } catch (error) {
     next(error);
+  }
+};
+
+export const getPostByIdController = async (req: Request, res: Response) => {
+  try {
+    const userId = Number(req.user?.id);
+    const postId = Number(req.params.postId);
+    if (!userId) {
+      return res.status(401).json({
+        message: "Người dùng chưa đăng nhập",
+      });
+    }
+    const result = await getPostById(postId, userId);
+    if (result) {
+      return res.status(200).json({
+        message: "Lấy bài viết thành công",
+        data: result,
+      });
+    }
+  } catch (error: any) {
+    return res.status(400).json({ message: error.message });
   }
 };

@@ -17,13 +17,13 @@ const AppSidebar: React.FC = () => {
                 data-alt="professional headshot of a smiling architect in a modern office setting with soft natural light"
                 src={
                   user?.avatarUrl ||
-                  `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || "User")}&background=0D8ABC&color=fff&size=128`
+                  `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || "User")}`
                 }
               />
             </div>
           }
           label={user?.fullName || "Tài khoản"}
-          path="/profile"
+          path={`/profile/${user?.id}`}
         />
         <NavItem icon={<Home size={22} />} label="Trang chủ" path="/" />
         <NavItem

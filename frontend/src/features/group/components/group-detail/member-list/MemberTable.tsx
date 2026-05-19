@@ -3,15 +3,20 @@ import { type Member } from "@/features/group/types/group.type";
 import { MemberRow } from "./MemberRow";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import ConfirmModal from "@/components/common/ConfirmModal";
+import {
+  canManageGroupMembers,
+  canManageTargetMember,
+  type GroupMemberRole,
+} from "@/features/group/utils/group-member";
 
 interface MemberTableProps {
   members: Member[];
-
+  canManage: boolean;
+  actorRole: GroupMemberRole | null;
+  currentUserId?: number;
   onAddMember: () => void;
-
-  onEditMember: (id: string) => void;
+  onEditMember: (member: Member) => void;
   onRemoveMember: (id: string) => void;
-
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
@@ -19,6 +24,9 @@ interface MemberTableProps {
 
 export const MemberTable = ({
   members,
+  canManage,
+  actorRole,
+  currentUserId,
   onAddMember,
   onEditMember,
   onRemoveMember,
@@ -26,8 +34,13 @@ export const MemberTable = ({
   totalPages,
   onPageChange,
 }: MemberTableProps) => {
+  const showActionsColumn =
+    canManage &&
+    canManageGroupMembers(actorRole) &&
+    members.some((m) =>
+      canManageTargetMember(actorRole, m.memberRole, m.id, currentUserId),
+    );
   const [openConfirm, setOpenConfirm] = useState(false);
-
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
 
   const handleRemoveClick = (member: Member) => {
@@ -37,9 +50,7 @@ export const MemberTable = ({
 
   const handleConfirmRemove = () => {
     if (!selectedMember) return;
-
     onRemoveMember(String(selectedMember.id));
-
     setOpenConfirm(false);
     setSelectedMember(null);
   };
@@ -53,49 +64,66 @@ export const MemberTable = ({
               <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
                 Thành viên
               </th>
-
               <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
                 Email
               </th>
-
               <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
                 Vai trò
               </th>
-
               <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
                 Ngày tham gia
               </th>
-
-              <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant text-right">
-                Hành động
-              </th>
+              {showActionsColumn && (
+                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant text-right">
+                  Hành động
+                </th>
+              )}
             </tr>
           </thead>
 
           <tbody className="divide-y divide-outline-variant/20">
-            {members.map((member) => (
-              <MemberRow
-                key={member.id}
-                member={member}
-                onEdit={() => onEditMember(String(member.id))}
-                onRemove={() => handleRemoveClick(member)}
-              />
-            ))}
+            {members.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={showActionsColumn ? 5 : 4}
+                  className="px-6 py-10 text-center text-sm text-on-surface-variant"
+                >
+                  Không có thành viên nào.
+                </td>
+              </tr>
+            ) : (
+              members.map((member) => (
+                <MemberRow
+                  key={member.id}
+                  member={member}
+                  actorRole={actorRole}
+                  currentUserId={currentUserId}
+                  showActionsColumn={showActionsColumn}
+                  onEdit={onEditMember}
+                  onRemove={() => handleRemoveClick(member)}
+                />
+              ))
+            )}
           </tbody>
         </table>
 
         <div className="flex items-center justify-between p-4 border-t border-outline-variant/20 bg-surface-container-low/50">
-          <button
-            onClick={onAddMember}
-            className="flex items-center gap-2 text-sm text-primary font-bold hover:underline transition-all"
-          >
-            <Plus size={16} />
-
-            <span>Thêm thành viên</span>
-          </button>
+          {canManage ? (
+            <button
+              type="button"
+              onClick={onAddMember}
+              className="flex items-center gap-2 text-sm text-primary font-bold hover:underline transition-all"
+            >
+              <Plus size={16} />
+              <span>Thêm thành viên</span>
+            </button>
+          ) : (
+            <div />
+          )}
 
           <div className="flex items-center gap-3">
             <button
+              type="button"
               disabled={currentPage === 1}
               onClick={() => onPageChange(currentPage - 1)}
               className="p-2 rounded-lg border disabled:opacity-50"
@@ -108,6 +136,7 @@ export const MemberTable = ({
             </span>
 
             <button
+              type="button"
               disabled={currentPage === totalPages}
               onClick={() => onPageChange(currentPage + 1)}
               className="p-2 rounded-lg border disabled:opacity-50"

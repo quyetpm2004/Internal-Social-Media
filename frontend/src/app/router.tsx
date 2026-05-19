@@ -11,6 +11,8 @@ import GroupDetailLayout from "@/features/group/pages/GroupDetailLayout";
 import GroupFeedPage from "@/features/group/pages/GroupFeedPage";
 import { GroupMembersPage } from "@/features/group/pages/GroupMembersPage";
 
+import PostDetailPage from "@/features/new-feed/pages/PostDetailPage";
+
 export const router = createBrowserRouter([
   {
     element: <AuthLayout />,
@@ -38,6 +40,10 @@ export const router = createBrowserRouter([
           {
             path: "/news-feed",
             element: <NewFeedPage />,
+          },
+          {
+            path: "/news-feed/:postId",
+            element: <PostDetailPage />,
           },
           {
             path: "/groups",

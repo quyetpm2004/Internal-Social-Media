@@ -7,7 +7,41 @@ import {
   PostVisibility,
 } from "@prisma/client";
 import { getFileUrl } from "./file.service";
-import { join } from "path";
+
+const ROLE_RANK: Record<GroupMemberRole, number> = {
+  [GroupMemberRole.MEMBER]: 1,
+  [GroupMemberRole.MODERATOR]: 2,
+  [GroupMemberRole.ADMIN]: 3,
+};
+
+const getRoleRank = (role: GroupMemberRole) => ROLE_RANK[role] ?? 0;
+
+const assertCanManageTargetRole = (
+  actorRole: GroupMemberRole,
+  targetRole: GroupMemberRole,
+) => {
+  if (getRoleRank(actorRole) < getRoleRank(targetRole)) {
+    throw new Error("Bạn không có quyền thao tác với thành viên này");
+  }
+};
+
+const countGroupAdmins = async (groupId: number) => {
+  return prisma.groupMember.count({
+    where: { groupId, memberRole: GroupMemberRole.ADMIN },
+  });
+};
+
+const assertNotLastAdmin = async (
+  groupId: number,
+  memberRole: GroupMemberRole,
+) => {
+  if (memberRole !== GroupMemberRole.ADMIN) return;
+
+  const adminCount = await countGroupAdmins(groupId);
+  if (adminCount <= 1) {
+    throw new Error("Nhóm phải có ít nhất một quản trị viên");
+  }
+};
 
 const checkGroupExists = async (groupId: number) => {
   const group = await prisma.group.findUnique({
@@ -361,28 +395,34 @@ export const addMemberToGroup = async (
   currentUserId: number,
   data: any,
 ) => {
-  const { userId, memberRole } = data;
+  const { userId, email, memberRole } = data;
 
-  if (!userId) {
-    throw new Error("userId không được để trống");
+  if (!userId && !email) {
+    throw new Error("Vui lòng nhập email thành viên");
   }
 
   await checkGroupExists(groupId);
   await checkCanManageMember(groupId, currentUserId);
 
-  const user = await prisma.user.findUnique({
-    where: { id: Number(userId) },
-  });
+  const user = userId
+    ? await prisma.user.findUnique({
+        where: { id: Number(userId) },
+      })
+    : await prisma.user.findUnique({
+        where: { email: String(email).trim() },
+      });
 
   if (!user) {
-    throw new Error("User không tồn tại");
+    throw new Error("Không tìm thấy người dùng với email này");
   }
+
+  const targetUserId = user.id;
 
   const existingMember = await prisma.groupMember.findUnique({
     where: {
       groupId_userId: {
         groupId,
-        userId: Number(userId),
+        userId: targetUserId,
       },
     },
   });
@@ -394,7 +434,7 @@ export const addMemberToGroup = async (
   const member = await prisma.groupMember.create({
     data: {
       groupId,
-      userId: Number(userId),
+      userId: targetUserId,
       memberRole: memberRole || GroupMemberRole.MEMBER,
     },
     include: {
@@ -422,13 +462,22 @@ export const getGroupMembers = async (
 ) => {
   await checkGroupExists(groupId);
 
+  const roleFilter =
+    role === "STAFF"
+      ? {
+          memberRole: {
+            in: [GroupMemberRole.ADMIN, GroupMemberRole.MODERATOR],
+          },
+        }
+      : role === "MEMBER"
+        ? { memberRole: GroupMemberRole.MEMBER }
+        : role
+          ? { memberRole: role as GroupMemberRole }
+          : null;
+
   const where = {
     groupId,
-    ...(role
-      ? {
-          memberRole: role as any,
-        }
-      : {}),
+    ...(roleFilter ? roleFilter : {}),
     ...(search
       ? {
           user: {
@@ -509,7 +558,11 @@ export const removeMemberFromGroup = async (
   currentUserId: number,
 ) => {
   await checkGroupExists(groupId);
-  await checkCanManageMember(groupId, currentUserId);
+  const actor = await checkCanManageMember(groupId, currentUserId);
+
+  if (userId === currentUserId) {
+    throw new Error("Bạn không thể tự xóa mình khỏi nhóm tại đây");
+  }
 
   const member = await prisma.groupMember.findUnique({
     where: {
@@ -524,9 +577,8 @@ export const removeMemberFromGroup = async (
     throw new Error("User không phải thành viên của nhóm");
   }
 
-  if (member.memberRole === GroupMemberRole.ADMIN) {
-    throw new Error("Không thể xóa ADMIN của nhóm");
-  }
+  assertCanManageTargetRole(actor.memberRole, member.memberRole);
+  await assertNotLastAdmin(groupId, member.memberRole);
 
   await prisma.groupMember.delete({
     where: {
@@ -550,8 +602,16 @@ export const updateMemberRole = async (
     throw new Error("memberRole không được để trống");
   }
 
+  if (!Object.values(GroupMemberRole).includes(memberRole)) {
+    throw new Error("Vai trò không hợp lệ");
+  }
+
   await checkGroupExists(groupId);
-  await checkIsGroupAdmin(groupId, currentUserId);
+  const actor = await checkCanManageMember(groupId, currentUserId);
+
+  if (userId === currentUserId) {
+    throw new Error("Bạn không thể tự thay đổi quyền của mình");
+  }
 
   const member = await prisma.groupMember.findUnique({
     where: {
@@ -564,6 +624,16 @@ export const updateMemberRole = async (
 
   if (!member) {
     throw new Error("User không phải thành viên của nhóm");
+  }
+
+  assertCanManageTargetRole(actor.memberRole, member.memberRole);
+  assertCanManageTargetRole(actor.memberRole, memberRole);
+
+  if (
+    member.memberRole === GroupMemberRole.ADMIN &&
+    memberRole !== GroupMemberRole.ADMIN
+  ) {
+    await assertNotLastAdmin(groupId, GroupMemberRole.ADMIN);
   }
 
   const updatedMember = await prisma.groupMember.update({

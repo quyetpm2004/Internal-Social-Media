@@ -1,44 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Pin } from "lucide-react";
-import type { ApiPost, Post } from "@/features/new-feed/types/new-feed.type";
+import type { Post } from "@/features/new-feed/types/new-feed.type";
 import PostCreator from "@/features/new-feed/components/PostCreator";
 import PostCard from "@/features/new-feed/components/PostCard";
-import { formatTimeAgo } from "@/utils/formatTimeAgo";
+import { mapApiPostToPostCard } from "@/utils/formatTimeAgo";
 import { groupApi } from "@/features/group/apis/group.api";
 import { useOutletContext, useParams } from "react-router-dom";
 import AboutSidebar from "@/features/group/components/group-detail/main-detail/AboutSidebar";
 import { toast } from "sonner";
 
 const LIMIT = 10;
-
-// Hàm mapper để convert dữ liệu API sang Props của PostCard
-const mapApiPostToPostCard = (post: ApiPost): Post => {
-  return {
-    id: post.id,
-    isPinned: post.isPinned,
-    author: {
-      name: post.user?.fullName || "Người dùng",
-      avatar: post.user?.profile?.avatarUrl
-        ? `${import.meta.env.VITE_BASE_URL_BACKEND}/uploads/avatar/${post.user?.profile?.avatarUrl}`
-        : "https://ui-avatars.com/api/?name=" +
-          encodeURIComponent(post.user?.fullName || "User"),
-    },
-    role: "Thành viên",
-    time: formatTimeAgo(post.createdAt),
-    content: post.content,
-    attachments:
-      post.attachments?.map((attachment) => ({
-        fileUrl: attachment.fileUrl,
-        attachmentType: attachment.attachmentType,
-        fileName: attachment.fileName,
-      })) || [],
-    stats: {
-      likes: post._count?.reactions || 0,
-      comments: post._count?.comments || 0,
-    },
-    currentReaction: post.reactions?.[0]?.reactionType || null,
-  };
-};
 
 const GroupFeedPage: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -52,7 +23,10 @@ const GroupFeedPage: React.FC = () => {
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const isFetchingRef = useRef(false);
 
-  const { isMember, groupDetail } = useOutletContext<any>();
+  const { isMember, groupDetail } = useOutletContext<{
+    isMember: boolean;
+    groupDetail: import("@/features/group/types/group.type").GroupDetail | null;
+  }>();
 
   // Refs để theo dõi state trong IntersectionObserver
   const hasMoreRef = useRef(hasMore);
@@ -149,6 +123,13 @@ const GroupFeedPage: React.FC = () => {
     if (page > 1) fetchPosts(page);
   }, [page, fetchPosts]);
 
+  const handleCopyGroupLink = (postId: number) => {
+    if (!groupId) return;
+    const postLink = `${import.meta.env.VITE_BASE_URL_FRONTEND}/groups/${groupId}/news-feed/${postId}`;
+    navigator.clipboard.writeText(postLink);
+    toast.success("Đã sao chép liên kết bài viết");
+  };
+
   return (
     <div className="flex flex-col md:grid md:grid-cols-12 gap-8">
       <div className="md:col-span-8 space-y-6">
@@ -176,9 +157,25 @@ const GroupFeedPage: React.FC = () => {
                 </div>
                 <PostCard
                   {...post}
-                  onDeleted={(id) =>
-                    setPosts((prev) => prev.filter((p) => p.id !== id))
-                  }
+                  onDeleted={(id) => {
+                    setPosts((prev) => prev.filter((p) => p.id !== id));
+                    setPinnedPosts((prev) => prev.filter((p) => p.id !== id));
+                  }}
+                  onUpdated={(postId, newContent, newFormat) => {
+                    const updater = (prev: Post[]) =>
+                      prev.map((item) =>
+                        item.id === postId
+                          ? {
+                              ...item,
+                              content: newContent,
+                              contentFormat: newFormat,
+                            }
+                          : item,
+                      );
+                    setPosts(updater);
+                    setPinnedPosts(updater);
+                  }}
+                  onCopied={(postId) => handleCopyGroupLink(postId)}
                 />
               </div>
             ))}
@@ -194,6 +191,20 @@ const GroupFeedPage: React.FC = () => {
               onDeleted={(postId) => {
                 setPosts((prev) => prev.filter((item) => item.id !== postId));
               }}
+              onUpdated={(postId, newContent, newFormat) => {
+                setPosts((prev) =>
+                  prev.map((item) =>
+                    item.id === postId
+                      ? {
+                          ...item,
+                          content: newContent,
+                          contentFormat: newFormat,
+                        }
+                      : item,
+                  ),
+                );
+              }}
+              onCopied={(postId) => handleCopyGroupLink(postId)}
             />
           ))}
         </div>

@@ -11,6 +11,11 @@ import {
 } from "lucide-react";
 
 import { PostsApi } from "@/features/new-feed/api/new-feed.api";
+import RichTextEditor from "@/features/new-feed/components/RichTextEditor";
+import {
+  isRichTextEmpty,
+  sanitizePostHtml,
+} from "@/features/new-feed/utils/rich-text";
 import { uploadApi } from "@/features/uploads/api/upload.api";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { toast } from "sonner";
@@ -127,14 +132,17 @@ const PostCreator = ({ fetchPosts }: PostCreatorProps) => {
   };
 
   const handleCreatePost = async () => {
-    if (!content.trim() && attachments.length === 0) return;
+    if (isRichTextEmpty(content) && attachments.length === 0) return;
+
+    const sanitizedContent = sanitizePostHtml(content);
 
     try {
       setLoading(true);
       const uploadedAttachments = await uploadAttachments();
 
       await PostsApi.createPost({
-        content,
+        content: sanitizedContent,
+        contentFormat: "HTML",
         visibility: "PUBLIC",
         groupId: groupId ? Number(groupId) : undefined,
         attachmentIds: uploadedAttachments.map((item) => item.attachmentId),
@@ -164,7 +172,7 @@ const PostCreator = ({ fetchPosts }: PostCreatorProps) => {
           <img
             src={
               user?.avatarUrl ||
-              `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || "U")}&background=0D8ABC&color=fff`
+              `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || "User")}`
             }
             alt="Avatar"
             className="w-full h-full object-cover"
@@ -172,13 +180,11 @@ const PostCreator = ({ fetchPosts }: PostCreatorProps) => {
         </div>
 
         <div className="flex-1">
-          {/* Textarea */}
-          <textarea
+          <RichTextEditor
             value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="w-full bg-slate-50 dark:bg-slate-800/50 border-none rounded-xl focus:ring-2 focus:ring-blue-500/20 p-4 text-sm resize-none outline-none text-slate-900 dark:text-slate-100 transition-all"
+            onChange={setContent}
             placeholder="Bạn đang nghĩ gì thế?"
-            rows={3}
+            minRows={3}
           />
 
           {/* Hidden Inputs */}
@@ -284,7 +290,8 @@ const PostCreator = ({ fetchPosts }: PostCreatorProps) => {
               type="button"
               onClick={handleCreatePost}
               disabled={
-                loading || (!content.trim() && attachments.length === 0)
+                loading ||
+                (isRichTextEmpty(content) && attachments.length === 0)
               }
               className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 text-white px-5 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2"
             >

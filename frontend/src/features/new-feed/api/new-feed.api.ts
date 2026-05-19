@@ -1,6 +1,9 @@
 import { axiosClient } from "@/lib/axios";
-import type { GetPostsResponse } from "@/features/new-feed/types/new-feed.type";
-import { data } from "react-router-dom";
+import type {
+  ApiPost,
+  GetPostsResponse,
+} from "@/features/new-feed/types/new-feed.type";
+import type { PostContentFormat } from "@/features/new-feed/utils/rich-text";
 
 export const PostsApi = {
   getPostInNewFeed(page: number, limit: number, sort: "latest" | "trending") {
@@ -15,6 +18,7 @@ export const PostsApi = {
 
   createPost(data: {
     content: string;
+    contentFormat?: PostContentFormat;
     visibility: "PUBLIC" | "GROUP";
     groupId?: number;
     attachmentIds: number[];
@@ -26,7 +30,15 @@ export const PostsApi = {
     return axiosClient.delete(`/posts/${postId}`);
   },
 
-  updatePost(postId: number, content: string) {
-    return axiosClient.patch(`/posts/${postId}`, { content });
+  updatePost(
+    postId: number,
+    content: string,
+    contentFormat: PostContentFormat = "HTML",
+  ) {
+    return axiosClient.patch(`/posts/${postId}`, { content, contentFormat });
+  },
+
+  getPostById(postId: string) {
+    return axiosClient.get<ApiPost>(`/posts/${postId}`);
   },
 };

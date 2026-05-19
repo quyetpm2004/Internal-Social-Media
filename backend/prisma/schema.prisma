@@ -48,6 +48,11 @@ enum PostStatus {
   DELETED
 }
 
+enum PostContentFormat {
+  PLAIN
+  HTML
+}
+
 enum CommentStatus {
   ACTIVE
   HIDDEN
@@ -214,8 +219,9 @@ model Post {
   id          Int               @id @default(autoincrement()) @map("post_id")
   userId      Int               @map("user_id")
   groupId     Int?              @map("group_id")
-  content     String            @db.Text
-  visibility  PostVisibility    @default(PUBLIC)
+  content        String            @db.Text
+  contentFormat  PostContentFormat @default(PLAIN) @map("content_format")
+  visibility     PostVisibility    @default(PUBLIC)
   viewCount   Int               @default(0) @map("view_count")
   isPinned    Boolean           @default(false) @map("is_pinned")
   status      PostStatus        @default(ACTIVE)

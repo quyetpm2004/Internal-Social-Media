@@ -1,3 +1,5 @@
+import type { GroupMemberRole } from "@/features/group/utils/group-member";
+
 export interface Group {
   id: string;
   groupName: string;
@@ -45,11 +47,11 @@ export interface GroupDetail {
   };
   members: {
     id: string;
-    memberRole: "OWNER" | "ADMIN" | "MEMBER";
+    memberRole: "ADMIN" | "MODERATOR" | "MEMBER";
     joinedAt: string;
     user: {
-      id: string;
-      name: string;
+      id: number;
+      fullName: string;
       email: string;
       avatarUrl?: string;
     };
@@ -61,15 +63,13 @@ export interface GroupDetail {
   isMember: boolean;
 }
 
-export type Role = "Admin" | "Moderator" | "Member";
-
 export interface Member {
   id: string;
   fullName: string;
   avatarUrl: string;
   email: string;
   status: string;
-  memberRole: Role;
+  memberRole: GroupMemberRole;
   joinedAt: string;
 }
 

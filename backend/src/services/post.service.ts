@@ -1,7 +1,10 @@
 import { PostVisibility, Prisma, ReactionType } from "@prisma/client";
+import { PostContentFormat } from "../constants/post-content-format";
+import type { PostContentFormat as PostContentFormatType } from "../constants/post-content-format";
 
 import prisma from "../utils/prisma";
 import { getFileUrl } from "./file.service";
+import { processPostContent } from "../utils/sanitize-html";
 
 type GetPostListParams = {
   page?: number;
@@ -161,12 +164,30 @@ export const getPostListService = async ({
     }),
   );
 
+  const pinnedPostsWithUrlAttachments = await Promise.all(
+    pinnedPosts.map(async (post) => {
+      const attachmentsWithUrl = await Promise.all(
+        post.attachments.map(async (attachment: any) => {
+          const url = await getFileUrl(attachment.fileKey, 7 * 24 * 60 * 60); // 7 ngày
+          return {
+            ...attachment,
+            fileUrl: url,
+          };
+        }),
+      );
+      return {
+        ...post,
+        attachments: attachmentsWithUrl,
+      };
+    }),
+  );
+
   return {
     page,
     limit,
     sort,
     hasMore,
-    pinnedPosts,
+    pinnedPosts: pinnedPostsWithUrlAttachments,
     posts: normalizePostsWithUrlAttachments,
   };
 };
@@ -174,6 +195,7 @@ export const getPostListService = async ({
 type CreatePostParams = {
   userId: number;
   content: string;
+  contentFormat?: PostContentFormatType;
   visibility?: PostVisibility;
   groupId?: number;
   attachmentIds?: number[];
@@ -182,10 +204,12 @@ type CreatePostParams = {
 export const createPostService = async ({
   userId,
   content,
+  contentFormat = PostContentFormat.HTML,
   visibility = "PUBLIC",
   groupId,
   attachmentIds = [],
 }: CreatePostParams) => {
+  const processed = processPostContent(content, contentFormat);
   /**
    * Validate group
    */
@@ -243,7 +267,8 @@ export const createPostService = async ({
 
         groupId: groupId || null,
 
-        content,
+        content: processed.content,
+        contentFormat: processed.contentFormat,
 
         visibility,
 
@@ -515,6 +540,70 @@ export const reactPostService = async ({
   };
 };
 
+export const updatePostService = async ({
+  userId,
+  postId,
+  content,
+  contentFormat = PostContentFormat.HTML,
+}: {
+  userId: number;
+  postId: number;
+  content: string;
+  contentFormat?: PostContentFormatType;
+}) => {
+  const existingPost = await prisma.post.findUnique({
+    where: { id: postId },
+    select: {
+      id: true,
+      userId: true,
+      status: true,
+    },
+  });
+
+  if (!existingPost) {
+    throw new Error("Bài viết không tồn tại");
+  }
+
+  if (existingPost.status !== "ACTIVE") {
+    throw new Error("Bài viết không khả dụng để chỉnh sửa");
+  }
+
+  if (existingPost.userId !== userId) {
+    throw new Error("Bạn không có quyền sửa bài viết này");
+  }
+
+  const processed = processPostContent(content, contentFormat);
+
+  return prisma.post.update({
+    where: { id: postId },
+    data: {
+      content: processed.content,
+      contentFormat: processed.contentFormat,
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          profile: {
+            select: {
+              avatarKey: true,
+            },
+          },
+        },
+      },
+      attachments: true,
+      _count: {
+        select: {
+          comments: true,
+          reactions: true,
+        },
+      },
+    },
+  });
+};
+
 export const deletePostService = async (userId: number, postId: number) => {
   const existingPost = await prisma.post.findUnique({
     where: { id: postId },
@@ -544,4 +633,63 @@ export const deletePostService = async (userId: number, postId: number) => {
   });
 
   return true;
+};
+
+export const getPostById = async (postId: number, userId: number) => {
+  const existingPost = await prisma.post.findUnique({
+    where: { id: postId },
+    include: {
+      user: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          profile: {
+            select: {
+              avatarKey: true,
+            },
+          },
+        },
+      },
+      group: {
+        select: {
+          id: true,
+          groupName: true,
+        },
+      },
+      reactions: {
+        where: {
+          userId: userId,
+        },
+        select: {
+          reactionType: true,
+        },
+      },
+      attachments: true,
+      _count: {
+        select: {
+          comments: true,
+          reactions: true,
+        },
+      },
+    },
+  });
+  if (!existingPost) {
+    throw new Error("Post không tồn tại");
+  }
+
+  const attachmentsWithUrl = await Promise.all(
+    existingPost.attachments.map(async (attachment) => {
+      const url = await getFileUrl(attachment.fileKey, 7 * 24 * 60 * 60);
+      return {
+        ...attachment,
+        fileUrl: url,
+      };
+    }),
+  );
+
+  return {
+    ...existingPost,
+    attachments: attachmentsWithUrl,
+  };
 };

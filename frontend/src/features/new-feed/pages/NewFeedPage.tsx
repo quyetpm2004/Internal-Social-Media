@@ -15,39 +15,11 @@ import {
 import RightSidebarWidget from "@/features/new-feed/components/RightSidebarWidget";
 import GroupItem from "@/features/new-feed/components/GroupItem";
 import { PostsApi } from "@/features/new-feed/api/new-feed.api";
-import { formatTimeAgo } from "@/utils/formatTimeAgo";
+import { mapApiPostToPostCard } from "@/utils/formatTimeAgo";
 import { toast } from "sonner";
 
 type SortType = "latest" | "trending";
 const LIMIT = 10;
-
-const mapApiPostToPostCard = (post: ApiPost): Post => {
-  return {
-    id: post.id,
-    isPinned: post.isPinned,
-    author: {
-      name: post.user?.fullName || "Người dùng",
-      avatar: post.user?.profile?.avatarUrl
-        ? `${import.meta.env.VITE_BASE_URL_BACKEND}/uploads/avatar/${post.user?.profile?.avatarUrl}`
-        : "https://ui-avatars.com/api/?name=" +
-          encodeURIComponent(post.user?.fullName || "User"),
-    },
-    role: "Nhân viên",
-    time: formatTimeAgo(post.createdAt),
-    content: post.content,
-    attachments:
-      post.attachments?.map((attachment) => ({
-        fileUrl: attachment.fileUrl,
-        attachmentType: attachment.attachmentType,
-        fileName: attachment.fileName,
-      })) || [],
-    stats: {
-      likes: post._count?.reactions || 0,
-      comments: post._count?.comments || 0,
-    },
-    currentReaction: post.reactions?.[0]?.reactionType || null, // API chưa trả về reaction của user nên tạm để null
-  };
-};
 
 const NewFeedPage = () => {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -180,6 +152,12 @@ const NewFeedPage = () => {
     fetchPosts(page);
   }, [page, fetchPosts]);
 
+  const handleCopyPostLink = (postId: number) => {
+    const postLink = `${import.meta.env.VITE_BASE_URL_FRONTEND}/news-feed/${postId}`;
+    navigator.clipboard.writeText(postLink);
+    toast.success("Đã sao chép liên kết bài viết");
+  };
+
   return (
     <main className="flex-1 py-8">
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -202,7 +180,25 @@ const NewFeedPage = () => {
                     setPosts((prev) =>
                       prev.filter((item) => item.id !== postId),
                     );
+                    setPinnedPosts((prev) =>
+                      prev.filter((item) => item.id !== postId),
+                    );
                   }}
+                  onUpdated={(postId, newContent, newFormat) => {
+                    const updater = (prev: Post[]) =>
+                      prev.map((item) =>
+                        item.id === postId
+                          ? {
+                              ...item,
+                              content: newContent,
+                              contentFormat: newFormat,
+                            }
+                          : item,
+                      );
+                    setPosts(updater);
+                    setPinnedPosts(updater);
+                  }}
+                  onCopied={(postId) => handleCopyPostLink(postId)}
                 />
               ))}
             </div>
@@ -216,6 +212,20 @@ const NewFeedPage = () => {
                 onDeleted={(postId) => {
                   setPosts((prev) => prev.filter((item) => item.id !== postId));
                 }}
+                onUpdated={(postId, newContent, newFormat) => {
+                  setPosts((prev) =>
+                    prev.map((item) =>
+                      item.id === postId
+                        ? {
+                            ...item,
+                            content: newContent,
+                            contentFormat: newFormat,
+                          }
+                        : item,
+                    ),
+                  );
+                }}
+                onCopied={(postId) => handleCopyPostLink(postId)}
               />
             ))}
           </div>

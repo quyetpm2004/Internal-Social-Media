@@ -57,7 +57,7 @@ export const groupApi = {
     });
 
     if (search) params.append("search", search);
-    if (role && role !== "Tất cả") {
+    if (role) {
       params.append("role", role);
     }
 
@@ -66,15 +66,24 @@ export const groupApi = {
     );
   },
 
+  addMember: (
+    groupId: string,
+    data: { email: string; memberRole?: string },
+  ) => {
+    return axiosClient.post(`/groups/${groupId}/members`, data);
+  },
+
   removeMember: (groupId: string, memberId: string) => {
     return axiosClient.delete(`/groups/${groupId}/members/${memberId}`);
   },
 
-  updateMember: (
+  updateMemberRole: (
     groupId: string,
     memberId: string,
-    data: Partial<{ memberRole: string }>,
+    memberRole: string,
   ) => {
-    return axiosClient.patch(`/groups/${groupId}/members/${memberId}`, data);
+    return axiosClient.patch(`/groups/${groupId}/members/${memberId}/role`, {
+      memberRole,
+    });
   },
 };

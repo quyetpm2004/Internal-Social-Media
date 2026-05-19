@@ -14,7 +14,7 @@ export interface RefreshTokenResponse {
 }
 
 export interface UserPublicInfo {
-  id: string;
+  id: number;
   fullName: string;
   email: string;
   role: "EMPLOYEE" | "ADMIN" | "MANAGER";

@@ -87,7 +87,7 @@ export default function AppHeader() {
                   user?.avatarUrl ||
                   `https://ui-avatars.com/api/?name=${encodeURIComponent(
                     user?.fullName || "User",
-                  )}&background=0D8ABC&color=fff&size=128`
+                  )}`
                 }
               />
             </button>

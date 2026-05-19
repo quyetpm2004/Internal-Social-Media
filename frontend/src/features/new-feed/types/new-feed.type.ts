@@ -1,10 +1,12 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import type { ReactionType } from "@/features/new-feed/api/reaction.api";
+import type { PostContentFormat } from "@/features/new-feed/utils/rich-text";
 
 type SortType = "latest" | "trending";
 
 interface Author {
+  id: number;
   name: string;
   avatar: string;
 }
@@ -21,6 +23,7 @@ interface Post {
   role: string;
   time: string;
   content: string;
+  contentFormat?: PostContentFormat;
   attachments?: {
     fileUrl: string;
     fileName: string;
@@ -38,7 +41,12 @@ interface SidebarItemProps {
 
 interface PostCardProps extends Post {
   onDeleted?: (postId: number) => void;
-  onUpdated?: (postId: number, content: string) => void;
+  onUpdated?: (
+    postId: number,
+    content: string,
+    contentFormat?: PostContentFormat,
+  ) => void;
+  onCopied?: (postId: number) => void;
 }
 
 interface RightSidebarWidgetProps {
@@ -58,6 +66,7 @@ interface GroupItemProps {
 type ApiPost = {
   id: number;
   content: string;
+  contentFormat?: PostContentFormat;
   isPinned: boolean;
   createdAt: string;
   user?: {
