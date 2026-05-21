@@ -116,11 +116,16 @@ export const addMemberToGroup = async (req: Request, res: Response) => {
 export const getGroupMembers = async (req: Request, res: Response) => {
   try {
     const groupId = Number(req.params.groupId);
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
 
     const { page = 1, limit = 10, search = "", role } = req.query;
 
     const members = await groupService.getGroupMembers(
       groupId,
+      userId,
       +page,
       +limit,
       search as string,
@@ -189,11 +194,14 @@ export const joinGroup = async (req: Request, res: Response) => {
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    const member = await groupService.joinGroup(groupId, userId);
+    const result = await groupService.joinGroup(groupId, userId);
 
     return res.status(201).json({
-      message: "Tham gia nhóm thành công",
-      data: member,
+      message:
+        result.action === "requested"
+          ? "Đã gửi yêu cầu tham gia nhóm"
+          : "Tham gia nhóm thành công",
+      data: result,
     });
   } catch (error: any) {
     return res.status(400).json({ message: error.message });
@@ -207,10 +215,83 @@ export const leaveGroup = async (req: Request, res: Response) => {
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    await groupService.leaveGroup(groupId, userId);
+    const result = await groupService.leaveGroup(groupId, userId);
 
     return res.status(200).json({
-      message: "Rời nhóm thành công",
+      message:
+        result.action === "cancelled_request"
+          ? "Đã hủy yêu cầu tham gia"
+          : "Rời nhóm thành công",
+      data: result,
+    });
+  } catch (error: any) {
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+export const getJoinRequests = async (req: Request, res: Response) => {
+  try {
+    const groupId = Number(req.params.groupId);
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { page = 1, limit = 10 } = req.query;
+
+    const data = await groupService.getJoinRequests(
+      groupId,
+      userId,
+      +page,
+      +limit,
+    );
+
+    return res.status(200).json({
+      message: "Lấy danh sách yêu cầu tham gia thành công",
+      data,
+    });
+  } catch (error: any) {
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+export const approveJoinRequest = async (req: Request, res: Response) => {
+  try {
+    const groupId = Number(req.params.groupId);
+    const targetUserId = Number(req.params.userId);
+    const currentUserId = req.user?.id;
+    if (!currentUserId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const member = await groupService.approveJoinRequest(
+      groupId,
+      targetUserId,
+      currentUserId,
+    );
+
+    return res.status(200).json({
+      message: "Đã chấp nhận yêu cầu tham gia",
+      data: member,
+    });
+  } catch (error: any) {
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+export const rejectJoinRequest = async (req: Request, res: Response) => {
+  try {
+    const groupId = Number(req.params.groupId);
+    const targetUserId = Number(req.params.userId);
+    const currentUserId = req.user?.id;
+    if (!currentUserId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    await groupService.rejectJoinRequest(groupId, targetUserId, currentUserId);
+
+    return res.status(200).json({
+      message: "Đã từ chối yêu cầu tham gia",
     });
   } catch (error: any) {
     return res.status(400).json({ message: error.message });
@@ -281,5 +362,41 @@ export const getGroupPosts = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     return res.status(400).json({ message: error.message });
+  }
+};
+
+export const getGroupPostDetail = async (req: Request, res: Response) => {
+  try {
+    const groupId = Number(req.params.groupId);
+    const postId = Number(req.params.postId);
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const post = await groupService.getGroupPostDetail(groupId, postId, userId);
+
+    return res.status(200).json({
+      message: "Lấy chi tiết bài viết thành công",
+      data: post,
+    });
+  } catch (error: any) {
+    return res.status(404).json({ message: error.message });
+  }
+};
+
+export const getGroupSetting = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const { groupId } = req.params;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const result = await groupService.getGroupSetting(+groupId, userId);
+    return res.status(200).json({
+      message: "Lấy chi tiết cài đặt nhóm thành công",
+      data: result,
+    });
+  } catch (error: any) {
+    return res.status(404).json({ message: error.message });
   }
 };

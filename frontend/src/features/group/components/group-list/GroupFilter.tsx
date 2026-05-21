@@ -54,7 +54,7 @@ const GroupFilter = ({
               focus:ring-surface-tint
               transition-all
             "
-            placeholder="Filter groups..."
+            placeholder="Tìm kiếm nhóm..."
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -76,7 +76,18 @@ const GroupFilter = ({
           }`}
           onClick={() => setFilter("")}
         >
-          All Groups
+          Tất cả
+        </button>
+
+        <button
+          className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer ${
+            filter === "MY"
+              ? "bg-primary-container text-white"
+              : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"
+          }`}
+          onClick={() => setFilter("MY")}
+        >
+          Nhóm của bạn
         </button>
 
         <button
@@ -87,7 +98,7 @@ const GroupFilter = ({
           }`}
           onClick={() => setFilter("PUBLIC")}
         >
-          Public
+          Công khai
         </button>
 
         <button
@@ -98,7 +109,7 @@ const GroupFilter = ({
           }`}
           onClick={() => setFilter("PRIVATE")}
         >
-          Private
+          Riêng tư
         </button>
 
         <button
@@ -109,7 +120,7 @@ const GroupFilter = ({
           }`}
           onClick={() => setFilter("DEPARTMENT")}
         >
-          Department
+          Phòng ban
         </button>
       </div>
     </div>

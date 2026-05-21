@@ -8,6 +8,7 @@ import { groupApi } from "@/features/group/apis/group.api";
 import { useOutletContext, useParams } from "react-router-dom";
 import AboutSidebar from "@/features/group/components/group-detail/main-detail/AboutSidebar";
 import { toast } from "sonner";
+import type { GroupDetail } from "@/features/group/types/group.type";
 
 const LIMIT = 10;
 
@@ -25,7 +26,7 @@ const GroupFeedPage: React.FC = () => {
 
   const { isMember, groupDetail } = useOutletContext<{
     isMember: boolean;
-    groupDetail: import("@/features/group/types/group.type").GroupDetail | null;
+    groupDetail: GroupDetail | null;
   }>();
 
   // Refs để theo dõi state trong IntersectionObserver
@@ -55,8 +56,8 @@ const GroupFeedPage: React.FC = () => {
         isFetchingRef.current = true;
         setLoading(true);
 
-        // Lưu ý: Bạn có thể cần một hàm API riêng cho Group: PostsApi.getPostsByGroup(groupId, ...)
         const response = await groupApi.getPost(groupId, currentPage, LIMIT);
+
         const responseData = response.data;
 
         const mappedPinned = (responseData.pinnedPosts || []).map(
@@ -96,7 +97,6 @@ const GroupFeedPage: React.FC = () => {
     [groupId],
   );
 
-  // Khởi tạo và Infinite Scroll
   useEffect(() => {
     fetchPosts(1);
   }, [fetchPosts]);
@@ -125,7 +125,7 @@ const GroupFeedPage: React.FC = () => {
 
   const handleCopyGroupLink = (postId: number) => {
     if (!groupId) return;
-    const postLink = `${import.meta.env.VITE_BASE_URL_FRONTEND}/groups/${groupId}/news-feed/${postId}`;
+    const postLink = `${import.meta.env.VITE_BASE_URL_FRONTEND}/groups/${groupId}/posts/${postId}`;
     navigator.clipboard.writeText(postLink);
     toast.success("Đã sao chép liên kết bài viết");
   };

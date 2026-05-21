@@ -6,4 +6,5 @@ export type GroupOutletContext = {
   groupDetail: GroupDetail | null;
   currentMemberRole: GroupMemberRole | null;
   canManageMembers: boolean;
+  refreshGroupDetail: () => Promise<void>;
 };

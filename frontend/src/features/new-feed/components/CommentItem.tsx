@@ -16,23 +16,49 @@ import {
 import type { CommentItemType } from "@/features/new-feed/types/comment.type";
 import CommentInput from "@/features/new-feed/components/CommentInput";
 import { toast } from "sonner";
+import type { ReactionType } from "../api/reaction.api";
 
-const reactions: {
-  type: CommentReactionType;
+const reactionOptions: {
+  type: ReactionType;
   label: string;
-  icon: React.ElementType;
+  icon: string;
   className: string;
 }[] = [
-  { type: "LIKE", label: "Thích", icon: ThumbsUp, className: "text-blue-600" },
-  { type: "LOVE", label: "Yêu thích", icon: Heart, className: "text-red-500" },
-  { type: "HAHA", label: "Haha", icon: Laugh, className: "text-yellow-500" },
-  { type: "WOW", label: "Wow", icon: SmilePlus, className: "text-yellow-500" },
-  { type: "SAD", label: "Buồn", icon: Frown, className: "text-yellow-600" },
+  {
+    type: "LIKE",
+    label: "Thích",
+    icon: "/icons/like.png",
+    className: "",
+  },
+  {
+    type: "LOVE",
+    label: "Yêu thích",
+    icon: "/icons/love.png",
+    className: "",
+  },
+  {
+    type: "HAHA",
+    label: "Haha",
+    icon: "/icons/haha.png",
+    className: "",
+  },
+  {
+    type: "WOW",
+    label: "Wow",
+    icon: "/icons/wow.png",
+    className: "",
+  },
+  {
+    type: "SAD",
+    label: "Buồn",
+    icon: "/icons/sad.png",
+    className: "",
+  },
   {
     type: "ANGRY",
     label: "Phẫn nộ",
-    icon: Angry,
-    className: "text-orange-600",
+    icon: "/icons/angry.png",
+    className: "",
   },
 ];
 
@@ -62,11 +88,9 @@ const CommentItem = ({
     comment.reactionCount ?? 0,
   );
 
-  const selectedReaction = reactions.find(
+  const selectedReaction = reactionOptions.find(
     (item) => item.type === currentReaction,
   );
-
-  const ReactionIcon = selectedReaction?.icon ?? ThumbsUp;
 
   const handleReact = async (reactionType: CommentReactionType) => {
     try {
@@ -191,19 +215,21 @@ const CommentItem = ({
           <div className="relative group">
             <div className="absolute bottom-full left-0 hidden group-hover:block h-2 w-40" />
 
-            <div className="absolute bottom-full left-0 mb-1 hidden group-hover:flex gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-lg px-2 py-1 z-20">
-              {reactions.map((reaction) => {
-                const Icon = reaction.icon;
-
+            <div className="absolute bottom-full left-0 mb-1 hidden w-max group-hover:flex gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-lg px-2 py-1 z-20">
+              {reactionOptions.map((reaction) => {
                 return (
                   <button
                     key={reaction.type}
                     type="button"
                     onClick={() => handleReact(reaction.type)}
-                    className={`p-1 rounded-full hover:scale-125 transition-transform ${reaction.className}`}
+                    className={`p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-transform hover:scale-125 ${reaction.className}`}
                     title={reaction.label}
                   >
-                    <Icon size={18} />
+                    <img
+                      src={reaction.icon}
+                      alt={reaction.label}
+                      className="w-6 h-6 shrink-0 object-contain"
+                    />
                   </button>
                 );
               })}
@@ -212,12 +238,23 @@ const CommentItem = ({
             <button
               type="button"
               onClick={() => handleReact(currentReaction ?? "LIKE")}
-              className={`font-semibold ${
-                selectedReaction ? selectedReaction.className : ""
+              className={`flex items-center gap-2 transition-colors disabled:opacity-60 ${
+                selectedReaction
+                  ? "text-slate-700 dark:text-slate-200"
+                  : "text-slate-500 hover:text-blue-700"
               }`}
             >
-              <ReactionIcon size={13} className="inline mr-1" />
-              {reactionCount}
+              {selectedReaction ? (
+                <img
+                  src={selectedReaction.icon}
+                  alt={selectedReaction.label}
+                  className="w-6 h-6 object-contain shrink-0"
+                />
+              ) : (
+                <ThumbsUp size={18} />
+              )}
+
+              <span className="text-xs font-semibold">{reactionCount}</span>
             </button>
           </div>
 

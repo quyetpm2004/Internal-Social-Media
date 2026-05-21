@@ -10,7 +10,6 @@ type UploadPurpose =
   | "post-image"
   | "post-video"
   | "post-file"
-  | "group-avatar"
   | "group-cover";
 
 type CreateUploadUrlsInput = {
@@ -37,12 +36,6 @@ export async function createUploadUrls(input: CreateUploadUrlsInput) {
       maxSize: 2 * 1024 * 1024,
       allowedTypes: ["image/jpeg", "image/png", "image/webp"],
       folder: "users/avatar",
-    },
-
-    "group-avatar": {
-      maxSize: 2 * 1024 * 1024,
-      allowedTypes: ["image/jpeg", "image/png", "image/webp"],
-      folder: "groups/avatar",
     },
 
     "group-cover": {
@@ -201,32 +194,6 @@ export async function confirmUploads(input: ConfirmUploadInput) {
 
       results.push({
         type: "avatar",
-        key,
-      });
-
-      continue;
-    }
-
-    /**
-     * GROUP AVATAR
-     */
-    if (purpose === "group-avatar") {
-      if (!groupId) {
-        throw new Error("GROUP_ID_REQUIRED");
-      }
-
-      await prisma.group.update({
-        where: {
-          id: +groupId,
-        },
-
-        data: {
-          avatarKey: key,
-        },
-      });
-
-      results.push({
-        type: "group-avatar",
         key,
       });
 

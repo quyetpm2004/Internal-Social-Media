@@ -11,7 +11,6 @@ const createUploadUrlSchema = z.object({
           "post-image",
           "post-video",
           "post-file",
-          "group-avatar",
           "group-cover",
         ]),
         fileName: z.string(),
@@ -64,7 +63,6 @@ export const confirmUploadSchema = z.object({
         "post-image",
         "post-video",
         "post-file",
-        "group-avatar",
         "group-cover",
       ]),
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   Globe,
   UserPlus,
@@ -6,30 +6,37 @@ import {
   EarthLock,
   Activity,
   UserMinus,
+  Clock,
+  Camera,
 } from "lucide-react";
 import { NavLink, useParams } from "react-router-dom";
 import ConfirmModal from "@/components/common/ConfirmModal";
 import { toast } from "sonner";
+import type { GroupMembershipStatus } from "@/features/group/types/group.type";
 
 type GroupHeaderProps = {
   name: string;
   type: "PUBLIC" | "PRIVATE" | "DEPARTMENT";
   memberCount: number;
   isMember: boolean;
-  avatarUrl?: string;
+  membershipStatus: GroupMembershipStatus;
+  pendingRequestCount?: number;
   coverUrl?: string;
+  canEditMedia?: boolean;
+  coverUploading?: boolean;
+  onCoverChange?: (file: File) => void;
   onJoinLeave: () => void;
 };
 
+const DEFAULT_COVER =
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuCxXrrVBOhyAl7Aur699kAxZteWPkXZCRRIQG5LakpAB500wW2pX0oErQ5rTuQ0BoP5GIvfTD3VY_UbSVwlbx4SYp2m2wPHDldxxBaCS4MSb6nkbzoXZATv8JF0_gp4mF1digbyXX_vSAhTXN3P-Ur0JZb4F8QVkfZaj0Gmcy9vftdnzoxrj_wRBH4jhIaOFVVDxTdfXZdh89KK4hlnhPM0c-YPDbkXxfI-Au0hBnxKTnJL0p4jNcMWzCyt9Lm7XUmXyOKxNrRKaso";
+
 const tabs = [
-  {
-    label: "Thảo luận",
-    path: "",
-  },
-  {
-    label: "Thành viên",
-    path: "members",
-  },
+  { label: "Thảo luận", path: "" },
+  { label: "Thành viên", path: "members" },
+  { label: "File phương tiện", path: "media" },
+  { label: "File", path: "files" },
+  { label: "Cài đặt nhóm", path: "setting" },
 ];
 
 const GroupHeader: React.FC<GroupHeaderProps> = ({
@@ -37,59 +44,146 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
   type,
   memberCount,
   isMember,
-  avatarUrl,
+  membershipStatus,
+  pendingRequestCount = 0,
   coverUrl,
+  canEditMedia = false,
+  coverUploading = false,
+  onCoverChange,
   onJoinLeave,
 }) => {
   const { groupId } = useParams();
-
   const [showLeaveJoinConfirm, setShowLeaveJoinConfirm] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && onCoverChange) onCoverChange(file);
+    e.target.value = "";
+  };
+
+  const isPending = membershipStatus === "PENDING";
 
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
-
       toast.success("Đã copy link nhóm");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Copy failed:", error);
       toast.error("Copy link thất bại");
     }
   };
 
+  const getConfirmContent = () => {
+    if (isMember) {
+      return {
+        title: "Rời nhóm?",
+        description: "Bạn có chắc chắn muốn rời khỏi nhóm này không?",
+        confirmText: "Rời nhóm",
+      };
+    }
+
+    if (isPending) {
+      return {
+        title: "Hủy yêu cầu tham gia?",
+        description: "Bạn có chắc muốn hủy yêu cầu tham gia nhóm này không?",
+        confirmText: "Hủy yêu cầu",
+      };
+    }
+
+    if (type === "PRIVATE") {
+      return {
+        title: "Gửi yêu cầu tham gia?",
+        description:
+          "Đây là nhóm riêng tư. Yêu cầu của bạn sẽ được quản trị viên xem xét.",
+        confirmText: "Gửi yêu cầu",
+      };
+    }
+
+    return {
+      title: "Tham gia nhóm?",
+      description: "Bạn có chắc chắn muốn tham gia nhóm này không?",
+      confirmText: "Tham gia nhóm",
+    };
+  };
+
+  const confirmContent = getConfirmContent();
+
+  const renderActionButton = () => {
+    if (isMember) {
+      return (
+        <>
+          <UserMinus size={18} />
+          <span>Rời khỏi nhóm</span>
+        </>
+      );
+    }
+
+    if (isPending) {
+      return (
+        <>
+          <Clock size={18} />
+          <span>Hủy yêu cầu</span>
+        </>
+      );
+    }
+
+    if (type === "PRIVATE") {
+      return (
+        <>
+          <UserPlus size={18} />
+          <span>Yêu cầu tham gia</span>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <UserPlus size={18} />
+        <span>Tham gia nhóm</span>
+      </>
+    );
+  };
+
   return (
     <section className="bg-white dark:bg-slate-900">
-      {/* Cover Image */}
-      <div className="relative h-64 md:h-80 w-full overflow-hidden">
+      <div className="relative h-64 md:h-80 w-full overflow-hidden group/cover">
         <img
           className="w-full h-full object-cover"
-          src={
-            coverUrl ||
-            "https://lh3.googleusercontent.com/aida-public/AB6AXuCxXrrVBOhyAl7Aur699kAxZteWPkXZCRRIQG5LakpAB500wW2pX0oErQ5rTuQ0BoP5GIvfTD3VY_UbSVwlbx4SYp2m2wPHDldxxBaCS4MSb6nkbzoXZATv8JF0_gp4mF1digbyXX_vSAhTXN3P-Ur0JZb4F8QVkfZaj0Gmcy9vftdnzoxrj_wRBH4jhIaOFVVDxTdfXZdh89KK4hlnhPM0c-YPDbkXxfI-Au0hBnxKTnJL0p4jNcMWzCyt9Lm7XUmXyOKxNrRKaso"
-          }
-          alt="Cover"
+          src={coverUrl || DEFAULT_COVER}
+          alt="Ảnh bìa nhóm"
         />
 
         <div className="absolute inset-0 bg-linear-to-t from-slate-900/60 to-transparent" />
+
+        {canEditMedia && (
+          <>
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              hidden
+              onChange={handleCoverSelect}
+            />
+
+            <button
+              type="button"
+              disabled={coverUploading}
+              onClick={() => coverInputRef.current?.click()}
+              className="absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2 bg-white/90 dark:bg-slate-900/90 text-slate-900 dark:text-white text-sm font-semibold rounded-lg shadow-lg opacity-0 group-hover/cover:opacity-100 focus:opacity-100 transition-opacity hover:bg-white disabled:opacity-60 cursor-pointer"
+            >
+              <Camera size={18} />
+              {coverUploading ? "Đang tải..." : "Đổi ảnh bìa"}
+            </button>
+          </>
+        )}
       </div>
 
-      {/* Header */}
-      <div className="max-w-5xl mx-auto px-6 relative -mt-16">
+      <div className="w-full mx-auto px-6 py-4 relative">
         <div className="flex flex-col md:flex-row items-end md:items-center justify-between gap-4">
           <div className="flex items-end gap-6">
-            <div className="w-32 h-32 md:w-40 md:h-40 rounded-xl bg-white p-1.5 shadow-xl">
-              <img
-                className="w-full h-full object-cover rounded-lg"
-                src={
-                  avatarUrl ||
-                  "https://lh3.googleusercontent.com/aida-public/AB6AXuAI0ouc-lE7Mr_qFsNUSQR5gEbGDXlsqnkWdS7EAkuImx0udlRLc1vpCMdM3kOXh-NBZ_QN1KZzmksOEAjgxWvsg7icSx7N8y9g8vW5Pb4aCjtekUtqHx8jZxQ6qkyh9pc2chdiENsQtZv6OKjtiDJPGX8twDM7RCOJ2RI0UAHpYzze2AZYBWxssvQABj2_oBWOYCV6PmG4pRLdtL4Cj6GD-8_iFaRxN2MTZFR-5OQZsnvxVgtPXi3pGFL4bFaA_Fb8TlDTHmhBios"
-                }
-                alt="Logo"
-              />
-            </div>
-
             <div className="mb-4 text-black dark:text-white">
               <h1 className="text-3xl font-extrabold mb-2">{name}</h1>
-
               <div className="flex items-center gap-3">
                 <span className="flex items-center gap-1.5 text-sm font-medium">
                   {type === "PUBLIC" && (
@@ -98,14 +192,12 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
                       <span>Nhóm công khai</span>
                     </>
                   )}
-
                   {type === "PRIVATE" && (
                     <>
                       <EarthLock size={16} />
                       <span>Nhóm riêng tư</span>
                     </>
                   )}
-
                   {type === "DEPARTMENT" && (
                     <>
                       <Activity size={16} />
@@ -113,9 +205,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
                     </>
                   )}
                 </span>
-
                 <span className="text-black/60">•</span>
-
                 <span className="text-sm font-semibold">
                   {memberCount.toLocaleString()} thành viên
                 </span>
@@ -125,24 +215,20 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
 
           <div className="flex gap-3 mb-4">
             <button
-              className="px-6 py-2.5 bg-blue-700 text-white font-bold cursor-pointer rounded-xl flex items-center gap-2 hover:bg-blue-800 transition-colors shadow-lg shadow-blue-700/20"
+              type="button"
+              className={`px-6 py-2.5 font-bold cursor-pointer rounded-xl flex items-center gap-2 transition-colors shadow-lg ${
+                isPending
+                  ? "bg-amber-100 text-amber-800 hover:bg-amber-200 shadow-amber-200/30"
+                  : "bg-blue-700 text-white hover:bg-blue-800 shadow-blue-700/20"
+              }`}
               onClick={() => setShowLeaveJoinConfirm(true)}
             >
-              {isMember ? (
-                <>
-                  <UserMinus size={18} />
-                  <span>Rời khỏi nhóm</span>
-                </>
-              ) : (
-                <>
-                  <UserPlus size={18} />
-                  <span>Tham gia nhóm</span>
-                </>
-              )}
+              {renderActionButton()}
             </button>
 
             <button
-              className="p-2.5 bg-white/20 backdrop-blur-md text-white rounded-xl hover:bg-white/30 transition-colors"
+              type="button"
+              className="p-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
               onClick={handleCopyLink}
             >
               <Share2 size={20} />
@@ -150,12 +236,14 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
           </div>
         </div>
 
-        {/* Navigation */}
-        <div className="mt-8 flex gap-8 border-t border-slate-100 pt-1">
+        <div className="mt-4 flex gap-8 border-t border-slate-100 dark:border-slate-800 pt-1">
           {tabs.map((item) => {
             const to = item.path
               ? `/groups/${groupId}/${item.path}`
               : `/groups/${groupId}`;
+
+            const showBadge =
+              item.path === "members" && pendingRequestCount > 0;
 
             return (
               <NavLink
@@ -163,7 +251,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
                 to={to}
                 end={!item.path}
                 className={({ isActive }) =>
-                  `py-4 text-sm font-medium transition-colors border-b-2 ${
+                  `py-4 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${
                     isActive
                       ? "text-blue-700 border-blue-700"
                       : "text-slate-500 border-transparent hover:text-slate-900 dark:hover:text-white"
@@ -171,6 +259,12 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
                 }
               >
                 {item.label}
+
+                {showBadge && (
+                  <span className="min-w-5 h-5 px-1.5 flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full">
+                    {pendingRequestCount > 99 ? "99+" : pendingRequestCount}
+                  </span>
+                )}
               </NavLink>
             );
           })}
@@ -180,13 +274,9 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
       {showLeaveJoinConfirm && (
         <ConfirmModal
           open={showLeaveJoinConfirm}
-          title={isMember ? "Rời nhóm?" : "Tham gia nhóm?"}
-          description={
-            isMember
-              ? "Bạn có chắc chắn muốn rời khỏi nhóm này không?"
-              : "Bạn có chắc chắn muốn tham gia nhóm này không?"
-          }
-          confirmText={isMember ? "Rời nhóm" : "Tham gia nhóm"}
+          title={confirmContent.title}
+          description={confirmContent.description}
+          confirmText={confirmContent.confirmText}
           variant="primary"
           onCancel={() => setShowLeaveJoinConfirm(false)}
           onConfirm={() => {

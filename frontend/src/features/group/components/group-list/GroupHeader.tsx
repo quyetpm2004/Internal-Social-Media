@@ -9,7 +9,7 @@ const GroupHeader = ({ onClick }: GroupHeaderProps) => {
     <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
       <div>
         <h1 className="text-4xl font-extrabold tracking-tight text-on-surface mb-2">
-          Groups
+          Nhóm
         </h1>
         <p className="text-on-surface-variant text-sm">
           Kết nối với các nhóm, khám phá các trung tâm đổi mới và tham gia cộng
@@ -21,7 +21,7 @@ const GroupHeader = ({ onClick }: GroupHeaderProps) => {
         onClick={onClick}
       >
         <Users size={16} />
-        Create Group
+        Tạo nhóm
       </button>
     </div>
   );

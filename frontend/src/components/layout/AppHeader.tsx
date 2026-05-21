@@ -8,6 +8,7 @@ import {
   Settings,
   User,
 } from "lucide-react";
+import SearchBar from "@/features/search/components/SearchBar";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 
@@ -48,18 +49,19 @@ export default function AppHeader() {
       <div className="flex items-center justify-between h-16 w-full max-w-full">
         <div className="flex items-center gap-4 w-80">
           <span className="text-xl font-extrabold text-blue-700 dark:text-white tracking-tight pr-2 pl-3">
-            <LayoutDashboard size={26} />
+            <img src="/logo/logo.png" alt="Logo" className="w-16 h-10" />
           </span>
 
-          <div className="hidden md:flex items-center bg-surface-container-highest px-2 py-2 w-full rounded-lg gap-3">
-            <Search size={20} />
+          <SearchBar />
 
-            <input
-              className="bg-transparent focus:ring-0 text-sm w-full placeholder-on-surface-variant border-none focus-visible:outline-none py-1"
-              placeholder="Tìm kiếm..."
-              type="text"
-            />
-          </div>
+          <button
+            type="button"
+            onClick={() => navigate("/search")}
+            className="md:hidden p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            aria-label="Tìm kiếm"
+          >
+            <Search size={20} />
+          </button>
         </div>
 
         <div className="flex items-center gap-4 pr-4">

@@ -29,8 +29,25 @@ router.patch(
 router.post("/:groupId/join", groupController.joinGroup);
 router.post("/:groupId/leave", groupController.leaveGroup);
 
+// Join requests (private groups)
+router.get("/:groupId/join-requests", groupController.getJoinRequests);
+router.post(
+  "/:groupId/join-requests/:userId/approve",
+  groupController.approveJoinRequest,
+);
+router.delete(
+  "/:groupId/join-requests/:userId",
+  groupController.rejectJoinRequest,
+);
+
 // Group posts
 router.post("/:groupId/posts", groupController.createGroupPost);
 router.get("/:groupId/posts", groupController.getGroupPosts);
+
+// Group post detail
+router.get("/:groupId/posts/:postId", groupController.getGroupPostDetail);
+
+// Group setting
+router.get("/:groupId/settings", groupController.getGroupSetting);
 
 export default router;

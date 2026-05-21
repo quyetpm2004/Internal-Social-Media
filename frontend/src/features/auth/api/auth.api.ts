@@ -5,16 +5,21 @@ import type {
   RefreshTokenResponse,
   UserPublicInfo,
 } from "@/features/auth/types/auth.type";
+import type { ApiResponse } from "@/types/api.type";
 
 export const authApi = {
   login(payload: LoginPayload) {
-    return axiosClient.post<LoginResponse>("/auth/login", payload);
+    return axiosClient.post<ApiResponse<LoginResponse>>("/auth/login", payload);
   },
 
   refreshToken() {
-    return axiosClient.post<RefreshTokenResponse>("/auth/refresh-token", {}, {
-      skipAuthRefresh: true,
-    } as any);
+    return axiosClient.post<ApiResponse<RefreshTokenResponse>>(
+      "/auth/refresh-token",
+      {},
+      {
+        skipAuthRefresh: true,
+      } as any,
+    );
   },
 
   logout() {
@@ -24,6 +29,6 @@ export const authApi = {
   },
 
   getMe() {
-    return axiosClient.get<UserPublicInfo>("/auth/me");
+    return axiosClient.get<ApiResponse<UserPublicInfo>>("/auth/me");
   },
 };

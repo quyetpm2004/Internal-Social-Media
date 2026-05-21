@@ -46,7 +46,6 @@ export async function login(req: Request, res: Response): Promise<void> {
     });
     // Remove refreshToken from response body
     const { refreshToken, ...responseData } = result;
-    console.log("User info set in request:", req.user);
     res.status(200).json({
       message: "Đăng nhập thành công",
       data: responseData,

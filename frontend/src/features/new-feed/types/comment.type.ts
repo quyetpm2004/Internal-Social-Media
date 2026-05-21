@@ -24,3 +24,17 @@ export type CommentItemType = {
   reactionCount: number;
   currentReaction?: CommentReactionType | null;
 };
+
+export interface CommentApiResponse {
+  comments: CommentItemType[];
+  page: number;
+  limit: number;
+  hasMore: boolean;
+}
+
+export interface RepliesApiResponse {
+  replies: CommentItemType[];
+  page: number;
+  limit: number;
+  hasMore: boolean;
+}

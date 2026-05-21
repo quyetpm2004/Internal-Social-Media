@@ -16,7 +16,7 @@ const AboutSidebar: React.FC<AboutSidebarProps> = ({
   return (
     <aside className="md:col-span-4 space-y-6">
       <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm">
-        <h3 className="font-bold text-lg mb-4">Thông tin</h3>
+        <h3 className="font-bold text-lg mb-4">Mô tả</h3>
         <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-6">
           {description}
         </p>

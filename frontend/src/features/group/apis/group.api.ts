@@ -1,19 +1,31 @@
 import { axiosClient } from "@/lib/axios";
 import type {
+  GetJoinRequestsResponse,
   GetMembersResponse,
   GroupApiResponse,
   GroupDetail,
 } from "@/features/group/types/group.type";
-import type { GetPostsResponse } from "@/features/new-feed/types/new-feed.type";
+import type {
+  ApiPost,
+  GetPostsResponse,
+} from "@/features/new-feed/types/new-feed.type";
+import type { ApiResponse } from "@/types/api.type";
 
 export const groupApi = {
   getGroups(searchQuery?: string, filter?: string, page: number = 1) {
-    const response = axiosClient.get<GroupApiResponse>("/groups", {
-      params: {
-        search: searchQuery,
-        groupType: filter,
-        page,
-      },
+    const params: Record<string, string | number> = {
+      search: searchQuery ?? "",
+      page,
+    };
+
+    if (filter === "MY") {
+      params.scope = "my";
+    } else if (filter) {
+      params.groupType = filter;
+    }
+
+    const response = axiosClient.get<ApiResponse<GroupApiResponse>>("/groups", {
+      params,
     });
     return response;
   },
@@ -27,7 +39,9 @@ export const groupApi = {
     return response;
   },
   getGroupDetail(groupId: string) {
-    const response = axiosClient.get<GroupDetail>(`/groups/${groupId}`);
+    const response = axiosClient.get<ApiResponse<GroupDetail>>(
+      `/groups/${groupId}`,
+    );
     return response;
   },
   joinGroup(groupId: string) {
@@ -39,7 +53,7 @@ export const groupApi = {
     return response;
   },
   getPost(groupId: string, page: number = 1, limit: number = 10) {
-    const response = axiosClient.get<GetPostsResponse>(
+    const response = axiosClient.get<ApiResponse<GetPostsResponse>>(
       `/groups/${groupId}/posts`,
       {
         params: {
@@ -61,7 +75,7 @@ export const groupApi = {
       params.append("role", role);
     }
 
-    return axiosClient.get<GetMembersResponse>(
+    return axiosClient.get<ApiResponse<GetMembersResponse>>(
       `/groups/${groupId}/members?${params.toString()}`,
     );
   },
@@ -77,13 +91,43 @@ export const groupApi = {
     return axiosClient.delete(`/groups/${groupId}/members/${memberId}`);
   },
 
-  updateMemberRole: (
-    groupId: string,
-    memberId: string,
-    memberRole: string,
-  ) => {
+  updateMemberRole: (groupId: string, memberId: string, memberRole: string) => {
     return axiosClient.patch(`/groups/${groupId}/members/${memberId}/role`, {
       memberRole,
     });
+  },
+  getGroupPostDetail(groupId: string, postId: string) {
+    const response = axiosClient.get<ApiResponse<ApiPost>>(
+      `/groups/${groupId}/posts/${postId}`,
+    );
+    return response;
+  },
+
+  getJoinRequests: (groupId: string, page = 1, limit = 10) => {
+    return axiosClient.get<ApiResponse<GetJoinRequestsResponse>>(
+      `/groups/${groupId}/join-requests`,
+      { params: { page, limit } },
+    );
+  },
+
+  approveJoinRequest: (groupId: string, userId: string) => {
+    return axiosClient.post(
+      `/groups/${groupId}/join-requests/${userId}/approve`,
+    );
+  },
+
+  rejectJoinRequest: (groupId: string, userId: string) => {
+    return axiosClient.delete(`/groups/${groupId}/join-requests/${userId}`);
+  },
+
+  updateGroup: (groupId: string, groupName: string, description: string) => {
+    return axiosClient.put(`/groups/${groupId}`, {
+      groupName,
+      description,
+    });
+  },
+
+  getGroupSetting: (groupId: string) => {
+    return axiosClient.get(`/groups/${groupId}/settings`);
   },
 };

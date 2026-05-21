@@ -1,12 +1,13 @@
 import type { GroupMemberRole } from "@/features/group/utils/group-member";
 
+export type GroupMembershipStatus = "PENDING" | "ACTIVE" | "BLOCKED" | null;
+
 export interface Group {
   id: string;
   groupName: string;
   description: string;
   groupType: "PUBLIC" | "PRIVATE" | "DEPARTMENT";
   status: string;
-  avatarUrl: string;
   coverUrl: string;
   createdAt: string;
   updatedAt: string;
@@ -15,6 +16,7 @@ export interface Group {
     posts: number;
   };
   isMember: boolean;
+  membershipStatus?: GroupMembershipStatus;
 }
 
 export interface GroupApiResponse {
@@ -36,9 +38,7 @@ export interface GroupDetail {
   groupType: "PUBLIC" | "PRIVATE" | "DEPARTMENT";
   status: string;
   departmentId?: string;
-  avatarUrl?: string;
   coverUrl?: string;
-  avatarKey?: string;
   coverKey?: string;
   createdAt: string;
   updatedAt: string;
@@ -61,6 +61,26 @@ export interface GroupDetail {
     posts: number;
   };
   isMember: boolean;
+  membershipStatus: GroupMembershipStatus;
+  pendingRequestCount?: number;
+}
+
+export interface JoinRequest {
+  id: string;
+  fullName: string;
+  email: string;
+  requestedAt: string;
+  avatarUrl: string | null;
+}
+
+export interface GetJoinRequestsResponse {
+  requests: JoinRequest[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 export interface Member {
@@ -81,4 +101,15 @@ export interface GetMembersResponse {
     total: number;
     totalPages: number;
   };
+}
+
+export type ItemType = "input-group" | "radio" | "info";
+
+export interface SettingConfig {
+  id: string;
+  label: string;
+  value: string;
+  type: ItemType;
+  options?: string[];
+  isDropdown?: boolean;
 }

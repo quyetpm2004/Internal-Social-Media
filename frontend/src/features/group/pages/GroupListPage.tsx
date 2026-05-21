@@ -58,6 +58,11 @@ const GroupListPage = () => {
     fetchGroups();
   }, [filter, currentPage]);
 
+  const handleFilterChange = (value: string) => {
+    setFilter(value);
+    setCurrentPage(1);
+  };
+
   // search
   const handleSearch = async () => {
     setCurrentPage(1);
@@ -88,9 +93,9 @@ const GroupListPage = () => {
 
   const handleJoinGroup = async (groupId: string) => {
     try {
-      await groupApi.joinGroup(groupId);
-      fetchGroups();
-      toast.success("Tham gia nhóm thành công");
+      const response = await groupApi.joinGroup(groupId);
+      await fetchGroups();
+      toast.success(response.message);
     } catch (error: any) {
       console.error("Cannot join this group: ", error);
       const message =
@@ -109,7 +114,7 @@ const GroupListPage = () => {
 
           <GroupFilter
             filter={filter}
-            setFilter={setFilter}
+            setFilter={handleFilterChange}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             onSearch={handleSearch}
@@ -133,8 +138,8 @@ const GroupListPage = () => {
                       groupType={group.groupType}
                       description={group.description}
                       isMember={group.isMember}
+                      membershipStatus={group.membershipStatus}
                       memberCount={group._count.members}
-                      avatarUrl={group.avatarUrl}
                       coverUrl={group.coverUrl}
                       joinGroup={handleJoinGroup}
                     />
@@ -149,10 +154,16 @@ const GroupListPage = () => {
               </>
             ) : (
               <div className="flex flex-col items-center justify-center py-20 text-center">
-                <h3 className="text-lg font-semibold mb-2">No groups found</h3>
+                <h3 className="text-lg font-semibold mb-2">
+                  {filter === "MY"
+                    ? "Bạn chưa tham gia nhóm nào"
+                    : "Không tìm thấy nhóm"}
+                </h3>
 
                 <p className="text-sm text-on-surface-variant">
-                  Try changing your search or filters.
+                  {filter === "MY"
+                    ? "Tham gia nhóm công khai hoặc được mời vào nhóm riêng tư."
+                    : "Thử đổi từ khóa tìm kiếm hoặc bộ lọc khác."}
                 </p>
               </div>
             )}

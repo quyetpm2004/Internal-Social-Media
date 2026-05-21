@@ -1,5 +1,6 @@
-import { Landmark, Users } from "lucide-react";
+import { Clock, Users } from "lucide-react";
 import { NavLink } from "react-router-dom";
+import type { GroupMembershipStatus } from "@/features/group/types/group.type";
 
 type GroupCardProps = {
   groupId: string;
@@ -7,11 +8,14 @@ type GroupCardProps = {
   groupType: "PUBLIC" | "PRIVATE" | "DEPARTMENT";
   description: string;
   memberCount: number;
-  avatarUrl: string;
   coverUrl: string;
   isMember: boolean;
+  membershipStatus?: GroupMembershipStatus;
   joinGroup: (groupId: string) => void;
 };
+
+const DEFAULT_COVER =
+  "https://images.unsplash.com/photo-1506744038136-46273834b3fb?ixlib=rb-4.0.3&auto=format&fit=crop&w=1170&q=80";
 
 const GroupCard = ({
   groupId,
@@ -19,43 +23,25 @@ const GroupCard = ({
   groupType,
   description,
   memberCount,
-  avatarUrl,
   coverUrl,
   isMember,
+  membershipStatus,
   joinGroup,
 }: GroupCardProps) => {
+  const isPending = membershipStatus === "PENDING";
+
   return (
     <div className="group bg-surface-container-lowest rounded-xl overflow-hidden flex flex-col transition-all duration-300 hover:translate-y-[-4px]">
-      <div className="h-28 relative">
+      <div className="h-32 relative">
         <img
           className="w-full h-full object-cover"
-          data-alt="A panoramic view of a minimalist, brightly lit architectural studio with clean lines, large glass windows, and white desks. The lighting is crisp, morning daylight, casting soft shadows. The overall aesthetic is professional, airy, and modern, reflecting a premium corporate environment."
-          src={
-            coverUrl ||
-            "https://images.unsplash.com/photo-1506744038136-46273834b3fb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80"
-          }
+          src={coverUrl || DEFAULT_COVER}
+          alt={groupName}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
-        <div className="absolute -bottom-6 left-6 p-1 bg-surface-container-lowest rounded-lg">
-          <div className="w-12 h-12 bg-primary-container rounded-lg flex items-center justify-center text-white">
-            <span
-              className="material-symbols-outlined"
-              data-icon="architecture"
-            >
-              {avatarUrl ? (
-                <img
-                  className="w-full h-full object-cover"
-                  src={avatarUrl}
-                  alt={groupName}
-                />
-              ) : (
-                <Landmark />
-              )}
-            </span>
-          </div>
-        </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
       </div>
-      <div className="pt-10 px-6 pb-6 flex-1 flex flex-col">
+
+      <div className="px-6 py-5 flex-1 flex flex-col">
         <NavLink to={`/groups/${groupId}`}>
           <div className="flex justify-between items-start mb-2">
             <h3 className="text-xl font-bold text-on-surface">{groupName}</h3>
@@ -70,28 +56,29 @@ const GroupCard = ({
 
         <div className="mt-auto flex items-center justify-between">
           <div className="flex items-center gap-1 text-on-surface-variant">
-            <span
-              className="material-symbols-outlined text-sm"
-              data-icon="group"
-            >
-              <Users />
-            </span>
+            <Users className="text-sm" />
             <span className="text-xs font-semibold">
-              {memberCount.toLocaleString()} members
+              {memberCount.toLocaleString()} thành viên
             </span>
           </div>
 
           {isMember ? (
             <span className="px-3 py-1.5 bg-green-100 text-green-800 font-bold text-xs rounded-lg">
-              Member
+              Thành viên
+            </span>
+          ) : isPending ? (
+            <span className="px-3 py-1.5 bg-amber-100 text-amber-800 font-bold text-xs rounded-lg flex items-center gap-1">
+              <Clock size={12} />
+              Đang chờ duyệt
             </span>
           ) : (
-            <span
+            <button
+              type="button"
               onClick={() => joinGroup(groupId)}
               className="px-3 py-1.5 bg-primary text-on-primary font-bold text-xs rounded-lg cursor-pointer"
             >
-              Join
-            </span>
+              {groupType === "PRIVATE" ? "Yêu cầu tham gia" : "Tham gia"}
+            </button>
           )}
         </div>
       </div>

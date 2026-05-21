@@ -95,7 +95,11 @@ export const GroupMembersPage = () => {
 
     setUpdatingRole(true);
     try {
-      await groupApi.updateMemberRole(groupId, String(editMember.id), memberRole);
+      await groupApi.updateMemberRole(
+        groupId,
+        String(editMember.id),
+        memberRole,
+      );
       toast.success("Cập nhật quyền thành công");
       setEditMember(null);
       fetchMembers();
@@ -118,7 +122,7 @@ export const GroupMembersPage = () => {
   };
 
   return (
-    <main className="md:col-span-8 space-y-6">
+    <div className="space-y-6">
       <FilterSection
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
@@ -157,6 +161,6 @@ export const GroupMembersPage = () => {
           onSubmit={handleUpdateRole}
         />
       )}
-    </main>
+    </div>
   );
 };

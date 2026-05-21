@@ -4,10 +4,11 @@ import type {
   GetPostsResponse,
 } from "@/features/new-feed/types/new-feed.type";
 import type { PostContentFormat } from "@/features/new-feed/utils/rich-text";
+import type { ApiResponse } from "@/types/api.type";
 
 export const PostsApi = {
   getPostInNewFeed(page: number, limit: number, sort: "latest" | "trending") {
-    return axiosClient.get<GetPostsResponse>("/posts/new-feed", {
+    return axiosClient.get<ApiResponse<GetPostsResponse>>("/posts/new-feed", {
       params: {
         page,
         limit,
@@ -39,6 +40,6 @@ export const PostsApi = {
   },
 
   getPostById(postId: string) {
-    return axiosClient.get<ApiPost>(`/posts/${postId}`);
+    return axiosClient.get<ApiResponse<ApiPost>>(`/posts/${postId}`);
   },
 };

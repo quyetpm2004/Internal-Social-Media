@@ -1,10 +1,13 @@
 import React from "react";
 import NavItem from "@/components/common/NavItem"; // Component NavItem đã tạo ở bước trước
-import { Bookmark, Group, Home, Plus, User } from "lucide-react";
+import { Bookmark, Group, Home, User } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth.store";
+import { useLocation } from "react-router-dom";
 
 const AppSidebar: React.FC = () => {
   const user = useAuthStore((state) => state.user);
+  const location = useLocation();
+  const isActive = (path: string) => location.pathname === path;
   return (
     <aside className="hidden md:flex flex-col gap-2 p-4 fixed left-0 top-16 h-[calc(100vh-64px)] w-80 bg-slate-50 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800">
       <nav className="flex-1 space-y-1">
@@ -25,20 +28,31 @@ const AppSidebar: React.FC = () => {
           label={user?.fullName || "Tài khoản"}
           path={`/profile/${user?.id}`}
         />
-        <NavItem icon={<Home size={22} />} label="Trang chủ" path="/" />
         <NavItem
-          icon={<Group size={22} />}
+          icon={<Home size={20} />}
+          active={isActive("/news-feed")}
+          label="Trang chủ"
+          path="/news-feed"
+        />
+        <NavItem
+          icon={<Group size={20} />}
+          active={isActive("/groups")}
           label="Không gian nhóm"
           path="/groups"
         />
-        <NavItem icon={<User size={22} />} label="Bạn bè" path="/people" />
-        <NavItem icon={<Bookmark size={22} />} label="Đã lưu" path="/stats" />
+        <NavItem
+          icon={<User size={20} />}
+          active={isActive("/people")}
+          label="Bạn bè"
+          path="/people"
+        />
+        <NavItem
+          icon={<Bookmark size={20} />}
+          active={isActive("/stats")}
+          label="Đã lưu"
+          path="/stats"
+        />
       </nav>
-
-      <button className="mt-auto mb-4 w-full bg-linear-to-br cursor-pointer from-blue-700 to-blue-800 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg hover:shadow-blue-500/20 active:scale-95 transition-all">
-        <Plus />
-        <span>Tạo bài viết</span>
-      </button>
     </aside>
   );
 };

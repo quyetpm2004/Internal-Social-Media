@@ -1,6 +1,7 @@
 import prisma from "../utils/prisma";
 import {
   GroupMemberRole,
+  GroupMemberStatus,
   GroupStatus,
   GroupType,
   PostStatus,
@@ -27,7 +28,11 @@ const assertCanManageTargetRole = (
 
 const countGroupAdmins = async (groupId: number) => {
   return prisma.groupMember.count({
-    where: { groupId, memberRole: GroupMemberRole.ADMIN },
+    where: {
+      groupId,
+      memberRole: GroupMemberRole.ADMIN,
+      status: GroupMemberStatus.ACTIVE,
+    },
   });
 };
 
@@ -55,8 +60,8 @@ const checkGroupExists = async (groupId: number) => {
   return group;
 };
 
-const checkIsGroupAdmin = async (groupId: number, userId: number) => {
-  const member = await prisma.groupMember.findUnique({
+const findGroupMember = async (groupId: number, userId: number) => {
+  return prisma.groupMember.findUnique({
     where: {
       groupId_userId: {
         groupId,
@@ -64,8 +69,21 @@ const checkIsGroupAdmin = async (groupId: number, userId: number) => {
       },
     },
   });
+};
 
-  if (!member) {
+const countActiveMembers = async (groupId: number) => {
+  return prisma.groupMember.count({
+    where: {
+      groupId,
+      status: GroupMemberStatus.ACTIVE,
+    },
+  });
+};
+
+const checkIsGroupAdmin = async (groupId: number, userId: number) => {
+  const member = await findGroupMember(groupId, userId);
+
+  if (!member || member.status !== GroupMemberStatus.ACTIVE) {
     throw new Error("Bạn không phải thành viên của nhóm");
   }
 
@@ -77,16 +95,9 @@ const checkIsGroupAdmin = async (groupId: number, userId: number) => {
 };
 
 const checkCanManageMember = async (groupId: number, userId: number) => {
-  const member = await prisma.groupMember.findUnique({
-    where: {
-      groupId_userId: {
-        groupId,
-        userId,
-      },
-    },
-  });
+  const member = await findGroupMember(groupId, userId);
 
-  if (!member) {
+  if (!member || member.status !== GroupMemberStatus.ACTIVE) {
     throw new Error("Bạn không phải thành viên của nhóm");
   }
 
@@ -101,16 +112,9 @@ const checkCanManageMember = async (groupId: number, userId: number) => {
 };
 
 const checkIsGroupMember = async (groupId: number, userId: number) => {
-  const member = await prisma.groupMember.findUnique({
-    where: {
-      groupId_userId: {
-        groupId,
-        userId,
-      },
-    },
-  });
+  const member = await findGroupMember(groupId, userId);
 
-  if (!member) {
+  if (!member || member.status !== GroupMemberStatus.ACTIVE) {
     throw new Error("Bạn phải là thành viên nhóm");
   }
 
@@ -145,6 +149,7 @@ export const createGroup = async (userId: number, data: any) => {
         create: {
           userId,
           memberRole: GroupMemberRole.ADMIN,
+          status: GroupMemberStatus.ACTIVE,
         },
       },
     },
@@ -165,8 +170,16 @@ export const createGroup = async (userId: number, data: any) => {
 };
 
 export const getGroups = async (query: any, userId: number) => {
-  const { search = "", groupType, departmentId, page = 1, limit = 6 } = query;
+  const {
+    search = "",
+    groupType,
+    scope,
+    departmentId,
+    page = 1,
+    limit = 6,
+  } = query;
 
+  const isMyGroups = scope === "my";
   const currentPage = Math.max(Number(page), 1);
   const take = Math.max(Number(limit), 1);
   const skip = (currentPage - 1) * take;
@@ -174,6 +187,15 @@ export const getGroups = async (query: any, userId: number) => {
   // where condition
   const whereCondition: any = {
     status: GroupStatus.ACTIVE,
+
+    ...(isMyGroups && {
+      members: {
+        some: {
+          userId,
+          status: GroupMemberStatus.ACTIVE,
+        },
+      },
+    }),
 
     ...(search && {
       OR: [
@@ -234,18 +256,8 @@ export const getGroups = async (query: any, userId: number) => {
   // xử lý membership + signed url
   const groupWithMembership = await Promise.all(
     groups.map(async (group) => {
-      const isMember = await prisma.groupMember.findUnique({
-        where: {
-          groupId_userId: {
-            groupId: group.id,
-            userId,
-          },
-        },
-      });
-
-      const avatarUrl = group.avatarKey
-        ? await getFileUrl(group.avatarKey, 24 * 60 * 60)
-        : null;
+      const membership = await findGroupMember(group.id, userId);
+      const activeMemberCount = await countActiveMembers(group.id);
 
       const coverUrl = group.coverKey
         ? await getFileUrl(group.coverKey, 24 * 60 * 60)
@@ -253,8 +265,12 @@ export const getGroups = async (query: any, userId: number) => {
 
       return {
         ...group,
-        isMember: !!isMember,
-        avatarUrl,
+        isMember: membership?.status === GroupMemberStatus.ACTIVE,
+        membershipStatus: membership?.status ?? null,
+        _count: {
+          ...group._count,
+          members: activeMemberCount,
+        },
         coverUrl,
       };
     }),
@@ -312,22 +328,64 @@ export const getGroupById = async (groupId: number, userId: number) => {
     },
   });
 
-  const avatarUrl = group?.avatarKey
-    ? await getFileUrl(group.avatarKey, 24 * 60 * 60)
-    : null;
-  const coverUrl = group?.coverKey
-    ? await getFileUrl(group.coverKey, 24 * 60 * 60)
-    : null;
-
-  const isMember = await checkIsGroupMember(groupId, userId)
-    .then(() => true)
-    .catch(() => false);
-
   if (!group) {
     throw new Error("Không tìm thấy nhóm");
   }
 
-  return { ...group, avatarUrl, coverUrl, isMember };
+  const coverUrl = group.coverKey
+    ? await getFileUrl(group.coverKey, 24 * 60 * 60)
+    : null;
+
+  const currentMembership = await findGroupMember(groupId, userId);
+  const isMember = currentMembership?.status === GroupMemberStatus.ACTIVE;
+  const membershipStatus = currentMembership?.status ?? null;
+
+  const activeMemberCount = await countActiveMembers(groupId);
+
+  let pendingRequestCount = 0;
+  const canManage =
+    currentMembership?.status === GroupMemberStatus.ACTIVE &&
+    (currentMembership.memberRole === GroupMemberRole.ADMIN ||
+      currentMembership.memberRole === GroupMemberRole.MODERATOR);
+
+  if (canManage && group.groupType === GroupType.PRIVATE) {
+    pendingRequestCount = await prisma.groupMember.count({
+      where: {
+        groupId,
+        status: GroupMemberStatus.PENDING,
+      },
+    });
+  }
+
+  const activeMembers = await Promise.all(
+    group.members
+      .filter((m) => m.status === GroupMemberStatus.ACTIVE)
+      .map(async (member) => ({
+        id: member.id,
+        memberRole: member.memberRole,
+        joinedAt: member.joinedAt,
+        status: member.status,
+        user: {
+          ...member.user,
+          avatarUrl: member.user.profile?.avatarKey
+            ? await getFileUrl(member.user.profile.avatarKey, 24 * 60 * 60)
+            : null,
+        },
+      })),
+  );
+
+  return {
+    ...group,
+    members: activeMembers,
+    _count: {
+      ...group._count,
+      members: activeMemberCount,
+    },
+    coverUrl,
+    isMember,
+    membershipStatus,
+    pendingRequestCount,
+  };
 };
 
 export const updateGroup = async (
@@ -338,28 +396,13 @@ export const updateGroup = async (
   await checkGroupExists(groupId);
   await checkIsGroupAdmin(groupId, currentUserId);
 
-  const { groupName, description, groupType, departmentId, status } = data;
-
-  if (departmentId) {
-    const department = await prisma.department.findUnique({
-      where: { id: Number(departmentId) },
-    });
-
-    if (!department) {
-      throw new Error("Phòng ban không tồn tại");
-    }
-  }
+  const { groupName, description } = data;
 
   const group = await prisma.group.update({
     where: { id: groupId },
     data: {
       ...(groupName !== undefined && { groupName }),
       ...(description !== undefined && { description }),
-      ...(groupType !== undefined && { groupType }),
-      ...(departmentId !== undefined && {
-        departmentId: departmentId ? Number(departmentId) : null,
-      }),
-      ...(status !== undefined && { status }),
     },
     include: {
       creator: {
@@ -428,6 +471,31 @@ export const addMemberToGroup = async (
   });
 
   if (existingMember) {
+    if (existingMember.status === GroupMemberStatus.PENDING) {
+      const member = await prisma.groupMember.update({
+        where: {
+          groupId_userId: {
+            groupId,
+            userId: targetUserId,
+          },
+        },
+        data: {
+          status: GroupMemberStatus.ACTIVE,
+          memberRole: memberRole || GroupMemberRole.MEMBER,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              role: true,
+            },
+          },
+        },
+      });
+      return member;
+    }
     throw new Error("User đã là thành viên của nhóm");
   }
 
@@ -436,6 +504,7 @@ export const addMemberToGroup = async (
       groupId,
       userId: targetUserId,
       memberRole: memberRole || GroupMemberRole.MEMBER,
+      status: GroupMemberStatus.ACTIVE,
     },
     include: {
       user: {
@@ -455,12 +524,17 @@ export const addMemberToGroup = async (
 // service
 export const getGroupMembers = async (
   groupId: number,
+  userId: number,
   page: number = 1,
   limit: number = 10,
   search?: string,
   role?: string,
 ) => {
-  await checkGroupExists(groupId);
+  const group = await checkGroupExists(groupId);
+
+  if (group.groupType === GroupType.PRIVATE) {
+    await checkIsGroupMember(groupId, userId);
+  }
 
   const roleFilter =
     role === "STAFF"
@@ -477,6 +551,7 @@ export const getGroupMembers = async (
 
   const where = {
     groupId,
+    status: GroupMemberStatus.ACTIVE,
     ...(roleFilter ? roleFilter : {}),
     ...(search
       ? {
@@ -573,7 +648,7 @@ export const removeMemberFromGroup = async (
     },
   });
 
-  if (!member) {
+  if (!member || member.status !== GroupMemberStatus.ACTIVE) {
     throw new Error("User không phải thành viên của nhóm");
   }
 
@@ -622,7 +697,7 @@ export const updateMemberRole = async (
     },
   });
 
-  if (!member) {
+  if (!member || member.status !== GroupMemberStatus.ACTIVE) {
     throw new Error("User không phải thành viên của nhóm");
   }
 
@@ -667,28 +742,28 @@ export const joinGroup = async (groupId: number, userId: number) => {
     throw new Error("Nhóm không hoạt động");
   }
 
-  if (group.groupType === GroupType.PRIVATE) {
-    throw new Error("Nhóm riêng tư không thể tự tham gia");
-  }
+  const existingMember = await findGroupMember(groupId, userId);
 
-  const existingMember = await prisma.groupMember.findUnique({
-    where: {
-      groupId_userId: {
-        groupId,
-        userId,
-      },
-    },
-  });
-
-  if (existingMember) {
+  if (existingMember?.status === GroupMemberStatus.ACTIVE) {
     throw new Error("Bạn đã là thành viên của nhóm");
   }
+
+  if (existingMember?.status === GroupMemberStatus.PENDING) {
+    throw new Error("Bạn đã gửi yêu cầu tham gia nhóm này");
+  }
+
+  if (existingMember?.status === GroupMemberStatus.BLOCKED) {
+    throw new Error("Bạn không thể tham gia nhóm này");
+  }
+
+  const isPrivate = group.groupType === GroupType.PRIVATE;
 
   const member = await prisma.groupMember.create({
     data: {
       groupId,
       userId,
       memberRole: GroupMemberRole.MEMBER,
+      status: isPrivate ? GroupMemberStatus.PENDING : GroupMemberStatus.ACTIVE,
     },
     include: {
       group: true,
@@ -702,23 +777,35 @@ export const joinGroup = async (groupId: number, userId: number) => {
     },
   });
 
-  return member;
+  return {
+    member,
+    action: isPrivate ? ("requested" as const) : ("joined" as const),
+  };
 };
 
 export const leaveGroup = async (groupId: number, userId: number) => {
   await checkGroupExists(groupId);
 
-  const member = await prisma.groupMember.findUnique({
-    where: {
-      groupId_userId: {
-        groupId,
-        userId,
-      },
-    },
-  });
+  const member = await findGroupMember(groupId, userId);
 
   if (!member) {
     throw new Error("Bạn chưa tham gia nhóm này");
+  }
+
+  if (member.status === GroupMemberStatus.PENDING) {
+    await prisma.groupMember.delete({
+      where: {
+        groupId_userId: {
+          groupId,
+          userId,
+        },
+      },
+    });
+    return { action: "cancelled_request" as const };
+  }
+
+  if (member.status !== GroupMemberStatus.ACTIVE) {
+    throw new Error("Bạn không thể rời nhóm ở trạng thái hiện tại");
   }
 
   if (member.memberRole === GroupMemberRole.ADMIN) {
@@ -726,6 +813,7 @@ export const leaveGroup = async (groupId: number, userId: number) => {
       where: {
         groupId,
         memberRole: GroupMemberRole.ADMIN,
+        status: GroupMemberStatus.ACTIVE,
       },
     });
 
@@ -739,6 +827,143 @@ export const leaveGroup = async (groupId: number, userId: number) => {
       groupId_userId: {
         groupId,
         userId,
+      },
+    },
+  });
+
+  return { action: "left" as const };
+};
+
+export const getJoinRequests = async (
+  groupId: number,
+  currentUserId: number,
+  page: number = 1,
+  limit: number = 10,
+) => {
+  const group = await checkGroupExists(groupId);
+  await checkCanManageMember(groupId, currentUserId);
+
+  if (group.groupType !== GroupType.PRIVATE) {
+    throw new Error("Chỉ nhóm riêng tư mới có yêu cầu tham gia");
+  }
+
+  const where = {
+    groupId,
+    status: GroupMemberStatus.PENDING,
+  };
+
+  const [requests, total] = await Promise.all([
+    prisma.groupMember.findMany({
+      where,
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            profile: {
+              select: {
+                avatarKey: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        joinedAt: "desc",
+      },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.groupMember.count({ where }),
+  ]);
+
+  return {
+    requests: await Promise.all(
+      requests.map(async (request) => ({
+        id: request.user.id,
+        fullName: request.user.fullName,
+        email: request.user.email,
+        requestedAt: request.joinedAt,
+        avatarUrl: request.user.profile?.avatarKey
+          ? await getFileUrl(request.user.profile.avatarKey, 24 * 60 * 60)
+          : null,
+      })),
+    ),
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit) || 1,
+    },
+  };
+};
+
+export const approveJoinRequest = async (
+  groupId: number,
+  targetUserId: number,
+  currentUserId: number,
+) => {
+  const group = await checkGroupExists(groupId);
+  await checkCanManageMember(groupId, currentUserId);
+
+  if (group.groupType !== GroupType.PRIVATE) {
+    throw new Error("Chỉ nhóm riêng tư mới có yêu cầu tham gia");
+  }
+
+  const member = await findGroupMember(groupId, targetUserId);
+
+  if (!member || member.status !== GroupMemberStatus.PENDING) {
+    throw new Error("Không tìm thấy yêu cầu tham gia");
+  }
+
+  const updated = await prisma.groupMember.update({
+    where: {
+      groupId_userId: {
+        groupId,
+        userId: targetUserId,
+      },
+    },
+    data: {
+      status: GroupMemberStatus.ACTIVE,
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+        },
+      },
+    },
+  });
+
+  return updated;
+};
+
+export const rejectJoinRequest = async (
+  groupId: number,
+  targetUserId: number,
+  currentUserId: number,
+) => {
+  const group = await checkGroupExists(groupId);
+  await checkCanManageMember(groupId, currentUserId);
+
+  if (group.groupType !== GroupType.PRIVATE) {
+    throw new Error("Chỉ nhóm riêng tư mới có yêu cầu tham gia");
+  }
+
+  const member = await findGroupMember(groupId, targetUserId);
+
+  if (!member || member.status !== GroupMemberStatus.PENDING) {
+    throw new Error("Không tìm thấy yêu cầu tham gia");
+  }
+
+  await prisma.groupMember.delete({
+    where: {
+      groupId_userId: {
+        groupId,
+        userId: targetUserId,
       },
     },
   });
@@ -865,4 +1090,92 @@ export const getGroupPosts = async (groupId: number) => {
   });
 
   return posts;
+};
+
+export const getGroupPostDetail = async (
+  groupId: number,
+  postId: number,
+  userId: number,
+) => {
+  const existingGroup = await checkGroupExists(groupId);
+  if (existingGroup.status !== GroupStatus.ACTIVE) {
+    throw new Error("Nhóm không hoạt động");
+  }
+  const membership = await findGroupMember(groupId, userId);
+  const isActiveMember = membership?.status === GroupMemberStatus.ACTIVE;
+
+  if (existingGroup.groupType === GroupType.PRIVATE && !isActiveMember) {
+    throw new Error("Nhóm riêng tư không thể xem chi tiết bài viết");
+  }
+
+  const existingPost = await prisma.post.findUnique({
+    where: { id: postId },
+    include: {
+      user: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          profile: {
+            select: {
+              avatarKey: true,
+            },
+          },
+        },
+      },
+      group: {
+        select: {
+          id: true,
+          groupName: true,
+        },
+      },
+      reactions: {
+        where: {
+          userId: userId,
+        },
+        select: {
+          reactionType: true,
+        },
+      },
+      attachments: true,
+      _count: {
+        select: {
+          comments: true,
+          reactions: true,
+        },
+      },
+    },
+  });
+  if (!existingPost) {
+    throw new Error("Post không tồn tại");
+  }
+
+  const attachmentsWithUrl = await Promise.all(
+    existingPost.attachments.map(async (attachment) => {
+      const url = await getFileUrl(attachment.fileKey, 7 * 24 * 60 * 60);
+      return {
+        ...attachment,
+        fileUrl: url,
+      };
+    }),
+  );
+
+  return {
+    ...existingPost,
+    attachments: attachmentsWithUrl,
+  };
+};
+
+export const getGroupSetting = async (groupId: number, userId: number) => {
+  checkIsGroupAdmin(groupId, userId);
+  const group = await prisma.group.findUnique({
+    where: {
+      id: groupId,
+    },
+    select: {
+      groupName: true,
+      description: true,
+    },
+  });
+  return group;
 };

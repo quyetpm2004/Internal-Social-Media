@@ -116,9 +116,23 @@ model User {
 
   createdGroups      Group[]           @relation("GroupCreator")
   groupMembers       GroupMember[]
+  searchHistories    SearchHistory[]
 
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
+}
+
+model SearchHistory {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  query      String   @db.VarChar(255)
+  searchedAt DateTime @default(now()) @map("searched_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, query])
+  @@index([userId, searchedAt])
+  @@map("search_histories")
 }
 
 model RefreshToken {
@@ -185,7 +199,6 @@ model Group {
   departmentId Int?
   department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
 
-  avatarKey String? @map("avatar_key")
   coverKey  String? @map("cover_key")
 
 

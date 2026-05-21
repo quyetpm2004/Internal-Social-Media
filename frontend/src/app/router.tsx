@@ -10,8 +10,13 @@ import GroupListPage from "@/features/group/pages/GroupListPage";
 import GroupDetailLayout from "@/features/group/pages/GroupDetailLayout";
 import GroupFeedPage from "@/features/group/pages/GroupFeedPage";
 import { GroupMembersPage } from "@/features/group/pages/GroupMembersPage";
+import { GroupMembersLayout } from "@/features/group/pages/GroupMembersLayout";
+import { GroupJoinRequestsPage } from "@/features/group/pages/GroupJoinRequestsPage";
 
 import PostDetailPage from "@/features/new-feed/pages/PostDetailPage";
+import PostDetailInGroupPage from "@/features/group/pages/PostDetailInGroupPage";
+import GroupSettingPage from "@/features/group/pages/GroupSettingPage";
+import SearchPage from "@/features/search/pages/SearchPage";
 
 export const router = createBrowserRouter([
   {
@@ -46,6 +51,10 @@ export const router = createBrowserRouter([
             element: <PostDetailPage />,
           },
           {
+            path: "/search",
+            element: <SearchPage />,
+          },
+          {
             path: "/groups",
             element: <GroupListPage />,
           },
@@ -60,7 +69,27 @@ export const router = createBrowserRouter([
 
               {
                 path: "members",
-                element: <GroupMembersPage />,
+                element: <GroupMembersLayout />,
+                children: [
+                  {
+                    index: true,
+                    element: <GroupMembersPage />,
+                  },
+                  {
+                    path: "requests",
+                    element: <GroupJoinRequestsPage />,
+                  },
+                ],
+              },
+
+              {
+                path: "posts/:postId",
+                element: <PostDetailInGroupPage />,
+              },
+
+              {
+                path: "setting",
+                element: <GroupSettingPage />,
               },
             ],
           },

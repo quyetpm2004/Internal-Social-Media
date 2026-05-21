@@ -18,7 +18,6 @@ export const uploadApi = {
     items: {
       purpose:
         | "avatar"
-        | "group-avatar"
         | "group-cover"
         | "post-image"
         | "post-video"

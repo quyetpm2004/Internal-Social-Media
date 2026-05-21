@@ -5,6 +5,7 @@ import axios, {
 } from "axios";
 import { APP_CONFIG } from "@/constants/app";
 import { useAuthStore } from "@/features/auth/store/auth.store";
+import type { CustomAxiosInstance } from "@/types/axios.type";
 
 type FailedQueueItem = {
   resolve: (token: string) => void;
@@ -32,7 +33,7 @@ export const axiosClient = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-});
+}) as CustomAxiosInstance;
 
 // request interceptor to add access token to headers
 axiosClient.interceptors.request.use(
