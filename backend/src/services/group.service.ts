@@ -1,9 +1,12 @@
 import prisma from "../utils/prisma";
 import {
+  AttachmentType,
   GroupMemberRole,
   GroupMemberStatus,
+  GroupPermission,
   GroupStatus,
   GroupType,
+  MediaStatus,
   PostStatus,
   PostVisibility,
 } from "@prisma/client";
@@ -111,6 +114,71 @@ const checkCanManageMember = async (groupId: number, userId: number) => {
   return member;
 };
 
+const checkCanApproveJoinRequest = async (groupId: number, userId: number) => {
+  const group = await checkGroupExists(groupId);
+  const member = await findGroupMember(groupId, userId);
+
+  if (!member || member.status !== GroupMemberStatus.ACTIVE) {
+    throw new Error("Bạn không phải thành viên của nhóm");
+  }
+
+  if (group.joinApprovalPolicy === GroupPermission.ANY_MEMBER) {
+    return member;
+  }
+
+  if (
+    member.memberRole !== GroupMemberRole.ADMIN &&
+    member.memberRole !== GroupMemberRole.MODERATOR
+  ) {
+    throw new Error("Bạn không có quyền phê duyệt yêu cầu tham gia");
+  }
+
+  return member;
+};
+
+const checkCanPostInGroup = async (groupId: number, userId: number) => {
+  const group = await checkGroupExists(groupId);
+  const member = await checkIsGroupMember(groupId, userId);
+
+  if (group.postPermission === GroupPermission.ANY_MEMBER) {
+    return { group, member };
+  }
+
+  if (member.memberRole !== GroupMemberRole.ADMIN) {
+    throw new Error("Chỉ quản trị viên mới có thể đăng bài trong nhóm này");
+  }
+
+  return { group, member };
+};
+
+export type GroupSettingPayload = {
+  groupName: string;
+  description: string | null;
+  isHidden: boolean;
+  joinApprovalPolicy: GroupPermission;
+  allowAnonymousJoin: boolean;
+  postPermission: GroupPermission;
+  postApprovalRequired: boolean;
+};
+
+const mapGroupToSettings = (group: {
+  groupName: string;
+  description: string | null;
+  isHidden: boolean;
+  joinApprovalPolicy: GroupPermission;
+  allowAnonymousJoin: boolean;
+  postPermission: GroupPermission;
+  postApprovalRequired: boolean;
+}): GroupSettingPayload => ({
+  groupName: group.groupName,
+  description: group.description,
+  isHidden: group.isHidden,
+  joinApprovalPolicy: group.joinApprovalPolicy,
+  allowAnonymousJoin: group.allowAnonymousJoin,
+  postPermission: group.postPermission,
+  postApprovalRequired: group.postApprovalRequired,
+});
+
 const checkIsGroupMember = async (groupId: number, userId: number) => {
   const member = await findGroupMember(groupId, userId);
 
@@ -184,41 +252,49 @@ export const getGroups = async (query: any, userId: number) => {
   const take = Math.max(Number(limit), 1);
   const skip = (currentPage - 1) * take;
 
-  // where condition
-  const whereCondition: any = {
-    status: GroupStatus.ACTIVE,
+  const andConditions: any[] = [];
 
-    ...(isMyGroups && {
+  if (!isMyGroups) {
+    andConditions.push({
+      OR: [
+        { isHidden: false },
+        {
+          members: {
+            some: {
+              userId,
+              status: GroupMemberStatus.ACTIVE,
+            },
+          },
+        },
+      ],
+    });
+  }
+
+  if (isMyGroups) {
+    andConditions.push({
       members: {
         some: {
           userId,
           status: GroupMemberStatus.ACTIVE,
         },
       },
-    }),
+    });
+  }
 
-    ...(search && {
+  if (search) {
+    andConditions.push({
       OR: [
-        {
-          groupName: {
-            contains: String(search),
-          },
-        },
-        {
-          description: {
-            contains: String(search),
-          },
-        },
+        { groupName: { contains: String(search) } },
+        { description: { contains: String(search) } },
       ],
-    }),
+    });
+  }
 
-    ...(groupType && {
-      groupType: groupType as GroupType,
-    }),
-
-    ...(departmentId && {
-      departmentId: Number(departmentId),
-    }),
+  const whereCondition: any = {
+    status: GroupStatus.ACTIVE,
+    ...(andConditions.length > 0 && { AND: andConditions }),
+    ...(groupType && { groupType: groupType as GroupType }),
+    ...(departmentId && { departmentId: Number(departmentId) }),
   };
 
   // lấy total để pagination
@@ -905,7 +981,7 @@ export const approveJoinRequest = async (
   currentUserId: number,
 ) => {
   const group = await checkGroupExists(groupId);
-  await checkCanManageMember(groupId, currentUserId);
+  await checkCanApproveJoinRequest(groupId, currentUserId);
 
   if (group.groupType !== GroupType.PRIVATE) {
     throw new Error("Chỉ nhóm riêng tư mới có yêu cầu tham gia");
@@ -947,7 +1023,7 @@ export const rejectJoinRequest = async (
   currentUserId: number,
 ) => {
   const group = await checkGroupExists(groupId);
-  await checkCanManageMember(groupId, currentUserId);
+  await checkCanApproveJoinRequest(groupId, currentUserId);
 
   if (group.groupType !== GroupType.PRIVATE) {
     throw new Error("Chỉ nhóm riêng tư mới có yêu cầu tham gia");
@@ -982,13 +1058,15 @@ export const createGroupPost = async (
     throw new Error("Nội dung bài viết không được để trống");
   }
 
-  const group = await checkGroupExists(groupId);
+  const { group } = await checkCanPostInGroup(groupId, userId);
 
   if (group.status !== GroupStatus.ACTIVE) {
     throw new Error("Nhóm không hoạt động");
   }
 
-  await checkIsGroupMember(groupId, userId);
+  const postStatus = group.postApprovalRequired
+    ? PostStatus.PENDING_REVIEW
+    : PostStatus.ACTIVE;
 
   const post = await prisma.post.create({
     data: {
@@ -996,7 +1074,7 @@ export const createGroupPost = async (
       groupId,
       content,
       visibility: PostVisibility.GROUP,
-      status: PostStatus.ACTIVE,
+      status: postStatus,
     },
     include: {
       user: {
@@ -1167,15 +1245,209 @@ export const getGroupPostDetail = async (
 };
 
 export const getGroupSetting = async (groupId: number, userId: number) => {
-  checkIsGroupAdmin(groupId, userId);
+  await checkIsGroupAdmin(groupId, userId);
+
   const group = await prisma.group.findUnique({
-    where: {
-      id: groupId,
+    where: { id: groupId },
+    select: {
+      groupName: true,
+      description: true,
+      isHidden: true,
+      joinApprovalPolicy: true,
+      allowAnonymousJoin: true,
+      postPermission: true,
+      postApprovalRequired: true,
+    },
+  });
+
+  if (!group) {
+    throw new Error("Không tìm thấy nhóm");
+  }
+
+  return mapGroupToSettings(group);
+};
+
+export type UpdateGroupSettingInput = Partial<{
+  groupName: string;
+  description: string | null;
+  isHidden: boolean;
+  joinApprovalPolicy: GroupPermission;
+  allowAnonymousJoin: boolean;
+  postPermission: GroupPermission;
+  postApprovalRequired: boolean;
+}>;
+
+export const updateGroupSetting = async (
+  groupId: number,
+  userId: number,
+  data: UpdateGroupSettingInput,
+) => {
+  await checkIsGroupAdmin(groupId, userId);
+
+  const {
+    groupName,
+    description,
+    isHidden,
+    joinApprovalPolicy,
+    allowAnonymousJoin,
+    postPermission,
+    postApprovalRequired,
+  } = data;
+
+  if (groupName !== undefined && !groupName.trim()) {
+    throw new Error("Tên nhóm không được để trống");
+  }
+
+  if (
+    joinApprovalPolicy !== undefined &&
+    !Object.values(GroupPermission).includes(joinApprovalPolicy)
+  ) {
+    throw new Error("Chính sách phê duyệt không hợp lệ");
+  }
+
+  if (
+    postPermission !== undefined &&
+    !Object.values(GroupPermission).includes(postPermission)
+  ) {
+    throw new Error("Quyền đăng bài không hợp lệ");
+  }
+
+  const group = await prisma.group.update({
+    where: { id: groupId },
+    data: {
+      ...(groupName !== undefined && { groupName: groupName.trim() }),
+      ...(description !== undefined && { description }),
+      ...(isHidden !== undefined && { isHidden }),
+      ...(joinApprovalPolicy !== undefined && { joinApprovalPolicy }),
+      ...(allowAnonymousJoin !== undefined && { allowAnonymousJoin }),
+      ...(postPermission !== undefined && { postPermission }),
+      ...(postApprovalRequired !== undefined && { postApprovalRequired }),
     },
     select: {
       groupName: true,
       description: true,
+      isHidden: true,
+      joinApprovalPolicy: true,
+      allowAnonymousJoin: true,
+      postPermission: true,
+      postApprovalRequired: true,
     },
   });
-  return group;
+
+  return mapGroupToSettings(group);
+};
+
+type GroupAttachmentCategory = "media" | "file";
+
+const GROUP_ATTACHMENT_TYPES: Record<
+  GroupAttachmentCategory,
+  AttachmentType[]
+> = {
+  media: [AttachmentType.IMAGE, AttachmentType.VIDEO],
+  file: [AttachmentType.FILE],
+};
+
+export const getGroupAttachments = async (
+  groupId: number,
+  userId: number,
+  category: GroupAttachmentCategory,
+  page: number = 1,
+  limit: number = 20,
+  search?: string,
+) => {
+  const group = await checkGroupExists(groupId);
+
+  if (group.groupType === GroupType.PRIVATE) {
+    await checkIsGroupMember(groupId, userId);
+  }
+
+  const where = {
+    status: MediaStatus.ACTIVE,
+    attachmentType: { in: GROUP_ATTACHMENT_TYPES[category] },
+    post: {
+      groupId,
+      status: PostStatus.ACTIVE,
+      visibility: PostVisibility.GROUP,
+    },
+    ...(search
+      ? {
+          fileName: {
+            contains: search,
+          },
+        }
+      : {}),
+  };
+
+  const [attachments, total] = await Promise.all([
+    prisma.postAttachment.findMany({
+      where,
+      include: {
+        post: {
+          select: {
+            id: true,
+            content: true,
+            createdAt: true,
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                profile: {
+                  select: {
+                    avatarKey: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        uploadedAt: "desc",
+      },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.postAttachment.count({ where }),
+  ]);
+
+  const items = await Promise.all(
+    attachments.map(async (attachment) => {
+      const fileUrl = await getFileUrl(attachment.fileKey, 7 * 24 * 60 * 60);
+      const avatarUrl = attachment.post?.user.profile?.avatarKey
+        ? await getFileUrl(attachment.post.user.profile.avatarKey, 24 * 60 * 60)
+        : null;
+
+      return {
+        id: attachment.id,
+        fileName: attachment.fileName,
+        fileUrl,
+        mimeType: attachment.mimeType,
+        fileSize: attachment.fileSize,
+        attachmentType: attachment.attachmentType,
+        uploadedAt: attachment.uploadedAt,
+        post: attachment.post
+          ? {
+              id: attachment.post.id,
+              content: attachment.post.content,
+              createdAt: attachment.post.createdAt,
+              author: {
+                id: attachment.post.user.id,
+                fullName: attachment.post.user.fullName,
+                avatarUrl,
+              },
+            }
+          : null,
+      };
+    }),
+  );
+
+  return {
+    items,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit) || 1,
+    },
+  };
 };

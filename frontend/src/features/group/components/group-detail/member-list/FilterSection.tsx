@@ -77,7 +77,7 @@ export const FilterSection = ({
       </div>
 
       <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 w-full sm:w-auto">
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 w-full sm:w-auto scrollbar-hide">
           {MEMBER_ROLE_FILTER_OPTIONS.map(({ value, label }) => (
             <button
               key={value}

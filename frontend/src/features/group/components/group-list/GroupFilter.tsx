@@ -67,7 +67,7 @@ const GroupFilter = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 w-full sm:w-auto">
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 w-full sm:w-auto scrollbar-hide">
         <button
           className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer ${
             filter === ""

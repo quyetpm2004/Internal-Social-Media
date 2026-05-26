@@ -1,4 +1,13 @@
-import { PostVisibility, Prisma, ReactionType } from "@prisma/client";
+import {
+  GroupMemberRole,
+  GroupMemberStatus,
+  GroupPermission,
+  GroupStatus,
+  PostStatus,
+  PostVisibility,
+  Prisma,
+  ReactionType,
+} from "@prisma/client";
 import { PostContentFormat } from "../constants/post-content-format";
 import type { PostContentFormat as PostContentFormatType } from "../constants/post-content-format";
 
@@ -22,15 +31,35 @@ export const getPostListService = async ({
 }: GetPostListParams & { userId: number }) => {
   const skip = (page - 1) * limit;
 
+  let postStatusFilter: PostStatus | { in: PostStatus[] } = PostStatus.ACTIVE;
+
+  if (groupId) {
+    const membership = await prisma.groupMember.findUnique({
+      where: {
+        groupId_userId: { groupId, userId },
+      },
+      select: { memberRole: true, status: true },
+    });
+
+    const isGroupAdmin =
+      membership?.status === GroupMemberStatus.ACTIVE &&
+      membership.memberRole === GroupMemberRole.ADMIN;
+
+    postStatusFilter = isGroupAdmin
+      ? { in: [PostStatus.ACTIVE, PostStatus.PENDING_REVIEW] }
+      : PostStatus.ACTIVE;
+  }
+
   const where: Prisma.PostWhereInput = {
-    status: "ACTIVE",
-    visibility: "PUBLIC",
+    status: postStatusFilter,
   };
 
   if (groupId) {
     where.groupId = groupId;
+    where.visibility = "GROUP";
   } else {
     where.groupId = null;
+    where.visibility = "PUBLIC";
   }
   /**
    * pinnedPosts:
@@ -210,23 +239,47 @@ export const createPostService = async ({
   attachmentIds = [],
 }: CreatePostParams) => {
   const processed = processPostContent(content, contentFormat);
-  /**
-   * Validate group
-   */
+  let groupPostStatus: PostStatus = PostStatus.ACTIVE;
+
   if (groupId) {
     const existingGroup = await prisma.group.findUnique({
-      where: {
-        id: groupId,
-      },
-
+      where: { id: groupId },
       select: {
         id: true,
+        status: true,
+        postPermission: true,
+        postApprovalRequired: true,
       },
     });
 
     if (!existingGroup) {
       throw new Error("GROUP_NOT_FOUND");
     }
+
+    if (existingGroup.status !== GroupStatus.ACTIVE) {
+      throw new Error("Nhóm không hoạt động");
+    }
+
+    const membership = await prisma.groupMember.findUnique({
+      where: {
+        groupId_userId: { groupId, userId },
+      },
+    });
+
+    if (!membership || membership.status !== GroupMemberStatus.ACTIVE) {
+      throw new Error("Bạn phải là thành viên nhóm");
+    }
+
+    if (
+      existingGroup.postPermission === GroupPermission.ADMIN_ONLY &&
+      membership.memberRole !== GroupMemberRole.ADMIN
+    ) {
+      throw new Error("Chỉ quản trị viên mới có thể đăng bài trong nhóm này");
+    }
+
+    groupPostStatus = existingGroup.postApprovalRequired
+      ? PostStatus.PENDING_REVIEW
+      : PostStatus.ACTIVE;
   }
 
   /**
@@ -274,7 +327,7 @@ export const createPostService = async ({
 
         isPinned: false,
 
-        status: "ACTIVE",
+        status: groupId ? groupPostStatus : PostStatus.ACTIVE,
 
         viewCount: 0,
       },

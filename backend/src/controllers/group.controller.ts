@@ -310,7 +310,10 @@ export const createGroupPost = async (req: Request, res: Response) => {
     const post = await groupService.createGroupPost(groupId, userId, req.body);
 
     return res.status(201).json({
-      message: "Đăng bài trong nhóm thành công",
+      message:
+        post.status === "PENDING_REVIEW"
+          ? "Bài viết đã gửi và đang chờ phê duyệt"
+          : "Đăng bài trong nhóm thành công",
       data: post,
     });
   } catch (error: any) {
@@ -397,6 +400,103 @@ export const getGroupSetting = async (req: Request, res: Response) => {
       data: result,
     });
   } catch (error: any) {
-    return res.status(404).json({ message: error.message });
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+export const updateGroupSetting = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const groupId = Number(req.params.groupId);
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const result = await groupService.updateGroupSetting(
+      groupId,
+      userId,
+      req.body,
+    );
+    return res.status(200).json({
+      message: "Cập nhật cài đặt nhóm thành công",
+      data: result,
+    });
+  } catch (error: any) {
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+export const getGroupMedia = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const groupId = Number(req.params.groupId);
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 24;
+    const search = (req.query.search as string) || "";
+
+    if (page < 1) {
+      return res.status(400).json({ message: "page phải lớn hơn hoặc bằng 1" });
+    }
+
+    if (limit < 1 || limit > 50) {
+      return res.status(400).json({ message: "limit phải từ 1 đến 50" });
+    }
+
+    const data = await groupService.getGroupAttachments(
+      groupId,
+      userId,
+      "media",
+      page,
+      limit,
+      search,
+    );
+
+    return res.status(200).json({
+      message: "Lấy file phương tiện nhóm thành công",
+      data,
+    });
+  } catch (error: any) {
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+export const getGroupFiles = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const groupId = Number(req.params.groupId);
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+    const search = (req.query.search as string) || "";
+
+    if (page < 1) {
+      return res.status(400).json({ message: "page phải lớn hơn hoặc bằng 1" });
+    }
+
+    if (limit < 1 || limit > 50) {
+      return res.status(400).json({ message: "limit phải từ 1 đến 50" });
+    }
+
+    const data = await groupService.getGroupAttachments(
+      groupId,
+      userId,
+      "file",
+      page,
+      limit,
+      search,
+    );
+
+    return res.status(200).json({
+      message: "Lấy danh sách file nhóm thành công",
+      data,
+    });
+  } catch (error: any) {
+    return res.status(400).json({ message: error.message });
   }
 };

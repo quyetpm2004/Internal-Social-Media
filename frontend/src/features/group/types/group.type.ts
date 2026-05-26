@@ -112,4 +112,54 @@ export interface SettingConfig {
   type: ItemType;
   options?: string[];
   isDropdown?: boolean;
+  description?: string;
+}
+
+export type GroupPermission = "ADMIN_ONLY" | "ANY_MEMBER";
+
+export interface GroupSettings {
+  groupName: string;
+  description: string | null;
+  isHidden: boolean;
+  joinApprovalPolicy: GroupPermission;
+  allowAnonymousJoin: boolean;
+  postPermission: GroupPermission;
+  postApprovalRequired: boolean;
+}
+
+export interface JoinLeaveResponse {
+  member: Member;
+  action: string;
+}
+
+export type GroupAttachmentType = "IMAGE" | "VIDEO" | "FILE";
+
+export interface GroupAttachmentItem {
+  id: number;
+  fileName: string;
+  fileUrl: string;
+  mimeType: string;
+  fileSize: number;
+  attachmentType: GroupAttachmentType;
+  uploadedAt: string;
+  post: {
+    id: number;
+    content: string;
+    createdAt: string;
+    author: {
+      id: number;
+      fullName: string;
+      avatarUrl: string | null;
+    };
+  } | null;
+}
+
+export interface GetGroupAttachmentsResponse {
+  items: GroupAttachmentItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }

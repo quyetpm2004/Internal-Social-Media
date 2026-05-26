@@ -49,5 +49,10 @@ router.get("/:groupId/posts/:postId", groupController.getGroupPostDetail);
 
 // Group setting
 router.get("/:groupId/settings", groupController.getGroupSetting);
+router.patch("/:groupId/settings", groupController.updateGroupSetting);
+
+// Group attachments
+router.get("/:groupId/media", groupController.getGroupMedia);
+router.get("/:groupId/files", groupController.getGroupFiles);
 
 export default router;

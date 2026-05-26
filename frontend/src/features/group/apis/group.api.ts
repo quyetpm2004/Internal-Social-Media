@@ -1,9 +1,12 @@
 import { axiosClient } from "@/lib/axios";
 import type {
+  GetGroupAttachmentsResponse,
   GetJoinRequestsResponse,
   GetMembersResponse,
   GroupApiResponse,
   GroupDetail,
+  GroupSettings,
+  JoinLeaveResponse,
 } from "@/features/group/types/group.type";
 import type {
   ApiPost,
@@ -45,11 +48,15 @@ export const groupApi = {
     return response;
   },
   joinGroup(groupId: string) {
-    const response = axiosClient.post(`/groups/${groupId}/join`);
+    const response = axiosClient.post<ApiResponse<JoinLeaveResponse>>(
+      `/groups/${groupId}/join`,
+    );
     return response;
   },
   leaveGroup(groupId: string) {
-    const response = axiosClient.post(`/groups/${groupId}/leave`);
+    const response = axiosClient.post<ApiResponse<JoinLeaveResponse>>(
+      `/groups/${groupId}/leave`,
+    );
     return response;
   },
   getPost(groupId: string, page: number = 1, limit: number = 10) {
@@ -128,6 +135,42 @@ export const groupApi = {
   },
 
   getGroupSetting: (groupId: string) => {
-    return axiosClient.get(`/groups/${groupId}/settings`);
+    return axiosClient.get<ApiResponse<GroupSettings>>(
+      `/groups/${groupId}/settings`,
+    );
+  },
+
+  updateGroupSetting: (
+    groupId: string,
+    data: Partial<GroupSettings>,
+  ) => {
+    return axiosClient.patch<ApiResponse<GroupSettings>>(
+      `/groups/${groupId}/settings`,
+      data,
+    );
+  },
+
+  getGroupMedia: (groupId: string, page = 1, search = "", limit = 24) => {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
+    if (search) params.append("search", search);
+
+    return axiosClient.get<ApiResponse<GetGroupAttachmentsResponse>>(
+      `/groups/${groupId}/media?${params.toString()}`,
+    );
+  },
+
+  getGroupFiles: (groupId: string, page = 1, search = "", limit = 10) => {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
+    if (search) params.append("search", search);
+
+    return axiosClient.get<ApiResponse<GetGroupAttachmentsResponse>>(
+      `/groups/${groupId}/files?${params.toString()}`,
+    );
   },
 };

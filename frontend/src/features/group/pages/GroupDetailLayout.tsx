@@ -115,7 +115,7 @@ const GroupDetailLayout = () => {
             : prev,
         );
 
-        toast.success(response.data?.message || "Rời nhóm thành công");
+        toast.success(response.message || "Rời nhóm thành công");
       } else if (membershipStatus === "PENDING") {
         const response = await groupApi.leaveGroup(groupId);
 
@@ -129,11 +129,11 @@ const GroupDetailLayout = () => {
             : prev,
         );
 
-        toast.success(response.data?.message || "Đã hủy yêu cầu tham gia");
+        toast.success(response.message || "Đã hủy yêu cầu tham gia");
       } else {
         const response = await groupApi.joinGroup(groupId);
 
-        const action = response.data?.data?.action as
+        const action = response.data?.action as
           | "joined"
           | "requested"
           | undefined;
@@ -215,6 +215,7 @@ const GroupDetailLayout = () => {
             coverUploading={coverUploading}
             onCoverChange={handleCoverUpload}
             onJoinLeave={handleJoinLeaveGroup}
+            currentMemberRole={currentMemberRole}
           />
 
           <div className="w-full mx-auto px-4 py-8">

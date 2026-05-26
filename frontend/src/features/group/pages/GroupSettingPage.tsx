@@ -1,62 +1,125 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import type { SettingConfig } from "../types/group.type";
 import SettingSection from "../components/group-setting/SettingSection";
 import EditForm from "../components/group-setting/EditForm";
 import SettingItem from "../components/group-setting/SettingItem";
 import { groupApi } from "../apis/group.api";
-import { useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { useOutletContext, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import type { GroupMemberRole } from "../utils/group-member";
-import { Home } from "lucide-react";
+import {
+  BOOL_LABELS,
+  buildSettingUpdatePayload,
+  HIDDEN_LABELS,
+  PERMISSION_LABELS,
+  settingsToFormValues,
+} from "../utils/group-settings";
+
+const DEFAULT_SETTINGS: SettingConfig[] = [
+  { id: "name", label: "Tên và mô tả", value: "", type: "input-group" },
+  {
+    id: "hide",
+    label: "Ẩn nhóm",
+    value: HIDDEN_LABELS.false,
+    type: "radio",
+    options: [HIDDEN_LABELS.false, HIDDEN_LABELS.true],
+  },
+  {
+    id: "approve",
+    label: "Ai có thể phê duyệt yêu cầu",
+    value: PERMISSION_LABELS.ANY_MEMBER,
+    type: "radio",
+    options: [PERMISSION_LABELS.ADMIN_ONLY, PERMISSION_LABELS.ANY_MEMBER],
+  },
+  {
+    id: "anonymous",
+    label: "Tham gia ẩn danh",
+    value: BOOL_LABELS.false,
+    type: "radio",
+    options: [BOOL_LABELS.true, BOOL_LABELS.false],
+  },
+  {
+    id: "post",
+    label: "Ai có thể đăng",
+    value: PERMISSION_LABELS.ANY_MEMBER,
+    type: "radio",
+    options: [PERMISSION_LABELS.ADMIN_ONLY, PERMISSION_LABELS.ANY_MEMBER],
+  },
+  {
+    id: "review",
+    label: "Phê duyệt bài viết",
+    value: BOOL_LABELS.false,
+    type: "radio",
+    options: [BOOL_LABELS.true, BOOL_LABELS.false],
+  },
+];
 
 const GroupSettingPage: React.FC = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
   const { groupId } = useParams();
   const { currentMemberRole, isMember } = useOutletContext<{
     currentMemberRole: GroupMemberRole;
     isMember: boolean;
   }>();
-  const navigate = useNavigate();
 
-  const [settings, setSettings] = useState<SettingConfig[]>([
-    { id: "name", label: "Tên và mô tả", value: "test", type: "input-group" },
-    {
-      id: "hide",
-      label: "Ẩn nhóm",
-      value: "Ẩn",
-      type: "radio",
-      options: ["Hiển thị", "Ẩn"],
+  const [settings, setSettings] = useState<SettingConfig[]>(DEFAULT_SETTINGS);
+
+  const applySettingsToForm = useCallback(
+    (formValues: ReturnType<typeof settingsToFormValues>) => {
+      const valueById: Record<string, string> = {
+        hide: formValues.hide,
+        approve: formValues.approve,
+        anonymous: formValues.anonymous,
+        post: formValues.post,
+        review: formValues.review,
+      };
+
+      setSettings((prev) =>
+        prev.map((item) => {
+          if (item.id === "name") {
+            return {
+              ...item,
+              value: formValues.name,
+              description: formValues.description,
+            };
+          }
+          if (valueById[item.id] !== undefined) {
+            return { ...item, value: valueById[item.id] };
+          }
+          return item;
+        }),
+      );
     },
-    {
-      id: "approve",
-      label: "Ai có thể phê duyệt yêu cầu",
-      value: "Bất cứ ai trong nhóm",
-      type: "radio",
-      options: ["Chỉ quản trị viên", "Bất cứ ai trong nhóm"],
-    },
-    {
-      id: "anonymous",
-      label: "Tham gia ẩn danh",
-      value: "Bật",
-      type: "radio",
-      options: ["Bật", "Tắt"],
-    },
-    {
-      id: "post",
-      label: "Ai có thể đăng",
-      value: "Bất cứ ai trong nhóm",
-      type: "radio",
-      options: ["Chỉ quản trị viên", "Bất cứ ai trong nhóm"],
-    },
-    {
-      id: "review",
-      label: "Phê duyệt bài viết",
-      value: "Tắt",
-      type: "radio",
-      options: ["Bật", "Tắt"],
-    },
-  ]);
+    [],
+  );
+
+  useEffect(() => {
+    if (!groupId || currentMemberRole !== "ADMIN" || !isMember) {
+      setIsFetching(false);
+      return;
+    }
+
+    const fetchSettings = async () => {
+      setIsFetching(true);
+      try {
+        const res = await groupApi.getGroupSetting(groupId);
+        if (res.data) {
+          applySettingsToForm(settingsToFormValues(res.data));
+        }
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { message?: string } }; message?: string };
+        toast.error(
+          err?.response?.data?.message || err?.message || "Không thể tải cài đặt nhóm",
+        );
+      } finally {
+        setIsFetching(false);
+      }
+    };
+
+    fetchSettings();
+  }, [groupId, currentMemberRole, isMember, applySettingsToForm]);
 
   const handleSave = async (id: string, newValue: string, newDesc?: string) => {
     if (!groupId) {
@@ -64,29 +127,30 @@ const GroupSettingPage: React.FC = () => {
     }
     setIsLoading(true);
     try {
-      let response;
-      switch (id) {
-        case "name":
-          response = await groupApi.updateGroup(
-            groupId,
-            newValue,
-            newDesc as string,
-          );
-          break;
-        default:
-          console.log("No action");
+      const payload = buildSettingUpdatePayload(id, newValue, newDesc);
+      const res = await groupApi.updateGroupSetting(groupId, payload);
+
+      if (res.data) {
+        applySettingsToForm(settingsToFormValues(res.data));
+      } else {
+        setSettings((prev) =>
+          prev.map((s) => {
+            if (s.id !== id) return s;
+            if (id === "name") {
+              return { ...s, value: newValue, description: newDesc ?? s.description };
+            }
+            return { ...s, value: newValue };
+          }),
+        );
       }
-      setSettings((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, value: newValue } : s)),
-      );
+
       setEditingId(null);
-    } catch (error: any) {
-      console.error("Lỗi:", error);
-      const message =
-        error?.response?.data?.message ||
-        error?.message ||
-        "Có lỗi xảy ra. Vui lòng thử lại.";
-      toast.error(message);
+      toast.success("Đã lưu cài đặt");
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      toast.error(
+        err?.response?.data?.message || err?.message || "Có lỗi xảy ra. Vui lòng thử lại.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -109,7 +173,11 @@ const GroupSettingPage: React.FC = () => {
             ) : (
               <SettingItem
                 label={item.label}
-                value={item.value}
+                value={
+                  item.id === "name" && item.description
+                    ? `${item.value} · ${item.description}`
+                    : item.value
+                }
                 isDropdown={item.isDropdown}
                 onClick={() => setEditingId(item.id)}
               />
@@ -126,14 +194,13 @@ const GroupSettingPage: React.FC = () => {
         <p className="text-gray-500 text-sm mt-2">
           Chỉ Quản trị viên mới có thể xem và thay đổi thiết lập của nhóm này.
         </p>
-        <button
-          onClick={() => navigate("/news-feed")}
-          className="mt-6 flex items-center gap-2 text-blue-600 hover:underline font-medium text-sm cursor-pointer"
-        >
-          <Home size={16} />
-          Quay lại trang chính
-        </button>
       </div>
+    );
+  }
+
+  if (isFetching) {
+    return (
+      <p className="text-gray-500 text-sm mt-2">Đang tải cài đặt nhóm...</p>
     );
   }
 

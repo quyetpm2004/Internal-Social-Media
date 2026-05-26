@@ -134,8 +134,9 @@ const GroupFeedPage: React.FC = () => {
     <div className="flex flex-col md:grid md:grid-cols-12 gap-8">
       <div className="md:col-span-8 space-y-6">
         {/* 1. Tạo bài viết */}
-        {isMember && <PostCreator fetchPosts={fetchPosts} />}
-        {/* <PostCreator fetchPosts={fetchPosts} /> */}
+        {isMember && (
+          <PostCreator fetchPosts={fetchPosts} groupVisibility="GROUP" />
+        )}
 
         {/* 2. Trạng thái Loading ban đầu */}
         {initialLoading && (

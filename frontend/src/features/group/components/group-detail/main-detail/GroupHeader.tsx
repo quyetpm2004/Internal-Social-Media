@@ -13,6 +13,7 @@ import { NavLink, useParams } from "react-router-dom";
 import ConfirmModal from "@/components/common/ConfirmModal";
 import { toast } from "sonner";
 import type { GroupMembershipStatus } from "@/features/group/types/group.type";
+import type { GroupMemberRole } from "@/features/group/utils/group-member";
 
 type GroupHeaderProps = {
   name: string;
@@ -26,6 +27,7 @@ type GroupHeaderProps = {
   coverUploading?: boolean;
   onCoverChange?: (file: File) => void;
   onJoinLeave: () => void;
+  currentMemberRole: GroupMemberRole | null;
 };
 
 const DEFAULT_COVER =
@@ -51,6 +53,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
   coverUploading = false,
   onCoverChange,
   onJoinLeave,
+  currentMemberRole,
 }) => {
   const { groupId } = useParams();
   const [showLeaveJoinConfirm, setShowLeaveJoinConfirm] = useState(false);
@@ -236,7 +239,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
           </div>
         </div>
 
-        <div className="mt-4 flex gap-8 border-t border-slate-100 dark:border-slate-800 pt-1">
+        <div className="mt-4 flex gap-8 border-t border-slate-100 dark:border-slate-800 pt-1 overflow-x-auto scrollbar-hide">
           {tabs.map((item) => {
             const to = item.path
               ? `/groups/${groupId}/${item.path}`
@@ -245,13 +248,20 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
             const showBadge =
               item.path === "members" && pendingRequestCount > 0;
 
+            if (
+              item.label === "Cài đặt nhóm" &&
+              currentMemberRole !== "ADMIN"
+            ) {
+              return null;
+            }
+
             return (
               <NavLink
                 key={item.label}
                 to={to}
                 end={!item.path}
                 className={({ isActive }) =>
-                  `py-4 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${
+                  `py-4 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap ${
                     isActive
                       ? "text-blue-700 border-blue-700"
                       : "text-slate-500 border-transparent hover:text-slate-900 dark:hover:text-white"

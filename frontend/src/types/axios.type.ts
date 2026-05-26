@@ -15,5 +15,11 @@ export interface CustomAxiosInstance extends AxiosInstance {
     config?: AxiosRequestConfig,
   ): Promise<T>;
 
+  patch<T = any>(
+    url: string,
+    data?: any,
+    config?: AxiosRequestConfig,
+  ): Promise<T>;
+
   delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>;
 }

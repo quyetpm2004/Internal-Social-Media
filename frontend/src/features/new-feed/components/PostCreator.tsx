@@ -22,6 +22,7 @@ import { toast } from "sonner";
 
 type PostCreatorProps = {
   fetchPosts: (currentPage: number) => Promise<void>;
+  groupVisibility: "PUBLIC" | "GROUP";
 };
 
 type UploadedAttachment = {
@@ -29,7 +30,7 @@ type UploadedAttachment = {
   key: string;
 };
 
-const PostCreator = ({ fetchPosts }: PostCreatorProps) => {
+const PostCreator = ({ fetchPosts, groupVisibility }: PostCreatorProps) => {
   const { groupId } = useParams();
   const user = useAuthStore((state) => state.user);
 

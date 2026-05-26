@@ -15,7 +15,7 @@ const EditForm: React.FC<EditFormProps> = ({
   onSave,
 }) => {
   const [tempValue, setTempValue] = useState(item.value);
-  const [description, setDescription] = useState("");
+  const [description, setDescription] = useState(item.description ?? "");
 
   return (
     <div className="p-3 space-y-4 animate-in fade-in duration-200">

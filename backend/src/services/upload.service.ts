@@ -10,7 +10,10 @@ type UploadPurpose =
   | "post-image"
   | "post-video"
   | "post-file"
-  | "group-cover";
+  | "group-cover"
+  | "message-image"
+  | "message-video"
+  | "message-file";
 
 type CreateUploadUrlsInput = {
   userId: string;
@@ -73,6 +76,37 @@ export async function createUploadUrls(input: CreateUploadUrlsInput) {
       ],
       folder: "posts/files",
     },
+
+    "message-image": {
+      maxSize: 10 * 1024 * 1024,
+      allowedTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+      folder: "chat/images",
+    },
+
+    "message-video": {
+      maxSize: 100 * 1024 * 1024,
+      allowedTypes: ["video/mp4", "video/webm"],
+      folder: "chat/videos",
+    },
+
+    "message-file": {
+      maxSize: 20 * 1024 * 1024,
+      allowedTypes: [
+        "application/pdf",
+        "application/zip",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-powerpoint",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "application/vnd.oasis.opendocument.text",
+        "application/vnd.oasis.opendocument.spreadsheet",
+        "application/vnd.oasis.opendocument.presentation",
+        "text/plain",
+      ],
+      folder: "chat/files",
+    },
   };
 
   const items = await Promise.all(
@@ -94,7 +128,7 @@ export async function createUploadUrls(input: CreateUploadUrlsInput) {
       let attachmentId: number | null = null;
 
       /**
-       * Only create DB record for post media
+       * Create DB record for post media
        */
       if (file.purpose.startsWith("post-")) {
         const attachment = await prisma.postAttachment.create({
@@ -105,6 +139,30 @@ export async function createUploadUrls(input: CreateUploadUrlsInput) {
               file.purpose === "post-image"
                 ? "IMAGE"
                 : file.purpose === "post-video"
+                  ? "VIDEO"
+                  : "FILE",
+            mimeType: file.fileType,
+            uploadedById: +userId,
+            fileSize: file.fileSize,
+            status: "PENDING",
+          },
+        });
+
+        attachmentId = attachment.id;
+      }
+
+      /**
+       * Create DB record for chat message attachments (linked later by sendMessage)
+       */
+      if (file.purpose.startsWith("message-")) {
+        const attachment = await prisma.messageAttachment.create({
+          data: {
+            fileName: file.fileName,
+            fileKey: key,
+            attachmentType:
+              file.purpose === "message-image"
+                ? "IMAGE"
+                : file.purpose === "message-video"
                   ? "VIDEO"
                   : "FILE",
             mimeType: file.fileType,
@@ -221,6 +279,42 @@ export async function confirmUploads(input: ConfirmUploadInput) {
       results.push({
         type: "group-cover",
         key,
+      });
+
+      continue;
+    }
+
+    /**
+     * MESSAGE MEDIA / FILE
+     */
+    if (purpose.startsWith("message-")) {
+      if (!attachmentId) {
+        throw new Error("ATTACHMENT_ID_REQUIRED");
+      }
+
+      const attachment = await prisma.messageAttachment.findFirst({
+        where: {
+          id: attachmentId,
+          status: "PENDING",
+        },
+      });
+
+      if (!attachment) {
+        throw new Error("ATTACHMENT_NOT_FOUND");
+      }
+
+      const updatedAttachment = await prisma.messageAttachment.update({
+        where: { id: attachment.id },
+        data: {
+          mimeType: headObject.ContentType,
+          fileSize: headObject.ContentLength,
+          status: "READY",
+        },
+      });
+
+      results.push({
+        type: "message-attachment",
+        attachment: updatedAttachment,
       });
 
       continue;

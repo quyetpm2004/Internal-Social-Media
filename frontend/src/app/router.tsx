@@ -16,7 +16,12 @@ import { GroupJoinRequestsPage } from "@/features/group/pages/GroupJoinRequestsP
 import PostDetailPage from "@/features/new-feed/pages/PostDetailPage";
 import PostDetailInGroupPage from "@/features/group/pages/PostDetailInGroupPage";
 import GroupSettingPage from "@/features/group/pages/GroupSettingPage";
+import GroupMediaPage from "@/features/group/pages/GroupMediaPage";
+import GroupFilesPage from "@/features/group/pages/GroupFilesPage";
 import SearchPage from "@/features/search/pages/SearchPage";
+import ChatLayout from "@/features/chat/pages/ChatLayout";
+import ChatEmptyPage from "@/features/chat/pages/ChatEmptyPage";
+import ChatConversationPage from "@/features/chat/pages/ChatConversationPage";
 
 export const router = createBrowserRouter([
   {
@@ -55,6 +60,20 @@ export const router = createBrowserRouter([
             element: <SearchPage />,
           },
           {
+            path: "/messages",
+            element: <ChatLayout />,
+            children: [
+              {
+                index: true,
+                element: <ChatEmptyPage />,
+              },
+              {
+                path: ":conversationId",
+                element: <ChatConversationPage />,
+              },
+            ],
+          },
+          {
             path: "/groups",
             element: <GroupListPage />,
           },
@@ -85,6 +104,16 @@ export const router = createBrowserRouter([
               {
                 path: "posts/:postId",
                 element: <PostDetailInGroupPage />,
+              },
+
+              {
+                path: "media",
+                element: <GroupMediaPage />,
+              },
+
+              {
+                path: "files",
+                element: <GroupFilesPage />,
               },
 
               {

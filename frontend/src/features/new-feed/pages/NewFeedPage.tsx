@@ -162,7 +162,7 @@ const NewFeedPage = () => {
     <main className="flex-1 py-8">
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-6">
-          <PostCreator fetchPosts={fetchPosts} />
+          <PostCreator fetchPosts={fetchPosts} groupVisibility="PUBLIC" />
 
           {initialLoading && (
             <div className="rounded-xl border border-slate-200 p-4 text-sm text-slate-500">

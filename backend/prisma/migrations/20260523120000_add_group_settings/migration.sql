@@ -1,0 +1,9 @@
+-- AlterTable
+ALTER TABLE `groups` ADD COLUMN `is_hidden` BOOLEAN NOT NULL DEFAULT false,
+    ADD COLUMN `join_approval_policy` ENUM('ADMIN_ONLY', 'ANY_MEMBER') NOT NULL DEFAULT 'ADMIN_ONLY',
+    ADD COLUMN `allow_anonymous_join` BOOLEAN NOT NULL DEFAULT false,
+    ADD COLUMN `post_permission` ENUM('ADMIN_ONLY', 'ANY_MEMBER') NOT NULL DEFAULT 'ANY_MEMBER',
+    ADD COLUMN `post_approval_required` BOOLEAN NOT NULL DEFAULT false;
+
+-- AlterTable
+ALTER TABLE `posts` MODIFY `status` ENUM('ACTIVE', 'PENDING_REVIEW', 'HIDDEN', 'DELETED') NOT NULL DEFAULT 'ACTIVE';

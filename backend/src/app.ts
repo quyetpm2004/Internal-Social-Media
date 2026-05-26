@@ -12,6 +12,7 @@ import uploadRoutes from "./routes/upload.routes";
 import fileRoutes from "./routes/file.routes";
 import groupRoutes from "./routes/group.routes";
 import searchRoutes from "./routes/search.routes";
+import chatRoutes from "./routes/chat.routes";
 dotenv.config();
 
 const app = express();
@@ -41,5 +42,6 @@ app.use("/api/uploads", uploadRoutes);
 app.use("/api/file-url", fileRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/search", searchRoutes);
+app.use("/api/chat", chatRoutes);
 
 export default app;
