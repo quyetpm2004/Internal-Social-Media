@@ -12,9 +12,17 @@ const ChatConversationPage = () => {
     loadingMessages,
     hasMoreMessages,
     sending,
+    onlineUserIds,
+    typingUserIds,
+    readReceipts,
+    unreadAnchor,
     onLoadOlderMessages,
     onSendMessage,
+    onEditMessage,
+    onDeleteMessage,
     onMuteChanged,
+    onTypingStart,
+    onTypingStop,
   } = useOutletContext<ChatOutletContext>();
 
   const [showDetailPanel, setShowDetailPanel] = useState<boolean>(false);
@@ -40,8 +48,16 @@ const ChatConversationPage = () => {
         loadingMessages={loadingMessages}
         hasMoreMessages={hasMoreMessages}
         sending={sending}
+        onlineUserIds={onlineUserIds}
+        typingUserIds={typingUserIds}
+        readReceipts={readReceipts}
+        unreadAnchor={unreadAnchor}
         onLoadMore={onLoadOlderMessages}
         onSendMessage={onSendMessage}
+        onEditMessage={onEditMessage}
+        onDeleteMessage={onDeleteMessage}
+        onTypingStart={onTypingStart}
+        onTypingStop={onTypingStop}
         onToggleDetails={() => setShowDetailPanel((prev) => !prev)}
       />
 

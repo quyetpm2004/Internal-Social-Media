@@ -3,6 +3,7 @@ import { seedPositions } from "./seeds/position.seed";
 import { seedUsers } from "./seeds/user.seed";
 import { seedGroups } from "./seeds/group.seed";
 import { seedPosts } from "./seeds/post.seed";
+import { seedChat } from "./seeds/chat.seed";
 
 import prisma from "../src/utils/prisma";
 
@@ -16,6 +17,7 @@ async function main() {
     await seedUsers(prisma);
     await seedGroups(prisma);
     await seedPosts(prisma);
+    await seedChat(prisma);
 
     console.log("✨ Seeding finished successfully.");
   } catch (error) {

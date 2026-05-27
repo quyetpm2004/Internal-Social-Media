@@ -1,32 +1,49 @@
 import { axiosClient } from "@/lib/axios";
 
+export type UploadPurpose =
+  | "avatar"
+  | "group-cover"
+  | "post-image"
+  | "post-video"
+  | "post-file"
+  | "message-image"
+  | "message-video"
+  | "message-file";
+
+export interface PresignedItem {
+  attachmentId: number | null;
+  key: string;
+  uploadUrl: string;
+  method: "PUT";
+  headers: Record<string, string>;
+}
+
+export interface PresignResponse {
+  message: string;
+  data: {
+    items: PresignedItem[];
+  };
+}
+
 export const uploadApi = {
   presign(
     files: {
-      purpose: string;
+      purpose: UploadPurpose;
       fileName: string;
       fileType: string;
       fileSize: number;
     }[],
   ) {
-    return axiosClient.post("/uploads/presign", {
+    return axiosClient.post<PresignResponse>("/uploads/presign", {
       files,
     });
   },
 
   confirm(
     items: {
-      purpose:
-        | "avatar"
-        | "group-cover"
-        | "post-image"
-        | "post-video"
-        | "post-file";
-
+      purpose: UploadPurpose;
       key: string;
-
       attachmentId?: number;
-
       groupId?: number;
     }[],
   ) {

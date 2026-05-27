@@ -2,17 +2,22 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import { confirmUploads, createUploadUrls } from "../services/upload.service";
 
+const uploadPurposeEnum = z.enum([
+  "avatar",
+  "post-image",
+  "post-video",
+  "post-file",
+  "group-cover",
+  "message-image",
+  "message-video",
+  "message-file",
+]);
+
 const createUploadUrlSchema = z.object({
   files: z
     .array(
       z.object({
-        purpose: z.enum([
-          "avatar",
-          "post-image",
-          "post-video",
-          "post-file",
-          "group-cover",
-        ]),
+        purpose: uploadPurposeEnum,
         fileName: z.string(),
         fileType: z.string(),
         fileSize: z.number(),
@@ -58,13 +63,7 @@ export async function createUploadUrlController(req: Request, res: Response) {
 export const confirmUploadSchema = z.object({
   items: z.array(
     z.object({
-      purpose: z.enum([
-        "avatar",
-        "post-image",
-        "post-video",
-        "post-file",
-        "group-cover",
-      ]),
+      purpose: uploadPurposeEnum,
 
       key: z.string(),
 

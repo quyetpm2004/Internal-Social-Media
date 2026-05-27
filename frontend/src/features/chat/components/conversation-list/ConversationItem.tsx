@@ -9,6 +9,7 @@ interface ConversationItemProps {
   conversation: Conversation;
   isActive: boolean;
   currentUserId: number;
+  isCounterpartOnline?: boolean;
   onClick: () => void;
 }
 
@@ -50,10 +51,13 @@ const ConversationItem = ({
   conversation,
   isActive,
   currentUserId,
+  isCounterpartOnline,
   onClick,
 }: ConversationItemProps) => {
   const { type, name, avatarUrl, lastMessage, lastMessageAt, unreadCount } =
     conversation;
+
+  const hasUnread = unreadCount > 0;
 
   const { content, senderName } = getLastMessagePreview(
     lastMessage,
@@ -65,10 +69,17 @@ const ConversationItem = ({
     <button
       type="button"
       onClick={onClick}
-      className={`w-full text-left px-4 py-4 cursor-pointer transition-all border-l-4 ${
+      aria-label={
+        hasUnread
+          ? `${name} (${unreadCount} tin nhắn chưa đọc)`
+          : name
+      }
+      className={`relative w-full text-left px-4 py-4 cursor-pointer transition-all border-l-4 ${
         isActive
           ? "bg-surface-container-lowest border-primary"
-          : "border-transparent hover:bg-surface-container"
+          : hasUnread
+            ? "border-transparent bg-primary/5 hover:bg-primary/10"
+            : "border-transparent hover:bg-surface-container"
       }`}
     >
       <div className="flex gap-3">
@@ -84,15 +95,34 @@ const ConversationItem = ({
               alt={name}
             />
           )}
+
+          {isCounterpartOnline && (
+            <span
+              className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-surface-container-low"
+              aria-label="Đang online"
+            />
+          )}
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="flex justify-between items-baseline">
-            <h4 className="text-sm font-bold text-on-surface truncate">
+          <div className="flex justify-between items-baseline gap-2">
+            <h4
+              className={`text-sm truncate ${
+                hasUnread
+                  ? "font-extrabold text-on-surface"
+                  : "font-bold text-on-surface"
+              }`}
+            >
               {name}
             </h4>
             {lastMessageAt && (
-              <span className="text-[10px] font-medium text-on-surface-variant flex-shrink-0 ml-2">
+              <span
+                className={`text-[10px] shrink-0 ${
+                  hasUnread
+                    ? "text-primary font-bold"
+                    : "text-on-surface-variant font-medium"
+                }`}
+              >
                 {formatConversationListTime(lastMessageAt)}
               </span>
             )}
@@ -101,8 +131,8 @@ const ConversationItem = ({
           <div className="flex justify-between items-center gap-2 mt-0.5">
             <p
               className={`text-xs truncate ${
-                unreadCount > 0
-                  ? "text-on-surface font-semibold"
+                hasUnread
+                  ? "text-on-surface font-bold"
                   : "text-on-surface-variant font-medium"
               }`}
             >
@@ -112,8 +142,8 @@ const ConversationItem = ({
               {content}
             </p>
 
-            {unreadCount > 0 && (
-              <span className="w-5 h-5 bg-primary text-[10px] flex items-center justify-center text-on-primary rounded-full font-bold flex-shrink-0">
+            {hasUnread && (
+              <span className="min-w-5 h-5 px-1.5 bg-primary text-[10px] flex items-center justify-center text-on-primary rounded-full font-bold shrink-0 shadow-sm">
                 {unreadCount > 99 ? "99+" : unreadCount}
               </span>
             )}

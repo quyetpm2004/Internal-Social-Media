@@ -682,7 +682,7 @@ export const deleteMessageService = async ({
     },
   });
 
-  return { messageId };
+  return { messageId, conversationId: message.conversationId };
 };
 
 export const getSharedMediaService = async ({

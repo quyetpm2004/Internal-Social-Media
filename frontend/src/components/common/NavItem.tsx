@@ -15,9 +15,9 @@ const NavItem: React.FC<NavItemProps> = ({
 }) => (
   <a
     href={path}
-    className={`flex items-center gap-3 px-3 py-2 transition-all rounded-lg font-medium text-sm ${
+    className={`flex items-center gap-3 px-3 py-3 transition-all rounded-lg font-medium text-sm ${
       active
-        ? "bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 font-semibold"
+        ? "bg-white dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 font-semibold"
         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-800/50"
     }`}
   >

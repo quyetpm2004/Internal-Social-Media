@@ -1,14 +1,24 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import ConversationList from "@/features/chat/components/conversation-list/ConversationList";
 import { chatApi } from "@/features/chat/apis/chat.api";
 import { useAuthStore } from "@/features/auth/store/auth.store";
+import { useChatSocket } from "@/features/chat/hooks/useChatSocket";
 import type {
   ChatMessage,
   Conversation,
   ConversationDetail,
 } from "@/features/chat/types/chat.type";
+import type {
+  MessageDeletedPayload,
+  MessageEditedPayload,
+  MessageNewPayload,
+  PresencePayload,
+  ReadUpdatePayload,
+  TypingPayload,
+} from "@/features/chat/types/chat-events.type";
+import type { SendMessagePayload } from "@/features/chat/components/chat-window/MessageInput";
 
 export interface ChatOutletContext {
   conversation: ConversationDetail | null;
@@ -17,9 +27,22 @@ export interface ChatOutletContext {
   loadingMessages: boolean;
   hasMoreMessages: boolean;
   sending: boolean;
+  onlineUserIds: number[];
+  typingUserIds: number[];
+  /** Map userId -> ISO lastReadAt; cập nhật realtime khi nhận read:update */
+  readReceipts: Map<number, string>;
+  /**
+   * Snapshot lastReadAt của chính user khi mở conversation, dùng để
+   * vẽ separator "X tin nhắn chưa đọc" giữa luồng message.
+   */
+  unreadAnchor: string | null;
   onLoadOlderMessages: () => void;
-  onSendMessage: (content: string) => void;
+  onSendMessage: (payload: SendMessagePayload) => Promise<void>;
+  onEditMessage: (messageId: number, content: string) => Promise<void>;
+  onDeleteMessage: (messageId: number) => Promise<void>;
   onMuteChanged: (isMuted: boolean) => void;
+  onTypingStart: () => void;
+  onTypingStop: () => void;
 }
 
 const getErrorMessage = (error: unknown) => {
@@ -33,6 +56,8 @@ const getErrorMessage = (error: unknown) => {
     "Có lỗi xảy ra. Vui lòng thử lại."
   );
 };
+
+const TYPING_TIMEOUT_MS = 4000;
 
 const ChatLayout = () => {
   const navigate = useNavigate();
@@ -57,8 +82,23 @@ const ChatLayout = () => {
 
   const [sending, setSending] = useState(false);
 
+  // Realtime state
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<number>>(new Set());
+  // Map conversationId -> Set<userId> đang gõ
+  const [typingMap, setTypingMap] = useState<Map<number, Set<number>>>(
+    new Map(),
+  );
+  // Map userId -> ISO lastReadAt cho active conversation
+  const [readReceipts, setReadReceipts] = useState<Map<number, string>>(
+    new Map(),
+  );
+  // Snapshot lastReadAt của user hiện tại khi mở conversation
+  const [unreadAnchor, setUnreadAnchor] = useState<string | null>(null);
+
   const activeConversationIdRef = useRef<number | undefined>(conversationId);
   activeConversationIdRef.current = conversationId;
+
+  // ----- Helpers -----
 
   const refreshConversations = useCallback(async () => {
     try {
@@ -72,6 +112,221 @@ const ChatLayout = () => {
     }
   }, []);
 
+  const upsertConversationOnNewMessage = useCallback(
+    (incoming: ChatMessage, isViewing: boolean) => {
+      setConversations((prev) => {
+        const idx = prev.findIndex((item) => item.id === incoming.conversationId);
+        if (idx === -1) {
+          // Conversation chưa có trong list → refresh để lấy đầy đủ thông tin
+          refreshConversations();
+          return prev;
+        }
+
+        const current = prev[idx];
+        const isOwn = incoming.senderId === currentUserId;
+        const shouldIncrementUnread = !isOwn && !isViewing;
+
+        const updated: Conversation = {
+          ...current,
+          lastMessage: incoming,
+          lastMessageAt: incoming.createdAt,
+          unreadCount: shouldIncrementUnread
+            ? current.unreadCount + 1
+            : isViewing
+              ? 0
+              : current.unreadCount,
+        };
+
+        const rest = prev.filter((item) => item.id !== incoming.conversationId);
+        return [updated, ...rest];
+      });
+    },
+    [currentUserId, refreshConversations],
+  );
+
+  // ----- Realtime event handlers -----
+
+  const handleMessageNew = useCallback(
+    ({ message }: MessageNewPayload) => {
+      const isViewing =
+        activeConversationIdRef.current === message.conversationId;
+
+      if (isViewing) {
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === message.id)) return prev;
+          return [...prev, message];
+        });
+
+        // Tự đánh dấu đã đọc nếu đang mở conversation và không phải tin của mình
+        if (message.senderId !== currentUserId) {
+          chatApi.markRead(message.conversationId).catch(() => {});
+        }
+      }
+
+      upsertConversationOnNewMessage(message, isViewing);
+
+      // Khi nhận message mới, người gửi đã ngừng typing
+      setTypingMap((prev) => {
+        const next = new Map(prev);
+        const set = next.get(message.conversationId);
+        if (!set) return prev;
+        if (!set.has(message.senderId)) return prev;
+        const newSet = new Set(set);
+        newSet.delete(message.senderId);
+        if (newSet.size === 0) {
+          next.delete(message.conversationId);
+        } else {
+          next.set(message.conversationId, newSet);
+        }
+        return next;
+      });
+    },
+    [currentUserId, upsertConversationOnNewMessage],
+  );
+
+  const handleMessageEdited = useCallback(
+    ({ message }: MessageEditedPayload) => {
+      if (activeConversationIdRef.current === message.conversationId) {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === message.id ? message : m)),
+        );
+      }
+
+      setConversations((prev) =>
+        prev.map((item) =>
+          item.lastMessage?.id === message.id
+            ? { ...item, lastMessage: message }
+            : item,
+        ),
+      );
+    },
+    [],
+  );
+
+  const handleMessageDeleted = useCallback(
+    ({ conversationId: convId, messageId }: MessageDeletedPayload) => {
+      if (activeConversationIdRef.current === convId) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === messageId
+              ? { ...m, status: "DELETED", content: "" }
+              : m,
+          ),
+        );
+      }
+
+      setConversations((prev) =>
+        prev.map((item) =>
+          item.lastMessage?.id === messageId
+            ? {
+                ...item,
+                lastMessage: item.lastMessage
+                  ? { ...item.lastMessage, status: "DELETED", content: "" }
+                  : item.lastMessage,
+              }
+            : item,
+        ),
+      );
+    },
+    [],
+  );
+
+  const handleReadUpdate = useCallback(
+    ({
+      conversationId: convId,
+      userId,
+      lastReadAt,
+    }: ReadUpdatePayload) => {
+      // Cập nhật read receipts cho active conversation
+      if (activeConversationIdRef.current === convId) {
+        setReadReceipts((prev) => {
+          const existing = prev.get(userId);
+          if (existing && existing >= lastReadAt) return prev;
+          const next = new Map(prev);
+          next.set(userId, lastReadAt);
+          return next;
+        });
+      }
+
+      // Chỉ reset unreadCount khi chính mình mark read (vd: tab khác)
+      if (userId === currentUserId) {
+        setConversations((prev) =>
+          prev.map((item) =>
+            item.id === convId ? { ...item, unreadCount: 0 } : item,
+          ),
+        );
+      }
+    },
+    [currentUserId],
+  );
+
+  const handleTypingStart = useCallback(
+    ({ conversationId: convId, userId }: TypingPayload) => {
+      if (userId === currentUserId) return;
+
+      setTypingMap((prev) => {
+        const next = new Map(prev);
+        const set = new Set(next.get(convId) ?? []);
+        set.add(userId);
+        next.set(convId, set);
+        return next;
+      });
+    },
+    [currentUserId],
+  );
+
+  const handleTypingStop = useCallback(
+    ({ conversationId: convId, userId }: TypingPayload) => {
+      if (userId === currentUserId) return;
+
+      setTypingMap((prev) => {
+        const set = prev.get(convId);
+        if (!set || !set.has(userId)) return prev;
+        const next = new Map(prev);
+        const newSet = new Set(set);
+        newSet.delete(userId);
+        if (newSet.size === 0) {
+          next.delete(convId);
+        } else {
+          next.set(convId, newSet);
+        }
+        return next;
+      });
+    },
+    [currentUserId],
+  );
+
+  const handlePresenceOnline = useCallback(({ userId }: PresencePayload) => {
+    setOnlineUserIds((prev) => {
+      if (prev.has(userId)) return prev;
+      const next = new Set(prev);
+      next.add(userId);
+      return next;
+    });
+  }, []);
+
+  const handlePresenceOffline = useCallback(({ userId }: PresencePayload) => {
+    setOnlineUserIds((prev) => {
+      if (!prev.has(userId)) return prev;
+      const next = new Set(prev);
+      next.delete(userId);
+      return next;
+    });
+  }, []);
+
+  const { emitTypingStart, emitTypingStop } = useChatSocket({
+    onMessageNew: handleMessageNew,
+    onMessageEdited: handleMessageEdited,
+    onMessageDeleted: handleMessageDeleted,
+    onReadUpdate: handleReadUpdate,
+    onTypingStart: handleTypingStart,
+    onTypingStop: handleTypingStop,
+    onPresenceOnline: handlePresenceOnline,
+    onPresenceOffline: handlePresenceOffline,
+  });
+
+  // ----- Effects -----
+
   useEffect(() => {
     refreshConversations();
   }, [refreshConversations]);
@@ -82,6 +337,8 @@ const ChatLayout = () => {
       setMessages([]);
       setNextCursor(null);
       setHasMoreMessages(false);
+      setReadReceipts(new Map());
+      setUnreadAnchor(null);
       return;
     }
 
@@ -109,6 +366,21 @@ const ChatLayout = () => {
         setMessages(messagesRes.data.items);
         setHasMoreMessages(messagesRes.data.pagination.hasMore);
         setNextCursor(messagesRes.data.pagination.nextCursor);
+
+        // Khởi tạo read receipts từ members (giá trị TRƯỚC khi mark read)
+        const initialReceipts = new Map<number, string>();
+        for (const member of detailRes.data.members) {
+          if (member.lastReadAt) {
+            initialReceipts.set(member.user.id, member.lastReadAt);
+          }
+        }
+        setReadReceipts(initialReceipts);
+
+        // Snapshot lastReadAt của user hiện tại để vẽ divider unread
+        const me = detailRes.data.members.find(
+          (m) => m.user.id === currentUserId,
+        );
+        setUnreadAnchor(me?.lastReadAt ?? null);
 
         await chatApi.markRead(conversationId);
 
@@ -143,7 +415,9 @@ const ChatLayout = () => {
     return () => {
       cancelled = true;
     };
-  }, [conversationId, navigate]);
+  }, [conversationId, navigate, currentUserId]);
+
+  // ----- UI handlers -----
 
   const handleSelectConversation = (id: number) => {
     navigate(`/messages/${id}`);
@@ -175,39 +449,98 @@ const ChatLayout = () => {
   }, [conversationId, hasMoreMessages, nextCursor, loadingMessages]);
 
   const handleSendMessage = useCallback(
-    async (content: string) => {
+    async (payload: SendMessagePayload) => {
       if (!conversationId) return;
 
       try {
         setSending(true);
-        const res = await chatApi.sendMessage(conversationId, { content });
+        const res = await chatApi.sendMessage(conversationId, {
+          content: payload.content,
+          contentType: payload.contentType,
+          attachmentIds: payload.attachmentIds,
+        });
         const newMessage = res.data;
 
+        // Append ngay từ REST response để UX nhanh, đồng thời handler
+        // message:new sẽ dedupe theo id nếu socket cũng nhận được
         if (activeConversationIdRef.current === conversationId) {
-          setMessages((prev) => [...prev, newMessage]);
+          setMessages((prev) =>
+            prev.some((m) => m.id === newMessage.id)
+              ? prev
+              : [...prev, newMessage],
+          );
         }
 
-        setConversations((prev) => {
-          const idx = prev.findIndex((item) => item.id === conversationId);
-          if (idx === -1) {
-            return prev;
-          }
-          const updated = {
-            ...prev[idx],
-            lastMessage: newMessage,
-            lastMessageAt: newMessage.createdAt,
-            unreadCount: 0,
-          };
-          const rest = prev.filter((item) => item.id !== conversationId);
-          return [updated, ...rest];
-        });
+        upsertConversationOnNewMessage(newMessage, true);
       } catch (error) {
-        toast.error(getErrorMessage(error));
+        const message = getErrorMessage(error);
+        toast.error(message);
+        throw error;
       } finally {
         setSending(false);
       }
     },
-    [conversationId],
+    [conversationId, upsertConversationOnNewMessage],
+  );
+
+  const handleEditMessage = useCallback(
+    async (messageId: number, content: string) => {
+      try {
+        const res = await chatApi.editMessage(messageId, content);
+        const updated = res.data;
+
+        if (activeConversationIdRef.current === updated.conversationId) {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === updated.id ? updated : m)),
+          );
+        }
+
+        setConversations((prev) =>
+          prev.map((item) =>
+            item.lastMessage?.id === updated.id
+              ? { ...item, lastMessage: updated }
+              : item,
+          ),
+        );
+      } catch (error) {
+        toast.error(getErrorMessage(error));
+        throw error;
+      }
+    },
+    [],
+  );
+
+  const handleDeleteMessage = useCallback(
+    async (messageId: number) => {
+      try {
+        await chatApi.deleteMessage(messageId);
+
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === messageId
+              ? { ...m, status: "DELETED", content: "" }
+              : m,
+          ),
+        );
+
+        setConversations((prev) =>
+          prev.map((item) =>
+            item.lastMessage?.id === messageId
+              ? {
+                  ...item,
+                  lastMessage: item.lastMessage
+                    ? { ...item.lastMessage, status: "DELETED", content: "" }
+                    : item.lastMessage,
+                }
+              : item,
+          ),
+        );
+      } catch (error) {
+        toast.error(getErrorMessage(error));
+        throw error;
+      }
+    },
+    [],
   );
 
   const handleMuteChanged = useCallback(
@@ -226,6 +559,63 @@ const ChatLayout = () => {
     [conversationId],
   );
 
+  // ----- Typing emit có debounce/throttle nhẹ -----
+  const typingStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isTypingRef = useRef(false);
+
+  const handleTypingStartUser = useCallback(() => {
+    if (!conversationId) return;
+
+    if (!isTypingRef.current) {
+      isTypingRef.current = true;
+      emitTypingStart(conversationId);
+    }
+
+    if (typingStopTimerRef.current) {
+      clearTimeout(typingStopTimerRef.current);
+    }
+
+    typingStopTimerRef.current = setTimeout(() => {
+      if (!conversationId) return;
+      isTypingRef.current = false;
+      emitTypingStop(conversationId);
+    }, TYPING_TIMEOUT_MS);
+  }, [conversationId, emitTypingStart, emitTypingStop]);
+
+  const handleTypingStopUser = useCallback(() => {
+    if (!conversationId) return;
+    if (typingStopTimerRef.current) {
+      clearTimeout(typingStopTimerRef.current);
+      typingStopTimerRef.current = null;
+    }
+    if (isTypingRef.current) {
+      isTypingRef.current = false;
+      emitTypingStop(conversationId);
+    }
+  }, [conversationId, emitTypingStop]);
+
+  useEffect(() => {
+    // Khi đổi conversation, reset trạng thái typing
+    if (typingStopTimerRef.current) {
+      clearTimeout(typingStopTimerRef.current);
+      typingStopTimerRef.current = null;
+    }
+    isTypingRef.current = false;
+  }, [conversationId]);
+
+  // ----- Derived -----
+
+  const typingUserIds = useMemo<number[]>(() => {
+    if (!conversationId) return [];
+    const set = typingMap.get(conversationId);
+    return set ? Array.from(set) : [];
+  }, [typingMap, conversationId]);
+
+  const onlineUserIdsList = useMemo(
+    () => Array.from(onlineUserIds),
+    [onlineUserIds],
+  );
+
   const context: ChatOutletContext = {
     conversation: activeConversation,
     messages,
@@ -233,9 +623,17 @@ const ChatLayout = () => {
     loadingMessages,
     hasMoreMessages,
     sending,
+    onlineUserIds: onlineUserIdsList,
+    typingUserIds,
+    readReceipts,
+    unreadAnchor,
     onLoadOlderMessages: handleLoadOlderMessages,
     onSendMessage: handleSendMessage,
+    onEditMessage: handleEditMessage,
+    onDeleteMessage: handleDeleteMessage,
     onMuteChanged: handleMuteChanged,
+    onTypingStart: handleTypingStartUser,
+    onTypingStop: handleTypingStopUser,
   };
 
   return (
@@ -245,6 +643,7 @@ const ChatLayout = () => {
         activeConversationId={conversationId}
         currentUserId={currentUserId}
         loading={loadingConversations}
+        onlineUserIds={onlineUserIdsList}
         onSelectConversation={handleSelectConversation}
         className={conversationId ? "hidden md:flex" : "flex"}
       />

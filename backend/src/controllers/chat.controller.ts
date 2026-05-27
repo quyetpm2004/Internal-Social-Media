@@ -2,6 +2,13 @@ import { Request, Response, NextFunction } from "express";
 import z from "zod";
 import { MessageContentType } from "@prisma/client";
 import * as chatService from "../services/chat.service";
+import {
+  emitMessageDeleted,
+  emitMessageEdited,
+  emitMessageNew,
+  emitReadUpdate,
+  joinUsersToConversationRoom,
+} from "../socket";
 
 const parseConversationId = (raw: unknown) => {
   const id = Number(raw);
@@ -176,6 +183,12 @@ export const createDirectConversation = async (
       otherUserId: body.userId,
     });
 
+    // Ensure cả 2 user đang online cùng join room conversation mới
+    joinUsersToConversationRoom(
+      result.members.map((m) => m.user.id),
+      result.id,
+    );
+
     return res.status(200).json({
       message: "Tạo hoặc lấy cuộc trò chuyện thành công",
       data: result,
@@ -203,6 +216,11 @@ export const createGroupConversation = async (
       name: body.name,
       memberIds: body.memberIds,
     });
+
+    joinUsersToConversationRoom(
+      result.members.map((m) => m.user.id),
+      result.id,
+    );
 
     return res.status(201).json({
       message: "Tạo nhóm chat thành công",
@@ -273,6 +291,8 @@ export const sendMessage = async (
       attachmentIds: body.attachmentIds ?? [],
     });
 
+    emitMessageNew(conversationId, result);
+
     return res.status(201).json({
       message: "Gửi tin nhắn thành công",
       data: result,
@@ -302,6 +322,8 @@ export const markConversationRead = async (
       conversationId,
       userId,
     });
+
+    emitReadUpdate(conversationId, userId, result.lastReadAt);
 
     return res.status(200).json({
       message: "Đã đánh dấu đã đọc",
@@ -369,6 +391,8 @@ export const editMessage = async (
       content: body.content,
     });
 
+    emitMessageEdited(result.conversationId, result);
+
     return res.status(200).json({
       message: "Cập nhật tin nhắn thành công",
       data: result,
@@ -398,6 +422,8 @@ export const deleteMessage = async (
       messageId,
       userId,
     });
+
+    emitMessageDeleted(result.conversationId, result.messageId);
 
     return res.status(200).json({
       message: "Xóa tin nhắn thành công",

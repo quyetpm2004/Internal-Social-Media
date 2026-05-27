@@ -11,6 +11,7 @@ interface ConversationListProps {
   activeConversationId?: number;
   currentUserId: number;
   loading?: boolean;
+  onlineUserIds?: number[];
   onSelectConversation: (conversationId: number) => void;
   className?: string;
 }
@@ -20,9 +21,14 @@ const ConversationList = ({
   activeConversationId,
   currentUserId,
   loading,
+  onlineUserIds,
   onSelectConversation,
   className,
 }: ConversationListProps) => {
+  const onlineSet = useMemo(
+    () => new Set(onlineUserIds ?? []),
+    [onlineUserIds],
+  );
   const [filter, setFilter] = useState<ConversationFilter>("ALL");
 
   const filteredConversations = useMemo(() => {
@@ -38,7 +44,7 @@ const ConversationList = ({
 
   return (
     <section
-      className={`w-full md:w-80 flex-col bg-surface-container-low border-r border-outline-variant/30 transition-all flex-shrink-0 ${className ?? "flex"}`}
+      className={`w-full md:w-80 flex-col bg-surface-container-low border-r border-outline-variant/30 transition-all shrink-0 ${className ?? "flex"}`}
     >
       <div className="p-4 space-y-4">
         <h2 className="font-headline font-extrabold text-xl tracking-tight text-on-surface">
@@ -64,6 +70,11 @@ const ConversationList = ({
               conversation={conversation}
               isActive={conversation.id === activeConversationId}
               currentUserId={currentUserId}
+              isCounterpartOnline={
+                conversation.type === "DIRECT" && conversation.counterpart
+                  ? onlineSet.has(conversation.counterpart.id)
+                  : false
+              }
               onClick={() => onSelectConversation(conversation.id)}
             />
           ))

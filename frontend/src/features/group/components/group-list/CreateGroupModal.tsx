@@ -66,7 +66,7 @@ const CreateGroupModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
       {/* backdrop */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -77,9 +77,7 @@ const CreateGroupModal = ({
       <div className="relative w-full max-w-2xl rounded-3xl bg-surface shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
         {/* header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant bg-surface-container-low">
-          <h2 className="text-xl font-bold text-on-surface">
-            Create New Group
-          </h2>
+          <h2 className="text-xl font-bold text-on-surface">Tạo nhóm mới</h2>
 
           <button
             onClick={onClose}
@@ -99,13 +97,13 @@ const CreateGroupModal = ({
             {/* group name */}
             <div className="space-y-1.5">
               <label className="text-sm font-semibold text-on-surface px-1">
-                Group Name
+                Tên nhóm
               </label>
 
               <input
                 type="text"
                 name="groupName"
-                placeholder="e.g. Frontend Guild"
+                placeholder="Ví dụ: Nhóm Frontend"
                 value={formData.groupName}
                 onChange={handleChange}
                 required
@@ -125,13 +123,13 @@ const CreateGroupModal = ({
             {/* description */}
             <div className="space-y-1.5">
               <label className="text-sm font-semibold text-on-surface px-1">
-                Description
+                Mô tả
               </label>
 
               <textarea
                 rows={4}
                 name="description"
-                placeholder="What's this group about?"
+                placeholder="Nhóm này là gì?"
                 value={formData.description}
                 onChange={handleChange}
                 className="
@@ -153,7 +151,7 @@ const CreateGroupModal = ({
               {/* privacy */}
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-on-surface px-1">
-                  Group Privacy
+                  Quyền riêng tư
                 </label>
 
                 <select
@@ -170,16 +168,16 @@ const CreateGroupModal = ({
                     focus:ring-2 focus:ring-primary
                   "
                 >
-                  <option value="PUBLIC">Public</option>
-                  <option value="PRIVATE">Private</option>
-                  <option value="DEPARTMENT">Department</option>
+                  <option value="PUBLIC">Công khai</option>
+                  <option value="PRIVATE">Riêng tư</option>
+                  <option value="DEPARTMENT">Phòng ban</option>
                 </select>
               </div>
 
               {/* department */}
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-on-surface px-1">
-                  Department
+                  Phòng ban
                 </label>
 
                 <select
@@ -196,7 +194,7 @@ const CreateGroupModal = ({
                     focus:ring-2 focus:ring-primary
                   "
                 >
-                  <option value="">No Department</option>
+                  <option value="">Không có phòng ban</option>
 
                   {departments.map((department) => (
                     <option key={department.id} value={department.id}>
@@ -223,7 +221,7 @@ const CreateGroupModal = ({
                 transition-colors
               "
             >
-              Cancel
+              Hủy
             </button>
 
             <button
@@ -240,7 +238,7 @@ const CreateGroupModal = ({
                 transition-all
               "
             >
-              Create Group
+              Tạo nhóm
             </button>
           </div>
         </form>
