@@ -49,4 +49,6 @@ router.get(
 router.patch("/messages/:messageId", chatController.editMessage);
 router.delete("/messages/:messageId", chatController.deleteMessage);
 
+router.get("/presence", chatController.getPresence);
+
 export default router;

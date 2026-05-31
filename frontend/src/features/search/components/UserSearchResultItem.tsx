@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { SearchUser } from "@/features/search/types/search.type";
+import { getDefaultAvatarUrl } from "@/lib/utils";
 
 type UserSearchResultItemProps = {
   user: SearchUser;
@@ -22,10 +23,7 @@ export default function UserSearchResultItem({
     >
       <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 border border-slate-100 dark:border-slate-700">
         <img
-          src={
-            user?.avatarUrl ||
-            `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || "User")}`
-          }
+          src={user?.avatarUrl || getDefaultAvatarUrl(user.fullName)}
           alt="Avatar"
           className="w-full h-full object-cover"
         />

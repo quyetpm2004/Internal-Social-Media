@@ -143,7 +143,7 @@ const MessageThread = ({
       )}
 
       {groups.map((group) => (
-        <div key={group.dateLabel} className="flex flex-col gap-4">
+        <div key={group.dateLabel} className="flex flex-col gap-1">
           <div className="self-center">
             <span className="bg-surface-container-high px-4 py-1.5 rounded-full text-[10px] font-bold text-on-surface-variant font-label uppercase tracking-widest">
               {group.dateLabel}

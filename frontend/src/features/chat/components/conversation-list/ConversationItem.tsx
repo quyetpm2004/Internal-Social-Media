@@ -4,6 +4,7 @@ import type {
   Conversation,
 } from "@/features/chat/types/chat.type";
 import { formatConversationListTime } from "@/features/chat/utils/format-message-time";
+import { getDefaultAvatarUrl } from "@/lib/utils";
 
 interface ConversationItemProps {
   conversation: Conversation;
@@ -57,6 +58,8 @@ const ConversationItem = ({
   const { type, name, avatarUrl, lastMessage, lastMessageAt, unreadCount } =
     conversation;
 
+  const avatarUrlCounterPart = conversation.counterpart?.avatarUrl;
+
   const hasUnread = unreadCount > 0;
 
   const { content, senderName } = getLastMessagePreview(
@@ -70,9 +73,7 @@ const ConversationItem = ({
       type="button"
       onClick={onClick}
       aria-label={
-        hasUnread
-          ? `${name} (${unreadCount} tin nhắn chưa đọc)`
-          : name
+        hasUnread ? `${name} (${unreadCount} tin nhắn chưa đọc)` : name
       }
       className={`relative w-full text-left px-4 py-4 cursor-pointer transition-all border-l-4 ${
         isActive
@@ -84,14 +85,17 @@ const ConversationItem = ({
     >
       <div className="flex gap-3">
         <div className="relative shrink-0">
-          {type === "GROUP" || !avatarUrl ? (
-            <div className="w-12 h-12 bg-secondary-container rounded-lg flex items-center justify-center">
+          {type === "GROUP" && !avatarUrl ? (
+            <div className="w-12 h-12 bg-secondary-container rounded-full flex items-center justify-center">
               <Users size={20} className="text-on-secondary-container" />
             </div>
           ) : (
             <img
-              className="w-12 h-12 rounded-lg object-cover"
-              src={avatarUrl}
+              className="w-12 h-12 rounded-full object-cover"
+              src={
+                avatarUrlCounterPart ||
+                getDefaultAvatarUrl(conversation.counterpart?.fullName)
+              }
               alt={name}
             />
           )}

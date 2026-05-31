@@ -6,6 +6,7 @@ import type {
   UserPublicInfo,
 } from "@/features/auth/types/auth.type";
 import { toast } from "sonner";
+import { disconnectSocket } from "@/lib/socket";
 
 type AuthState = {
   user: UserPublicInfo | null;
@@ -68,18 +69,30 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: async () => {
-        await authApi.logout();
-
-        localStorage.removeItem("auth-storage");
-        toast.success("Đăng xuất thành công");
+        try {
+          await authApi.logout();
+        } finally {
+          disconnectSocket();
+          localStorage.removeItem("auth-storage");
+          set({
+            user: null,
+            accessToken: null,
+            isAuthenticated: false,
+            isLoading: false,
+          });
+          toast.success("Đăng xuất thành công");
+        }
       },
 
-      clearAuth: () =>
+      clearAuth: () => {
+        disconnectSocket();
+        localStorage.removeItem("auth-storage");
         set({
           user: null,
           accessToken: null,
           isAuthenticated: false,
-        }),
+        });
+      },
     }),
     {
       name: "auth-storage",

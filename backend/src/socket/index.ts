@@ -1,7 +1,10 @@
 import type { Server as HTTPServer } from "http";
 import { Server as IOServer, type Socket } from "socket.io";
+import { createAdapter } from "@socket.io/redis-adapter";
 import { verifyAccessToken, type JwtPayload } from "../utils/jwt";
 import prisma from "../utils/prisma";
+import { getRedisPubSub, isRedisEnabled } from "../utils/redis";
+import * as presenceService from "../services/redis/presence.service";
 
 // ---------- Event payload types ----------
 
@@ -59,6 +62,10 @@ export interface PresencePayload {
   userId: number;
 }
 
+export interface PresenceSnapshotPayload {
+  onlineUserIds: number[];
+}
+
 // ---------- Event signatures ----------
 
 interface ServerToClientEvents {
@@ -70,6 +77,7 @@ interface ServerToClientEvents {
   "typing:stop": (payload: TypingPayload) => void;
   "presence:online": (payload: PresencePayload) => void;
   "presence:offline": (payload: PresencePayload) => void;
+  "presence:snapshot": (payload: PresenceSnapshotPayload) => void;
 }
 
 interface ClientToServerEvents {
@@ -100,19 +108,13 @@ type AppSocket = Socket<
   SocketData
 >;
 
-// ---------- State ----------
-
-// In-memory presence tracking (sẽ thay bằng Redis ở phiên bản sau)
-const userIdToSocketIds = new Map<number, Set<string>>();
-
 let io: AppIOServer | null = null;
 
 const userRoom = (userId: number) => `user:${userId}`;
 const conversationRoom = (conversationId: number) =>
   `conversation:${conversationId}`;
 
-// ---------- Helpers ----------
-
+// return token from socket handshake
 const extractToken = (socket: AppSocket): string | null => {
   const authToken = socket.handshake.auth?.token;
   if (typeof authToken === "string" && authToken.length > 0) {
@@ -120,13 +122,17 @@ const extractToken = (socket: AppSocket): string | null => {
   }
 
   const header = socket.handshake.headers.authorization;
-  if (typeof header === "string" && header.toLowerCase().startsWith("bearer ")) {
+  if (
+    typeof header === "string" &&
+    header.toLowerCase().startsWith("bearer ")
+  ) {
     return header.slice(7);
   }
 
   return null;
 };
 
+// load conversation ids for user return []
 const loadConversationIds = async (userId: number): Promise<number[]> => {
   const memberships = await prisma.conversationMember.findMany({
     where: { userId, leftAt: null },
@@ -135,9 +141,29 @@ const loadConversationIds = async (userId: number): Promise<number[]> => {
   return memberships.map((m) => m.conversationId);
 };
 
-// ---------- Init ----------
+// load co-member user ids for user return []
+const loadCoMemberUserIds = async (
+  userId: number,
+  conversationIds: number[],
+): Promise<number[]> => {
+  if (conversationIds.length === 0) return [];
 
-export const initSocket = (httpServer: HTTPServer): AppIOServer => {
+  const members = await prisma.conversationMember.findMany({
+    where: {
+      conversationId: { in: conversationIds },
+      leftAt: null,
+      userId: { not: userId },
+    },
+    select: { userId: true },
+    distinct: ["userId"],
+  });
+
+  return members.map((member) => member.userId);
+};
+
+export const initSocket = async (
+  httpServer: HTTPServer,
+): Promise<AppIOServer> => {
   if (io) {
     return io;
   }
@@ -153,6 +179,14 @@ export const initSocket = (httpServer: HTTPServer): AppIOServer => {
       credentials: true,
     },
   });
+
+  if (isRedisEnabled()) {
+    const pubSub = getRedisPubSub();
+    if (pubSub) {
+      io.adapter(createAdapter(pubSub.pubClient, pubSub.subClient));
+      console.log("Socket.IO Redis adapter enabled");
+    }
+  }
 
   io.use((socket, next) => {
     try {
@@ -176,28 +210,29 @@ export const initSocket = (httpServer: HTTPServer): AppIOServer => {
   io.on("connection", async (socket) => {
     const userId = socket.data.user.id;
 
-    // Track presence (last write wins)
-    let socketSet = userIdToSocketIds.get(userId);
-    if (!socketSet) {
-      socketSet = new Set();
-      userIdToSocketIds.set(userId, socketSet);
-    }
-    socketSet.add(socket.id);
-    const isFirstConnection = socketSet.size === 1;
+    const isFirstConnection = await presenceService.addUserSocket(
+      userId,
+      socket.id,
+    );
 
-    // Personal room cho user → tiện cho emit theo userId
     socket.join(userRoom(userId));
 
-    // Auto-join tất cả conversations user là thành viên
     try {
       const conversationIds = await loadConversationIds(userId);
       conversationIds.forEach((id) => socket.join(conversationRoom(id)));
 
+      // broadcast presence:online to all conversation members if first connection
+      // when second connection, it will be broadcasted by conversation:join event
       if (isFirstConnection) {
         conversationIds.forEach((id) => {
           socket.to(conversationRoom(id)).emit("presence:online", { userId });
         });
       }
+
+      const coMemberIds = await loadCoMemberUserIds(userId, conversationIds);
+      const onlineUserIds =
+        await presenceService.filterOnlineUserIds(coMemberIds);
+      socket.emit("presence:snapshot", { onlineUserIds });
     } catch (error) {
       console.error("Failed to auto-join conversations:", error);
     }
@@ -236,14 +271,23 @@ export const initSocket = (httpServer: HTTPServer): AppIOServer => {
         .emit("typing:stop", { conversationId, userId });
     });
 
+    // refresh presence TTL every 45 seconds
+    const presenceRefreshTimer = setInterval(() => {
+      presenceService
+        .refreshSocketPresence(userId, socket.id)
+        .catch((error) => {
+          console.error("Failed to refresh presence TTL:", error);
+        });
+    }, 45_000);
+
     socket.on("disconnect", async () => {
-      const set = userIdToSocketIds.get(userId);
-      if (!set) return;
+      clearInterval(presenceRefreshTimer);
 
-      set.delete(socket.id);
-      if (set.size > 0) return;
-
-      userIdToSocketIds.delete(userId);
+      const wentOffline = await presenceService.removeUserSocket(
+        userId,
+        socket.id,
+      );
+      if (!wentOffline) return;
 
       try {
         const conversationIds = await loadConversationIds(userId);
@@ -259,17 +303,25 @@ export const initSocket = (httpServer: HTTPServer): AppIOServer => {
   return io;
 };
 
-// ---------- Accessors ----------
+/**
+ * Buộc user offline: ngắt mọi socket (disconnect handler sẽ broadcast presence:offline).
+ */
+export const markUserOffline = async (userId: number): Promise<void> => {
+  if (!io) return;
+
+  const wasOnline = await presenceService.isUserOnline(userId);
+  if (!wasOnline) return;
+
+  await io.in(userRoom(userId)).disconnectSockets(true);
+};
 
 export const getIO = (): AppIOServer | null => io;
 
-export const isUserOnline = (userId: number): boolean =>
-  userIdToSocketIds.has(userId);
+export const isUserOnline = (userId: number): Promise<boolean> =>
+  presenceService.isUserOnline(userId);
 
-export const getOnlineUserIds = (): number[] =>
-  Array.from(userIdToSocketIds.keys());
-
-// ---------- Emit helpers (gọi từ controller/service) ----------
+export const getOnlineUserIds = (): Promise<number[]> =>
+  presenceService.getAllOnlineUserIds();
 
 export const emitMessageNew = (
   conversationId: number,
@@ -313,11 +365,6 @@ export const emitReadUpdate = (
   });
 };
 
-/**
- * Đẩy socket đang online của các user vào room conversation mới được tạo.
- * Dùng khi tạo group/direct conversation để các tab đang mở nhận realtime ngay
- * mà không cần reload.
- */
 export const joinUsersToConversationRoom = (
   userIds: number[],
   conversationId: number,

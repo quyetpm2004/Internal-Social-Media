@@ -10,6 +10,7 @@ import type {
   MessageEditedPayload,
   MessageNewPayload,
   PresencePayload,
+  PresenceSnapshotPayload,
   ReadUpdatePayload,
   TypingPayload,
 } from "@/features/chat/types/chat-events.type";
@@ -23,6 +24,7 @@ export interface UseChatSocketHandlers {
   onTypingStop?: (payload: TypingPayload) => void;
   onPresenceOnline?: (payload: PresencePayload) => void;
   onPresenceOffline?: (payload: PresencePayload) => void;
+  onPresenceSnapshot?: (payload: PresenceSnapshotPayload) => void;
 }
 
 export interface UseChatSocketReturn {
@@ -74,6 +76,8 @@ export const useChatSocket = (
       handlersRef.current.onPresenceOnline?.(payload);
     const handlePresenceOffline = (payload: PresencePayload) =>
       handlersRef.current.onPresenceOffline?.(payload);
+    const handlePresenceSnapshot = (payload: PresenceSnapshotPayload) =>
+      handlersRef.current.onPresenceSnapshot?.(payload);
 
     socket.on("message:new", handleMessageNew);
     socket.on("message:edited", handleMessageEdited);
@@ -83,6 +87,7 @@ export const useChatSocket = (
     socket.on("typing:stop", handleTypingStop);
     socket.on("presence:online", handlePresenceOnline);
     socket.on("presence:offline", handlePresenceOffline);
+    socket.on("presence:snapshot", handlePresenceSnapshot);
 
     return () => {
       socket.off("message:new", handleMessageNew);
@@ -93,6 +98,8 @@ export const useChatSocket = (
       socket.off("typing:stop", handleTypingStop);
       socket.off("presence:online", handlePresenceOnline);
       socket.off("presence:offline", handlePresenceOffline);
+      socket.off("presence:snapshot", handlePresenceSnapshot);
+      disconnectSocket();
     };
   }, [accessToken]);
 

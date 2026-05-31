@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { useLocation } from "react-router-dom";
+import { getDefaultAvatarUrl } from "@/lib/utils";
 
 const AppSidebar: React.FC = () => {
   const user = useAuthStore((state) => state.user);
@@ -24,10 +25,7 @@ const AppSidebar: React.FC = () => {
                 alt="User profile"
                 className="h-full w-full object-cover"
                 data-alt="professional of a smiling architect in a modern office setting with soft natural light"
-                src={
-                  user?.avatarUrl ||
-                  `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || "User")}`
-                }
+                src={user?.avatarUrl || getDefaultAvatarUrl(user?.fullName)}
               />
             </div>
           }

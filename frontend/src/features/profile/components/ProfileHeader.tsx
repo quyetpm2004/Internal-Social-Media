@@ -1,4 +1,5 @@
 import ConfirmModal from "@/components/common/ConfirmModal";
+import { getDefaultAvatarUrl } from "@/lib/utils";
 import { Camera, Trash2 } from "lucide-react";
 import React, { useRef, useState } from "react";
 
@@ -60,10 +61,7 @@ const ProfileHeader: React.FC<HeaderProps> = ({
           <img
             alt="Avatar"
             className="h-full w-full object-cover"
-            src={
-              avatarUrl ||
-              "https://ui-avatars.com/api/?name=" + encodeURIComponent(name)
-            }
+            src={avatarUrl || getDefaultAvatarUrl(name)}
           />
 
           {isOwner && (

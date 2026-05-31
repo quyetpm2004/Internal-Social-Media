@@ -29,3 +29,7 @@ export interface TypingPayload {
 export interface PresencePayload {
   userId: number;
 }
+
+export interface PresenceSnapshotPayload {
+  onlineUserIds: number[];
+}

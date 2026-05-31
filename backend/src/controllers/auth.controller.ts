@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import * as authService from "../services/auth.service";
+import { markUserOffline } from "../socket";
+import { verifyAccessToken } from "../utils/jwt";
 import { Role } from "@prisma/client";
 
 export async function register(req: Request, res: Response): Promise<void> {
@@ -88,6 +90,17 @@ export async function logout(req: Request, res: Response): Promise<void> {
     // Lấy refreshToken từ cookie hoặc body
     const refreshToken = req.cookies?.refreshToken || req.body.refreshToken;
     await authService.logout(refreshToken);
+
+    const authHeader = req.headers.authorization;
+    if (typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
+      try {
+        const decoded = verifyAccessToken(authHeader.slice(7));
+        await markUserOffline(decoded.id);
+      } catch {
+        // Token hết hạn vẫn cho logout bình thường
+      }
+    }
+
     // Xóa cookie refreshToken
     res.clearCookie("refreshToken", {
       httpOnly: true,

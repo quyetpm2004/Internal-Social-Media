@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import z from "zod";
 import { MessageContentType } from "@prisma/client";
 import * as chatService from "../services/chat.service";
+import * as presenceService from "../services/redis/presence.service";
 import {
   emitMessageDeleted,
   emitMessageEdited,
@@ -78,6 +79,18 @@ const muteSchema = z.object({
 const sharedQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(60).default(24),
+});
+
+const presenceQuerySchema = z.object({
+  userIds: z
+    .string()
+    .transform((value) =>
+      value
+        .split(",")
+        .map((id) => Number(id.trim()))
+        .filter((id) => Number.isInteger(id) && id > 0),
+    )
+    .pipe(z.array(z.number().int().positive()).max(100)),
 });
 
 const handleError = (error: unknown, res: Response) => {
@@ -496,6 +509,31 @@ export const getSharedFiles = async (
     return res.status(200).json({
       message: "Lấy file của cuộc trò chuyện thành công",
       data: result,
+    });
+  } catch (error) {
+    if (!handleError(error, res)) next(error);
+  }
+};
+
+export const getPresence = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Người dùng chưa đăng nhập" });
+    }
+
+    const query = presenceQuerySchema.parse(req.query);
+    const onlineUserIds = await presenceService.filterOnlineUserIds(
+      query.userIds,
+    );
+
+    return res.status(200).json({
+      message: "Lấy trạng thái online thành công",
+      data: { onlineUserIds },
     });
   } catch (error) {
     if (!handleError(error, res)) next(error);

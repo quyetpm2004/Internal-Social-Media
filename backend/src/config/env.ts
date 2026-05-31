@@ -8,6 +8,7 @@ interface EnvConfig {
   refreshTokenSecret: string;
   accessTokenExpiresIn: string;
   refreshTokenExpiresIn: string;
+  redisUrl?: string;
 }
 
 export const env: EnvConfig = {
@@ -16,4 +17,5 @@ export const env: EnvConfig = {
   refreshTokenSecret: process.env.REFRESH_TOKEN_SECRET as string,
   accessTokenExpiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN || "15m",
   refreshTokenExpiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || "7d",
+  redisUrl: process.env.REDIS_URL || undefined,
 };

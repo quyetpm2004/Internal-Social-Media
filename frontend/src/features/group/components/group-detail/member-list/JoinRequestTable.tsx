@@ -3,6 +3,7 @@ import { Check, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import type { JoinRequest } from "@/features/group/types/group.type";
 import ConfirmModal from "@/components/common/ConfirmModal";
+import { getDefaultAvatarUrl } from "@/lib/utils";
 
 interface JoinRequestTableProps {
   requests: JoinRequest[];
@@ -71,9 +72,7 @@ export const JoinRequestTable = ({
                           className="w-10 h-10 rounded-lg object-cover"
                           src={
                             request.avatarUrl ||
-                            `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                              request.fullName || "User",
-                            )}`
+                            getDefaultAvatarUrl(request.fullName)
                           }
                         />
                         <NavLink to={`/profile/${request.id}`}>

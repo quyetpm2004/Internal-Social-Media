@@ -21,6 +21,7 @@ import type {
 } from "@/features/chat/types/chat.type";
 import { formatMessageTime } from "@/features/chat/utils/format-message-time";
 import { formatFileSize } from "@/features/chat/utils/format-file-size";
+import { getDefaultAvatarUrl } from "@/lib/utils";
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -125,13 +126,13 @@ const ReaderAvatar = ({ user, size = 14 }: ReaderAvatarProps) => {
     );
   }
   return (
-    <div
-      style={style}
+    <img
+      src={getDefaultAvatarUrl(user.fullName)}
+      alt={user.fullName}
       title={`Đã xem bởi ${user.fullName}`}
-      className="rounded-full bg-primary text-on-primary text-[8px] font-bold flex items-center justify-center ring-1 ring-surface-container-lowest"
-    >
-      {user.fullName.charAt(0).toUpperCase()}
-    </div>
+      style={style}
+      className="rounded-full object-cover ring-1 ring-surface-container-lowest"
+    />
   );
 };
 
@@ -154,9 +155,8 @@ const ReadReceiptIndicator = ({
     if (conversationType === "DIRECT") {
       const reader = readers[0];
       return (
-        <span className="flex items-center gap-1 text-primary font-bold">
+        <span className="flex items-center gap-1 text-primary font-bold mt-1">
           <ReaderAvatar user={reader} size={14} />
-          <span>Đã xem</span>
         </span>
       );
     }
@@ -182,7 +182,7 @@ const ReadReceiptIndicator = ({
   if (isLatestOwn) {
     return (
       <span
-        className="flex items-center gap-0.5 text-on-surface-variant"
+        className="flex items-center gap-0.5 text-on-surface-variant mt-1"
         title="Đã gửi"
       >
         <Check size={12} />
@@ -250,7 +250,6 @@ const ActionsMenu = ({
               }}
               className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-on-surface hover:bg-surface-container transition-colors"
             >
-              <Pencil size={14} />
               Chỉnh sửa
             </button>
           )}
@@ -262,7 +261,6 @@ const ActionsMenu = ({
             }}
             className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-error hover:bg-error-container/40 transition-colors"
           >
-            <Trash2 size={14} />
             Thu hồi
           </button>
         </div>
@@ -360,7 +358,6 @@ const InlineEditor = ({
 const MessageBubble = ({
   message,
   isOwn,
-  showAvatar,
   showSenderName,
   readers,
   isLatestOwn,
@@ -399,37 +396,54 @@ const MessageBubble = ({
   if (isOwn) {
     return (
       <div className="flex gap-3 max-w-[80%] self-end flex-row-reverse group">
-        <div className="space-y-1">
-          {isDeleted ? (
-            <div className="bg-surface-container-high text-on-surface-variant px-4 py-2 rounded-tl-xl rounded-br-xl rounded-bl-xl text-xs italic">
-              Bạn đã thu hồi tin nhắn
-            </div>
-          ) : isEditing ? (
-            <InlineEditor
-              initialValue={message.content}
-              isOwn
-              saving={savingEdit}
-              onSave={handleSaveEdit}
-              onCancel={() => setIsEditing(false)}
-            />
-          ) : (
-            <>
-              {message.attachments.map((attachment) =>
-                renderAttachment(attachment, true),
-              )}
-              {message.content && (
-                <div className="bg-primary text-on-primary px-4 py-3 rounded-tl-xl rounded-br-xl rounded-bl-xl text-sm leading-relaxed shadow-md whitespace-pre-wrap wrap-break-word">
-                  {message.content}
-                </div>
-              )}
-            </>
-          )}
-
-          <div className="flex items-center justify-end gap-1.5 text-[10px] text-on-surface-variant font-medium mr-1">
-            {message.status === "EDITED" && (
-              <span className="italic">đã chỉnh sửa ·</span>
+        <div>
+          <div className="text-[10px] text-blue-600 font-medium pb-0.5 text-right">
+            {message.status === "EDITED" && <span>Đã chỉnh sửa</span>}
+          </div>
+          <div className="space-y-1">
+            {isDeleted ? (
+              <div className="bg-surface-container-high text-on-surface-variant px-4 py-2 rounded-tl-xl rounded-br-xl rounded-bl-xl text-xs italic">
+                Bạn đã thu hồi tin nhắn
+              </div>
+            ) : isEditing ? (
+              <InlineEditor
+                initialValue={message.content}
+                isOwn
+                saving={savingEdit}
+                onSave={handleSaveEdit}
+                onCancel={() => setIsEditing(false)}
+              />
+            ) : (
+              <>
+                {message.attachments.map((attachment) =>
+                  renderAttachment(attachment, true),
+                )}
+                {message.content && (
+                  <div className="flex items-center gap-1.5">
+                    {showActions && !isEditing && (
+                      <div className="self-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <ActionsMenu
+                          align="right"
+                          canEdit={canEdit}
+                          onEdit={() => setIsEditing(true)}
+                          onDelete={handleDelete}
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-[10px] text-on-surface-variant font-medium opacity-0 group-hover:opacity-100">
+                        {time}
+                      </span>
+                    </div>
+                    <div className="bg-primary text-on-primary px-3 py-1.5 rounded-xl text-sm leading-relaxed shadow-md whitespace-pre-wrap wrap-break-word">
+                      {message.content}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
-            <span>{time}</span>
+          </div>
+          <div className="flex items-center justify-end gap-1.5 text-[10px] text-on-surface-variant font-medium">
             <ReadReceiptIndicator
               readers={readers}
               isLatestOwn={Boolean(isLatestOwn)}
@@ -438,17 +452,6 @@ const MessageBubble = ({
             />
           </div>
         </div>
-
-        {showActions && !isEditing && (
-          <div className="self-center opacity-0 group-hover:opacity-100 transition-opacity">
-            <ActionsMenu
-              align="right"
-              canEdit={canEdit}
-              onEdit={() => setIsEditing(true)}
-              onDelete={handleDelete}
-            />
-          </div>
-        )}
 
         {isEditing && (
           <button
@@ -465,55 +468,55 @@ const MessageBubble = ({
   }
 
   return (
-    <div className="flex gap-3 max-w-[80%]">
-      {showAvatar ? (
-        message.sender.avatarUrl ? (
-          <img
-            alt={message.sender.fullName}
-            className="w-8 h-8 rounded-lg shrink-0 mt-1 object-cover"
-            src={message.sender.avatarUrl}
-          />
-        ) : (
-          <div className="w-8 h-8 rounded-lg shrink-0 mt-1 bg-secondary-container text-on-secondary-container text-xs font-bold flex items-center justify-center">
-            {message.sender.fullName.charAt(0).toUpperCase()}
-          </div>
-        )
-      ) : (
-        <div className="w-8 h-8 shrink-0" />
-      )}
-
-      <div className="space-y-2">
-        {showSenderName && (
-          <span className="block text-[10px] font-bold text-on-surface-variant ml-1">
-            {message.sender.fullName}
+    <>
+      <div className="ml-11 -mb-1">
+        {message.status === "EDITED" && !isDeleted && (
+          <span className="text-[10px] text-blue-600 font-medium">
+            Đã chỉnh sửa
           </span>
         )}
+      </div>
+      <div className="flex gap-3 max-w-[80%] items-center relative group">
+        <img
+          alt={message.sender.fullName}
+          className="w-8 h-8 rounded-full shrink-0 mt-1 object-cover"
+          src={
+            message.sender.avatarUrl ||
+            getDefaultAvatarUrl(message.sender.fullName)
+          }
+        />
 
-        {isDeleted ? (
-          <div className="bg-surface-container-high text-on-surface-variant px-4 py-2 rounded-tr-xl rounded-br-xl rounded-bl-xl text-xs italic">
-            Tin nhắn đã bị thu hồi
-          </div>
-        ) : (
-          <>
-            {message.attachments.map((attachment) =>
-              renderAttachment(attachment, false),
-            )}
-            {message.content && (
-              <div className="bg-surface-container px-4 py-3 rounded-tr-xl rounded-br-xl rounded-bl-xl text-sm leading-relaxed text-on-surface shadow-sm whitespace-pre-wrap wrap-break-word">
-                {message.content}
-              </div>
-            )}
-          </>
-        )}
-
-        <div className="flex items-center gap-1 text-[10px] text-on-surface-variant font-medium ml-1">
-          {message.status === "EDITED" && !isDeleted && (
-            <span className="italic">đã chỉnh sửa ·</span>
+        <div className="space-y-2">
+          {showSenderName && (
+            <span className="block text-[10px] font-bold text-on-surface-variant ml-1">
+              {message.sender.fullName}
+            </span>
           )}
-          <span>{time}</span>
+
+          {isDeleted ? (
+            <div className="bg-surface-container-high text-on-surface-variant px-4 py-2 rounded-tr-xl rounded-br-xl rounded-bl-xl text-xs italic">
+              Tin nhắn đã bị thu hồi
+            </div>
+          ) : (
+            <>
+              {message.attachments.map((attachment) =>
+                renderAttachment(attachment, false),
+              )}
+              {message.content && (
+                <div className="bg-surface-container px-3 py-1.5 rounded-xl text-sm leading-relaxed text-on-surface shadow-sm whitespace-pre-wrap wrap-break-word">
+                  {message.content}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+        <div>
+          <span className="text-[10px] text-on-surface-variant font-medium opacity-0 group-hover:opacity-100">
+            {time}
+          </span>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

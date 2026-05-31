@@ -1,4 +1,5 @@
 import type { ApiPost, Post } from "@/features/new-feed/types/new-feed.type";
+import { getDefaultAvatarUrl } from "@/lib/utils";
 
 export const formatTimeAgo = (dateString: string) => {
   const now = new Date();
@@ -24,8 +25,7 @@ export const mapApiPostToPostCard = (post: ApiPost): Post => {
       name: post.user?.fullName || "Người dùng",
       avatar: post.user?.profile?.avatarUrl
         ? `${import.meta.env.VITE_BASE_URL_BACKEND}/uploads/avatar/${post.user?.profile?.avatarUrl}`
-        : "https://ui-avatars.com/api/?name=" +
-          encodeURIComponent(post.user?.fullName || "User"),
+        : getDefaultAvatarUrl(post.user?.fullName),
     },
     role: "Thành viên",
     time: formatTimeAgo(post.createdAt),

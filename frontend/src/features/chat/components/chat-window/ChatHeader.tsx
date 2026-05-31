@@ -1,6 +1,7 @@
 import { ArrowLeft, Info, Phone, Users, Video } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { Conversation } from "@/features/chat/types/chat.type";
+import { getDefaultAvatarUrl } from "@/lib/utils";
 
 interface ChatHeaderProps {
   conversation: Conversation;
@@ -15,6 +16,7 @@ const ChatHeader = ({
 }: ChatHeaderProps) => {
   const navigate = useNavigate();
   const { type, name, avatarUrl, memberCount } = conversation;
+  const avatarUrlCounterPart = conversation.counterpart?.avatarUrl;
 
   const statusLabel = (() => {
     if (type === "GROUP") {
@@ -36,14 +38,17 @@ const ChatHeader = ({
         </button>
 
         <div className="relative shrink-0">
-          <div className="w-10 h-10 rounded-lg overflow-hidden bg-secondary-container flex items-center justify-center">
-            {type === "GROUP" || !avatarUrl ? (
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-secondary-container flex items-center justify-center">
+            {type === "GROUP" && !avatarUrl ? (
               <Users size={18} className="text-on-secondary-container" />
             ) : (
               <img
                 alt={name}
                 className="w-full h-full object-cover"
-                src={avatarUrl}
+                src={
+                  avatarUrlCounterPart ||
+                  getDefaultAvatarUrl(conversation.counterpart?.fullName)
+                }
               />
             )}
           </div>

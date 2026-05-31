@@ -55,8 +55,15 @@ export const getSocket = (): Socket | null => socket;
 
 export const disconnectSocket = (): void => {
   if (socket) {
+    socket.io.opts.reconnection = false;
     socket.disconnect();
     socket = null;
   }
   currentToken = null;
 };
+
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", () => {
+    disconnectSocket();
+  });
+}

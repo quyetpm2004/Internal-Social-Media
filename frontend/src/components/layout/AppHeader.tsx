@@ -22,6 +22,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { getDefaultAvatarUrl } from "@/lib/utils";
 
 type UserMenuPanelProps = {
   onClose: () => void;
@@ -212,7 +213,7 @@ export default function AppHeader() {
             <MessageCircleCheck size={20} />
           </button>
 
-          <div className="relative hidden md:block" ref={dropdownRef}>
+          <div className="relative hidden md:flex" ref={dropdownRef}>
             <button
               type="button"
               onClick={() =>
@@ -226,17 +227,12 @@ export default function AppHeader() {
               <img
                 alt="User profile"
                 className="h-full w-full object-cover"
-                src={
-                  user?.avatarUrl ||
-                  `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                    user?.fullName || "User",
-                  )}`
-                }
+                src={user?.avatarUrl || getDefaultAvatarUrl(user?.fullName)}
               />
             </button>
 
             {openDropdown && (
-              <div className="absolute right-0 w-60 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute right-0 top-10 w-60 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
                 <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
                   <p className="font-semibold text-sm text-slate-900 dark:text-white">
                     {user?.fullName}
@@ -298,12 +294,7 @@ export default function AppHeader() {
                 <img
                   alt="User profile"
                   className="h-full w-full object-cover"
-                  src={
-                    user?.avatarUrl ||
-                    `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                      user?.fullName || "User",
-                    )}`
-                  }
+                  src={user?.avatarUrl || getDefaultAvatarUrl(user?.fullName)}
                 />
               </div>
               <div className="min-w-0">

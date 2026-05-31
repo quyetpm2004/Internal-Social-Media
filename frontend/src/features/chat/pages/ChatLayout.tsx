@@ -15,6 +15,7 @@ import type {
   MessageEditedPayload,
   MessageNewPayload,
   PresencePayload,
+  PresenceSnapshotPayload,
   ReadUpdatePayload,
   TypingPayload,
 } from "@/features/chat/types/chat-events.type";
@@ -115,7 +116,9 @@ const ChatLayout = () => {
   const upsertConversationOnNewMessage = useCallback(
     (incoming: ChatMessage, isViewing: boolean) => {
       setConversations((prev) => {
-        const idx = prev.findIndex((item) => item.id === incoming.conversationId);
+        const idx = prev.findIndex(
+          (item) => item.id === incoming.conversationId,
+        );
         if (idx === -1) {
           // Conversation chưa có trong list → refresh để lấy đầy đủ thông tin
           refreshConversations();
@@ -208,9 +211,7 @@ const ChatLayout = () => {
       if (activeConversationIdRef.current === convId) {
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === messageId
-              ? { ...m, status: "DELETED", content: "" }
-              : m,
+            m.id === messageId ? { ...m, status: "DELETED", content: "" } : m,
           ),
         );
       }
@@ -232,11 +233,7 @@ const ChatLayout = () => {
   );
 
   const handleReadUpdate = useCallback(
-    ({
-      conversationId: convId,
-      userId,
-      lastReadAt,
-    }: ReadUpdatePayload) => {
+    ({ conversationId: convId, userId, lastReadAt }: ReadUpdatePayload) => {
       // Cập nhật read receipts cho active conversation
       if (activeConversationIdRef.current === convId) {
         setReadReceipts((prev) => {
@@ -314,6 +311,13 @@ const ChatLayout = () => {
     });
   }, []);
 
+  const handlePresenceSnapshot = useCallback(
+    ({ onlineUserIds: ids }: PresenceSnapshotPayload) => {
+      setOnlineUserIds(new Set(ids));
+    },
+    [],
+  );
+
   const { emitTypingStart, emitTypingStop } = useChatSocket({
     onMessageNew: handleMessageNew,
     onMessageEdited: handleMessageEdited,
@@ -323,6 +327,7 @@ const ChatLayout = () => {
     onTypingStop: handleTypingStop,
     onPresenceOnline: handlePresenceOnline,
     onPresenceOffline: handlePresenceOffline,
+    onPresenceSnapshot: handlePresenceSnapshot,
   });
 
   // ----- Effects -----
@@ -510,44 +515,37 @@ const ChatLayout = () => {
     [],
   );
 
-  const handleDeleteMessage = useCallback(
-    async (messageId: number) => {
-      try {
-        await chatApi.deleteMessage(messageId);
+  const handleDeleteMessage = useCallback(async (messageId: number) => {
+    try {
+      await chatApi.deleteMessage(messageId);
 
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === messageId
-              ? { ...m, status: "DELETED", content: "" }
-              : m,
-          ),
-        );
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId ? { ...m, status: "DELETED", content: "" } : m,
+        ),
+      );
 
-        setConversations((prev) =>
-          prev.map((item) =>
-            item.lastMessage?.id === messageId
-              ? {
-                  ...item,
-                  lastMessage: item.lastMessage
-                    ? { ...item.lastMessage, status: "DELETED", content: "" }
-                    : item.lastMessage,
-                }
-              : item,
-          ),
-        );
-      } catch (error) {
-        toast.error(getErrorMessage(error));
-        throw error;
-      }
-    },
-    [],
-  );
+      setConversations((prev) =>
+        prev.map((item) =>
+          item.lastMessage?.id === messageId
+            ? {
+                ...item,
+                lastMessage: item.lastMessage
+                  ? { ...item.lastMessage, status: "DELETED", content: "" }
+                  : item.lastMessage,
+              }
+            : item,
+        ),
+      );
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+      throw error;
+    }
+  }, []);
 
   const handleMuteChanged = useCallback(
     (isMuted: boolean) => {
-      setActiveConversation((prev) =>
-        prev ? { ...prev, isMuted } : prev,
-      );
+      setActiveConversation((prev) => (prev ? { ...prev, isMuted } : prev));
       if (conversationId) {
         setConversations((prev) =>
           prev.map((item) =>
@@ -567,6 +565,7 @@ const ChatLayout = () => {
     if (!conversationId) return;
 
     if (!isTypingRef.current) {
+      // Chỉ emit 1 lần
       isTypingRef.current = true;
       emitTypingStart(conversationId);
     }

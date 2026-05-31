@@ -9,11 +9,28 @@ import {
 } from "@prisma/client";
 import prisma from "../utils/prisma";
 import { getFileUrl } from "./file.service";
+import {
+  getCachedConversationDetail,
+  getCachedConversations,
+  getCachedMessages,
+  getConversationMemberUserIds,
+  invalidateConversationDetail,
+  invalidateConversationForMembers,
+  invalidateUserConversations,
+  setCachedConversationDetail,
+  setCachedConversations,
+  setCachedMessages,
+} from "./redis/chat-cache.service";
 
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_MESSAGES_PER_PAGE = 100;
 const DEFAULT_MESSAGES_PER_PAGE = 30;
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
+
+const invalidateConversationCaches = async (conversationId: number) => {
+  const memberUserIds = await getConversationMemberUserIds(conversationId);
+  await invalidateConversationForMembers(conversationId, memberUserIds);
+};
 
 // Include cho member
 const memberInclude = {
@@ -199,6 +216,12 @@ const buildConversationDisplay = async (
   };
 };
 
+type ConversationDetailData = Awaited<
+  ReturnType<typeof buildConversationDisplay>
+> & {
+  members: Awaited<ReturnType<typeof mapMemberUser>>[];
+};
+
 // Đếm số tin nhắn chưa đọc
 const countUnreadMessages = async (
   conversationId: number,
@@ -227,6 +250,21 @@ export const listConversationsService = async ({
   page: number;
   limit: number;
 }) => {
+  const normalizedFilter = filter ?? "ALL";
+  const cached = await getCachedConversations<{
+    items: Awaited<ReturnType<typeof buildConversationDisplay>>[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }>(userId, normalizedFilter, page, limit);
+
+  if (cached) {
+    return cached;
+  }
+
   const skip = (page - 1) * limit;
 
   const whereCondition: Prisma.ConversationWhereInput = {
@@ -281,7 +319,7 @@ export const listConversationsService = async ({
   const filteredItems =
     filter === "UNREAD" ? items.filter((c) => c.unreadCount > 0) : items;
 
-  return {
+  const result = {
     items: filteredItems,
     pagination: {
       total,
@@ -290,6 +328,16 @@ export const listConversationsService = async ({
       totalPages: Math.max(1, Math.ceil(total / limit)),
     },
   };
+
+  await setCachedConversations(
+    userId,
+    normalizedFilter,
+    page,
+    limit,
+    result,
+  );
+
+  return result;
 };
 
 // Lấy chi tiết cuộc trò chuyện
@@ -299,8 +347,16 @@ export const getConversationDetailService = async ({
 }: {
   conversationId: number;
   userId: number;
-}) => {
+}): Promise<ConversationDetailData> => {
   await assertConversationMember(conversationId, userId);
+
+  const cached = await getCachedConversationDetail<ConversationDetailData>(
+    conversationId,
+    userId,
+  );
+  if (cached) {
+    return cached;
+  }
 
   const conversation = await prisma.conversation.findUnique({
     where: { id: conversationId },
@@ -334,7 +390,9 @@ export const getConversationDetailService = async ({
 
   const members = await Promise.all(conversation.members.map(mapMemberUser));
 
-  return { ...display, members };
+  const result = { ...display, members };
+  await setCachedConversationDetail(conversationId, userId, result);
+  return result;
 };
 
 // Lấy hoặc tạo cuộc trò chuyện trực tiếp
@@ -387,6 +445,8 @@ export const getOrCreateDirectConversationService = async ({
       select: { id: true },
     });
     conversationId = created.id;
+    await invalidateUserConversations(userId);
+    await invalidateUserConversations(otherUserId);
   }
 
   return getConversationDetailService({ conversationId, userId });
@@ -436,6 +496,9 @@ export const createGroupConversationService = async ({
     select: { id: true },
   });
 
+  const memberUserIds = [userId, ...uniqueMemberIds];
+  await Promise.all(memberUserIds.map((id) => invalidateUserConversations(id)));
+
   return getConversationDetailService({
     conversationId: conversation.id,
     userId,
@@ -457,6 +520,18 @@ export const getMessagesService = async ({
 
   const take = Math.min(Math.max(limit, 1), MAX_MESSAGES_PER_PAGE);
 
+  const cached = await getCachedMessages<{
+    items: Awaited<ReturnType<typeof mapMessage>>[];
+    pagination: {
+      limit: number;
+      hasMore: boolean;
+      nextCursor: number | null;
+    };
+  }>(conversationId, cursor, take);
+  if (cached) {
+    return cached;
+  }
+
   const messages = await prisma.message.findMany({
     where: { conversationId },
     take: take + 1,
@@ -476,7 +551,7 @@ export const getMessagesService = async ({
 
   const items = await Promise.all(sliced.map(mapMessage));
 
-  return {
+  const result = {
     items: items.reverse(),
     pagination: {
       limit: take,
@@ -484,6 +559,9 @@ export const getMessagesService = async ({
       nextCursor,
     },
   };
+
+  await setCachedMessages(conversationId, cursor, take, result);
+  return result;
 };
 
 export const sendMessageService = async ({
@@ -567,7 +645,9 @@ export const sendMessageService = async ({
     });
   });
 
-  return mapMessage(message);
+  const mapped = await mapMessage(message);
+  await invalidateConversationCaches(conversationId);
+  return mapped;
 };
 
 export const markConversationReadService = async ({
@@ -585,6 +665,8 @@ export const markConversationReadService = async ({
     where: { conversationId_userId: { conversationId, userId } },
     data: { lastReadAt: now },
   });
+
+  await invalidateUserConversations(userId);
 
   return { conversationId, lastReadAt: now };
 };
@@ -604,6 +686,9 @@ export const setConversationMutedService = async ({
     where: { conversationId_userId: { conversationId, userId } },
     data: { isMuted: muted },
   });
+
+  await invalidateUserConversations(userId);
+  await invalidateConversationDetail(conversationId);
 
   return { conversationId, isMuted: muted };
 };
@@ -652,6 +737,7 @@ export const editMessageService = async ({
     include: messageInclude,
   });
 
+  await invalidateConversationCaches(message.conversationId);
   return mapMessage(updated);
 };
 
@@ -682,6 +768,7 @@ export const deleteMessageService = async ({
     },
   });
 
+  await invalidateConversationCaches(message.conversationId);
   return { messageId, conversationId: message.conversationId };
 };
 

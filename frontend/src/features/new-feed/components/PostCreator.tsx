@@ -19,6 +19,7 @@ import {
 import { uploadApi } from "@/features/uploads/api/upload.api";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { toast } from "sonner";
+import { getDefaultAvatarUrl } from "@/lib/utils";
 
 type PostCreatorProps = {
   fetchPosts: (currentPage: number) => Promise<void>;
@@ -171,10 +172,7 @@ const PostCreator = ({ fetchPosts, groupVisibility }: PostCreatorProps) => {
         {/* Avatar */}
         <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 border border-slate-100 dark:border-slate-700">
           <img
-            src={
-              user?.avatarUrl ||
-              `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || "User")}`
-            }
+            src={user?.avatarUrl || getDefaultAvatarUrl(user?.fullName)}
             alt="Avatar"
             className="w-full h-full object-cover"
           />

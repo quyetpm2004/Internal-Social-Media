@@ -17,6 +17,7 @@ import type { CommentItemType } from "@/features/new-feed/types/comment.type";
 import CommentInput from "@/features/new-feed/components/CommentInput";
 import { toast } from "sonner";
 import type { ReactionType } from "../api/reaction.api";
+import { getDefaultAvatarUrl } from "@/lib/utils";
 
 const reactionOptions: {
   type: ReactionType;
@@ -159,7 +160,7 @@ const CommentItem = ({
 
   const avatarSrc =
     comment.user.profile.avatarUrl ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.user.fullName)}`;
+    getDefaultAvatarUrl(comment.user.fullName);
 
   return (
     <div className={`flex gap-2 ${isReply ? "ml-10" : ""}`}>

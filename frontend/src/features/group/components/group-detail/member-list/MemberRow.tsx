@@ -7,6 +7,7 @@ import {
   type GroupMemberRole,
 } from "@/features/group/utils/group-member";
 import { NavLink } from "react-router-dom";
+import { getDefaultAvatarUrl } from "@/lib/utils";
 
 interface MemberRowProps {
   member: Member;
@@ -49,12 +50,7 @@ export const MemberRow = ({
           <img
             alt={member.fullName}
             className="w-10 h-10 rounded-lg object-cover"
-            src={
-              member.avatarUrl ||
-              `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                member.fullName || "User",
-              )}`
-            }
+            src={member.avatarUrl || getDefaultAvatarUrl(member.fullName)}
           />
           <NavLink to={`/profile/${member.id}`}>
             <div className="font-semibold text-sm text-on-surface">

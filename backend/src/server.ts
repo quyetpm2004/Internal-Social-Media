@@ -2,6 +2,7 @@ import http from "http";
 import { env } from "./config/env";
 import app from "./app";
 import prisma from "./utils/prisma";
+import { connectRedis, disconnectRedis } from "./utils/redis";
 import { initSocket } from "./socket";
 
 const startServer = async () => {
@@ -9,9 +10,11 @@ const startServer = async () => {
     await prisma.$connect();
     console.log("Database connected successfully");
 
+    await connectRedis();
+
     const httpServer = http.createServer(app);
 
-    initSocket(httpServer);
+    await initSocket(httpServer);
     console.log("Socket.IO initialized");
 
     httpServer.listen(env.port, () => {
@@ -22,5 +25,14 @@ const startServer = async () => {
     process.exit(1);
   }
 };
+
+const shutdown = async () => {
+  await disconnectRedis();
+  await prisma.$disconnect();
+  process.exit(0);
+};
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
 
 startServer();
