@@ -8,12 +8,15 @@ import {
   UserMinus,
   Clock,
   Camera,
+  Eye,
 } from "lucide-react";
 import { NavLink, useParams } from "react-router-dom";
 import ConfirmModal from "@/components/common/ConfirmModal";
 import { toast } from "sonner";
 import type { GroupMembershipStatus } from "@/features/group/types/group.type";
 import type { GroupMemberRole } from "@/features/group/utils/group-member";
+import { DEFAULT_COVER } from "@/constants/app";
+import Lightbox from "yet-another-react-lightbox";
 
 type GroupHeaderProps = {
   name: string;
@@ -29,10 +32,6 @@ type GroupHeaderProps = {
   onJoinLeave: () => void;
   currentMemberRole: GroupMemberRole | null;
 };
-
-const DEFAULT_COVER =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuCxXrrVBOhyAl7Aur699kAxZteWPkXZCRRIQG5LakpAB500wW2pX0oErQ5rTuQ0BoP5GIvfTD3VY_UbSVwlbx4SYp2m2wPHDldxxBaCS4MSb6nkbzoXZATv8JF0_gp4mF1digbyXX_vSAhTXN3P-Ur0JZb4F8QVkfZaj0Gmcy9vftdnzoxrj_wRBH4jhIaOFVVDxTdfXZdh89KK4hlnhPM0c-YPDbkXxfI-Au0hBnxKTnJL0p4jNcMWzCyt9Lm7XUmXyOKxNrRKaso";
-
 const tabs = [
   { label: "Thảo luận", path: "" },
   { label: "Thành viên", path: "members" },
@@ -58,6 +57,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
   const { groupId } = useParams();
   const [showLeaveJoinConfirm, setShowLeaveJoinConfirm] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const [index, setIndex] = useState(-1);
 
   const handleCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -158,6 +158,13 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
         />
 
         <div className="absolute inset-0 bg-linear-to-t from-slate-900/60 to-transparent" />
+
+        <div
+          onClick={() => setIndex(1)}
+          className="absolute bottom-4 left-4 rounded-lg opacity-0 group-hover/cover:opacity-100 transition-opacity focus:opacity-100 cursor-pointer bg-white/90 dark:bg-slate-900/90 text-slate-900 dark:text-white p-2"
+        >
+          <Eye size={18} />
+        </div>
 
         {canEditMedia && (
           <>
@@ -295,6 +302,20 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
           }}
         />
       )}
+
+      <Lightbox
+        index={index}
+        open={index >= 0}
+        close={() => setIndex(-1)}
+        slides={[{ src: coverUrl || DEFAULT_COVER }]}
+        controller={{
+          closeOnBackdropClick: true,
+        }}
+        render={{
+          buttonPrev: () => null,
+          buttonNext: () => null,
+        }}
+      />
     </section>
   );
 };

@@ -5,6 +5,7 @@ import type {
 } from "@/features/new-feed/types/new-feed.type";
 import type { PostContentFormat } from "@/features/new-feed/utils/rich-text";
 import type { ApiResponse } from "@/types/api.type";
+import type { GroupApiResponse } from "@/features/group/types/group.type";
 
 export const PostsApi = {
   getPostInNewFeed(page: number, limit: number, sort: "latest" | "trending") {
@@ -41,5 +42,16 @@ export const PostsApi = {
 
   getPostById(postId: string) {
     return axiosClient.get<ApiResponse<ApiPost>>(`/posts/${postId}`);
+  },
+
+  getMyGroups() {
+    return axiosClient.get<ApiResponse<GroupApiResponse>>("/groups?scope=my");
+  },
+
+  pinPost(postId: number, groupId: number | null, isPinned: boolean) {
+    return axiosClient.patch<ApiResponse<ApiPost>>(`/posts/${postId}/pin`, {
+      isPinned,
+      groupId,
+    });
   },
 };

@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Pin } from "lucide-react";
 import type { Post } from "@/features/new-feed/types/new-feed.type";
 import PostCreator from "@/features/new-feed/components/PostCreator";
 import PostCard from "@/features/new-feed/components/PostCard";
@@ -9,6 +8,8 @@ import { useOutletContext, useParams } from "react-router-dom";
 import AboutSidebar from "@/features/group/components/group-detail/main-detail/AboutSidebar";
 import { toast } from "sonner";
 import type { GroupDetail } from "@/features/group/types/group.type";
+import type { GroupOutletContext } from "../types/group-outlet.type";
+import { PostsApi } from "@/features/new-feed/api/post.api";
 
 const LIMIT = 10;
 
@@ -20,6 +21,9 @@ const GroupFeedPage: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
   const { groupId } = useParams();
+  const outletContext = useOutletContext<GroupOutletContext>();
+  const { canManageMembers } = outletContext;
+  const numericGroupId = Number(groupId);
 
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const isFetchingRef = useRef(false);
@@ -130,6 +134,30 @@ const GroupFeedPage: React.FC = () => {
     toast.success("Đã sao chép liên kết bài viết");
   };
 
+  const handlePinPost = async (
+    postId: number,
+    pinGroupId: number | null,
+    willPin: boolean,
+  ) => {
+    try {
+      await PostsApi.pinPost(postId, pinGroupId, willPin);
+
+      if (willPin) {
+        fetchPosts(1);
+        toast.success("Ghim bài viết thành công");
+      } else {
+        fetchPosts(1);
+        toast.success("Đã gỡ ghim bài viết");
+      }
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Có lỗi xảy ra. Vui lòng thử lại.";
+      toast.error(message);
+    }
+  };
+
   return (
     <div className="flex flex-col md:grid md:grid-cols-12 gap-8">
       <div className="md:col-span-8 space-y-6">
@@ -149,36 +177,32 @@ const GroupFeedPage: React.FC = () => {
         {!initialLoading && pinnedPosts.length > 0 && (
           <div className="space-y-6">
             {pinnedPosts.map((post) => (
-              <div
-                key={`pinned-wrapper-${post.id}`}
-                className="bg-blue-600 rounded-xl p-1 shadow-md"
-              >
-                <div className="flex items-center gap-1.5 px-3 py-1 text-white text-[10px] font-bold uppercase">
-                  <Pin size={12} fill="currentColor" /> Pinned
-                </div>
-                <PostCard
-                  {...post}
-                  onDeleted={(id) => {
-                    setPosts((prev) => prev.filter((p) => p.id !== id));
-                    setPinnedPosts((prev) => prev.filter((p) => p.id !== id));
-                  }}
-                  onUpdated={(postId, newContent, newFormat) => {
-                    const updater = (prev: Post[]) =>
-                      prev.map((item) =>
-                        item.id === postId
-                          ? {
-                              ...item,
-                              content: newContent,
-                              contentFormat: newFormat,
-                            }
-                          : item,
-                      );
-                    setPosts(updater);
-                    setPinnedPosts(updater);
-                  }}
-                  onCopied={(postId) => handleCopyGroupLink(postId)}
-                />
-              </div>
+              <PostCard
+                key={`pinned-${post.id}`}
+                {...post}
+                onDeleted={(id) => {
+                  setPosts((prev) => prev.filter((p) => p.id !== id));
+                  setPinnedPosts((prev) => prev.filter((p) => p.id !== id));
+                }}
+                onUpdated={(postId, newContent, newFormat) => {
+                  const updater = (prev: Post[]) =>
+                    prev.map((item) =>
+                      item.id === postId
+                        ? {
+                            ...item,
+                            content: newContent,
+                            contentFormat: newFormat,
+                          }
+                        : item,
+                    );
+                  setPosts(updater);
+                  setPinnedPosts(updater);
+                }}
+                onCopied={(postId) => handleCopyGroupLink(postId)}
+                canPinPost={canManageMembers}
+                pinGroupId={numericGroupId}
+                onPinned={handlePinPost}
+              />
             ))}
           </div>
         )}
@@ -206,12 +230,15 @@ const GroupFeedPage: React.FC = () => {
                 );
               }}
               onCopied={(postId) => handleCopyGroupLink(postId)}
+              canPinPost={canManageMembers}
+              pinGroupId={numericGroupId}
+              onPinned={handlePinPost}
             />
           ))}
         </div>
 
         {/* 5. Trạng thái trống hoặc hết dữ liệu */}
-        {!initialLoading && posts.length === 0 && (
+        {!initialLoading && posts.length === 0 && pinnedPosts.length === 0 && (
           <div className="bg-white rounded-xl p-8 text-center text-slate-500 border border-dashed">
             Chưa có thảo luận nào trong nhóm này.
           </div>

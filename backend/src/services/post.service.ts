@@ -7,6 +7,7 @@ import {
   PostVisibility,
   Prisma,
   ReactionType,
+  Role,
 } from "@prisma/client";
 import { PostContentFormat } from "../constants/post-content-format";
 import type { PostContentFormat as PostContentFormatType } from "../constants/post-content-format";
@@ -745,4 +746,53 @@ export const getPostById = async (postId: number, userId: number) => {
     ...existingPost,
     attachments: attachmentsWithUrl,
   };
+};
+
+export const pinPostByUserId = async (
+  postId: number,
+  userId: number,
+  groupId: number | null,
+  isPinned: boolean,
+) => {
+  const post = await prisma.post.findUnique({
+    where: {
+      id: postId,
+    },
+  });
+
+  if (!post || post.groupId !== groupId) {
+    throw new Error("Không tìm thấy bài post");
+  }
+
+  if (groupId === null) {
+    const currentUser = await prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+    });
+
+    if (!currentUser || currentUser.role !== Role.ADMIN) {
+      throw new Error("Bạn không có quyền thực hiện thao tác này");
+    }
+  } else {
+    const member = await prisma.groupMember.findFirst({
+      where: {
+        userId,
+        groupId,
+      },
+    });
+
+    if (!member || member.memberRole === GroupMemberRole.MEMBER) {
+      throw new Error("Bạn không có quyền thực hiện thao tác này");
+    }
+  }
+
+  return prisma.post.update({
+    where: {
+      id: postId,
+    },
+    data: {
+      isPinned,
+    },
+  });
 };

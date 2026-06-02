@@ -4,6 +4,7 @@ import {
   deletePostController,
   getPostByIdController,
   getPostListController,
+  pinPostByUserIdController,
   reactPostController,
   updatePostController,
 } from "../controllers/post.controller";
@@ -24,5 +25,6 @@ postRoutes.delete("/:postId", authMiddleware, deletePostController);
 postRoutes.get("/:postId/comments", authMiddleware, getPostCommentsController);
 postRoutes.post("/:postId/comments", authMiddleware, createCommentController);
 postRoutes.get("/:postId", authMiddleware, getPostByIdController);
+postRoutes.patch("/:postId/pin", authMiddleware, pinPostByUserIdController);
 
 export default postRoutes;

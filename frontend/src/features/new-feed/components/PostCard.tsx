@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   Download,
+  EllipsisVertical,
   FileText,
   MessageSquare,
   Pin,
@@ -19,12 +20,13 @@ import {
   isRichTextEmpty,
   sanitizePostHtml,
 } from "@/features/new-feed/utils/rich-text";
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
-import { PostsApi } from "@/features/new-feed/api/new-feed.api";
+import { Pencil, Trash2 } from "lucide-react";
+import { PostsApi } from "@/features/new-feed/api/post.api";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { toast } from "sonner";
 import { useAuthStore } from "@/features/auth/store/auth.store";
+import ConfirmModal from "@/components/common/ConfirmModal";
 
 const reactionOptions: {
   type: ReactionType;
@@ -84,6 +86,9 @@ const PostCard: React.FC<PostCardProps> = ({
   onDeleted,
   onUpdated,
   onCopied,
+  canPinPost,
+  pinGroupId = null,
+  onPinned,
 }) => {
   const [showComments, setShowComments] = useState(false);
   const [reactionCount, setReactionCount] = useState(stats.likes);
@@ -97,6 +102,7 @@ const PostCard: React.FC<PostCardProps> = ({
   const [displayContent, setDisplayContent] = useState(content);
   const [displayFormat, setDisplayFormat] = useState(contentFormat);
   const user = useAuthStore((state) => state.user);
+  const [openConfirmPinPost, setOpenConfirmPinPost] = useState(false);
 
   useEffect(() => {
     if (!editingPost) {
@@ -192,18 +198,9 @@ const PostCard: React.FC<PostCardProps> = ({
         isPinned ? "ring-1 ring-blue-500/20" : ""
       }`}
     >
-      {isPinned && (
-        <div className="absolute top-4 right-4 flex items-center gap-1 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full">
-          <Pin size={12} className="text-blue-700 fill-current" />
-          <span className="text-[10px] font-bold text-blue-700 uppercase tracking-tighter">
-            Bài ghim
-          </span>
-        </div>
-      )}
-
       <div className="p-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-100">
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100">
             <img src={author.avatar} alt={author.name} />
           </div>
 
@@ -214,42 +211,57 @@ const PostCard: React.FC<PostCardProps> = ({
             </p>
           </div>
 
-          {user?.id === author.id && (
-            <div className="relative ml-auto">
+          <div className="relative ml-auto flex items-center">
+            {canPinPost && (
+              <button
+                type="button"
+                onClick={() => setOpenConfirmPinPost(true)}
+                className="p-2 rounded-lg text-slate-500 hover:text-blue-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+                title={isPinned ? "Gỡ ghim" : "Ghim bài viết"}
+              >
+                <Pin
+                  size={18}
+                  className={
+                    isPinned ? "text-blue-700 fill-current" : undefined
+                  }
+                />
+              </button>
+            )}
+            {user?.id === author.id && (
               <button
                 type="button"
                 onClick={() => setShowMenu((prev) => !prev)}
                 className="p-2 rounded-lg"
               >
-                <MoreHorizontal size={18} />
+                <EllipsisVertical size={18} />
               </button>
+            )}
 
-              {showMenu && (
-                <div className="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-30 overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingPost(true);
-                      setShowMenu(false);
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700"
-                  >
-                    <Pencil size={14} />
-                    Sửa bài viết
-                  </button>
+            {showMenu && (
+              <div className="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-30 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingPost(true);
+                    setShowMenu(false);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700"
+                >
+                  <Pencil size={14} />
+                  Sửa bài viết
+                </button>
 
-                  <button
-                    type="button"
-                    onClick={handleDeletePost}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                  >
-                    <Trash2 size={14} />
-                    Xóa bài viết
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+                <button
+                  type="button"
+                  onClick={handleDeletePost}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                >
+                  <Trash2 size={14} />
+                  Xóa bài viết
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {editingPost ? (
@@ -447,6 +459,25 @@ const PostCard: React.FC<PostCardProps> = ({
         close={() => setIndex(-1)}
         slides={imageAttachments.map((item) => ({ src: item.fileUrl }))}
       />
+
+      {canPinPost && onPinned && (
+        <ConfirmModal
+          open={openConfirmPinPost}
+          title={isPinned ? "Gỡ bài ghim" : "Ghim bài"}
+          description={
+            isPinned
+              ? "Bạn có chắc chắn muốn gỡ ghim bài viết này không?"
+              : "Bạn có chắc chắn muốn ghim bài viết này không?"
+          }
+          confirmText="Xác nhận"
+          variant="primary"
+          onCancel={() => setOpenConfirmPinPost(false)}
+          onConfirm={async () => {
+            setOpenConfirmPinPost(false);
+            await onPinned(postId, pinGroupId, !isPinned);
+          }}
+        />
+      )}
     </div>
   );
 };

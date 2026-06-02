@@ -2,21 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Post } from "@/features/new-feed/types/new-feed.type";
 import PostCreator from "@/features/new-feed/components/PostCreator";
 import PostCard from "@/features/new-feed/components/PostCard";
-import {
-  Bell,
-  Cake,
-  Calendar,
-  DraftingCompass,
-  Globe,
-  Hash,
-  Users2,
-  Zap,
-} from "lucide-react";
+import { Bell, Cake, Calendar, Users2 } from "lucide-react";
 import RightSidebarWidget from "@/features/new-feed/components/RightSidebarWidget";
 import GroupItem from "@/features/new-feed/components/GroupItem";
-import { PostsApi } from "@/features/new-feed/api/new-feed.api";
+import { PostsApi } from "@/features/new-feed/api/post.api";
 import { mapApiPostToPostCard } from "@/utils/formatTimeAgo";
 import { toast } from "sonner";
+import type { Group } from "@/features/group/types/group.type";
+import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "@/features/auth/store/auth.store";
 
 type SortType = "latest" | "trending";
 const LIMIT = 10;
@@ -29,6 +23,10 @@ const NewFeedPage = () => {
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [myGroups, setMyGroups] = useState<Group[]>([]);
+  const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
+  const canPinPost = user?.role === "ADMIN";
 
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
@@ -152,10 +150,50 @@ const NewFeedPage = () => {
     fetchPosts(page);
   }, [page, fetchPosts]);
 
+  useEffect(() => {
+    const fetchMyGroups = async () => {
+      try {
+        const response = await PostsApi.getMyGroups();
+        setMyGroups(response.data.groups);
+      } catch (error: any) {
+        console.error("Error fetching my groups:", error);
+        toast.error(error.message || error.response.message);
+      }
+    };
+
+    fetchMyGroups();
+  }, []);
+
   const handleCopyPostLink = (postId: number) => {
     const postLink = `${import.meta.env.VITE_BASE_URL_FRONTEND}/news-feed/${postId}`;
     navigator.clipboard.writeText(postLink);
     toast.success("Đã sao chép liên kết bài viết");
+  };
+
+  const handlePinPost = async (
+    postId: number,
+    pinGroupId: number | null,
+    willPin: boolean,
+  ) => {
+    try {
+      await PostsApi.pinPost(postId, pinGroupId, willPin);
+      setPage(1);
+      pageRef.current = 1;
+      await fetchPosts(1);
+      toast.success(
+        willPin ? "Ghim bài viết thành công" : "Đã gỡ ghim bài viết",
+      );
+    } catch (error: unknown) {
+      const err = error as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Có lỗi xảy ra. Vui lòng thử lại.";
+      toast.error(message);
+    }
   };
 
   return (
@@ -199,6 +237,9 @@ const NewFeedPage = () => {
                     setPinnedPosts(updater);
                   }}
                   onCopied={(postId) => handleCopyPostLink(postId)}
+                  canPinPost={canPinPost}
+                  pinGroupId={null}
+                  onPinned={handlePinPost}
                 />
               ))}
             </div>
@@ -211,9 +252,12 @@ const NewFeedPage = () => {
                 {...post}
                 onDeleted={(postId) => {
                   setPosts((prev) => prev.filter((item) => item.id !== postId));
+                  setPinnedPosts((prev) =>
+                    prev.filter((item) => item.id !== postId),
+                  );
                 }}
                 onUpdated={(postId, newContent, newFormat) => {
-                  setPosts((prev) =>
+                  const updater = (prev: Post[]) =>
                     prev.map((item) =>
                       item.id === postId
                         ? {
@@ -222,10 +266,14 @@ const NewFeedPage = () => {
                             contentFormat: newFormat,
                           }
                         : item,
-                    ),
-                  );
+                    );
+                  setPosts(updater);
+                  setPinnedPosts(updater);
                 }}
                 onCopied={(postId) => handleCopyPostLink(postId)}
+                canPinPost={canPinPost}
+                pinGroupId={null}
+                onPinned={handlePinPost}
               />
             ))}
           </div>
@@ -256,34 +304,20 @@ const NewFeedPage = () => {
         <div className="lg:col-span-4 space-y-6">
           <RightSidebarWidget title="Các nhóm của bạn" icon={Users2}>
             <div className="space-y-4">
-              <GroupItem
-                name="Thiết kế bền vững"
-                members={42}
-                unread={3}
-                iconBg="bg-emerald-500"
-                icon={Zap}
-              />
-              <GroupItem
-                name="Dự án Green Hub"
-                members={128}
-                iconBg="bg-blue-600"
-                icon={DraftingCompass}
-              />
-              <GroupItem
-                name="Cộng đồng Kỹ sư"
-                members={850}
-                unread={12}
-                iconBg="bg-indigo-500"
-                icon={Globe}
-              />
-              <GroupItem
-                name="Vật liệu tương lai"
-                members={24}
-                iconBg="bg-orange-500"
-                icon={Hash}
-              />
+              {myGroups.map((item) => (
+                <GroupItem
+                  key={item.id}
+                  id={item.id}
+                  name={item.groupName}
+                  members={item._count.members}
+                  url={item.coverUrl}
+                />
+              ))}
             </div>
-            <button className="w-full mt-4 py-2 text-xs font-bold text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors border border-dashed border-blue-200 dark:border-blue-800 cursor-pointer">
+            <button
+              onClick={() => navigate("/groups")}
+              className="w-full mt-4 py-2 text-xs font-bold text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors border border-dashed border-blue-200 dark:border-blue-800 cursor-pointer"
+            >
               Xem tất cả nhóm
             </button>
           </RightSidebarWidget>

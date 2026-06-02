@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { PostsApi } from "@/features/new-feed/api/new-feed.api";
+import { PostsApi } from "@/features/new-feed/api/post.api";
 import PostCard from "@/features/new-feed/components/PostCard";
 import { toast } from "sonner";
 import type { Post } from "../types/new-feed.type";

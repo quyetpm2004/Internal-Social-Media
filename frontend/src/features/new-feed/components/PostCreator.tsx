@@ -10,7 +10,7 @@ import {
   Loader2,
 } from "lucide-react";
 
-import { PostsApi } from "@/features/new-feed/api/new-feed.api";
+import { PostsApi } from "@/features/new-feed/api/post.api";
 import RichTextEditor from "@/features/new-feed/components/RichTextEditor";
 import {
   isRichTextEmpty,
@@ -145,7 +145,7 @@ const PostCreator = ({ fetchPosts, groupVisibility }: PostCreatorProps) => {
       await PostsApi.createPost({
         content: sanitizedContent,
         contentFormat: "HTML",
-        visibility: "PUBLIC",
+        visibility: groupVisibility,
         groupId: groupId ? Number(groupId) : undefined,
         attachmentIds: uploadedAttachments.map((item) => item.attachmentId),
       });

@@ -4,6 +4,7 @@ import {
   deletePostService,
   getPostById,
   getPostListService,
+  pinPostByUserId,
   reactPostService,
   updatePostService,
 } from "../services/post.service";
@@ -177,7 +178,7 @@ export const reactPostController = async (
   try {
     const userId = Number(req.user?.id);
     const postId = Number(req.params.postId);
-    const { reactionType } = req.body 
+    const { reactionType } = req.body;
 
     if (!Number.isInteger(userId) || userId <= 0) {
       return res.status(401).json({
@@ -260,6 +261,31 @@ export const getPostByIdController = async (req: Request, res: Response) => {
     if (result) {
       return res.status(200).json({
         message: "Lấy bài viết thành công",
+        data: result,
+      });
+    }
+  } catch (error: any) {
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+export const pinPostByUserIdController = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const userId = Number(req.user?.id);
+    const postId = Number(req.params.postId);
+    const { isPinned, groupId } = req.body;
+    if (!userId) {
+      return res.status(401).json({
+        message: "Người dùng chưa đăng nhập",
+      });
+    }
+    const result = await pinPostByUserId(postId, userId, groupId, isPinned);
+    if (result) {
+      return res.status(201).json({
+        message: "Pin/UnPin bài viết thành công",
         data: result,
       });
     }

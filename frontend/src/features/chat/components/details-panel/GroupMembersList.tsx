@@ -202,7 +202,7 @@ const GroupMembersList = ({
         confirmText="Xóa"
         variant="primary"
         onCancel={() => setShowRemoveMemberConfirm(false)}
-        onConfirm={() => handleRemoveMember(removingUserId)}
+        onConfirm={() => handleRemoveMember(removingUserId!)}
       />
     </div>
   );

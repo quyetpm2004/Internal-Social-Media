@@ -47,6 +47,14 @@ interface PostCardProps extends Post {
     contentFormat?: PostContentFormat,
   ) => void;
   onCopied?: (postId: number) => void;
+  canPinPost?: boolean;
+  /** groupId gửi lên API pin (null = bảng tin công khai / admin) */
+  pinGroupId?: number | null;
+  onPinned?: (
+    postId: number,
+    groupId: number | null,
+    isPinned: boolean,
+  ) => void | Promise<void>;
 }
 
 interface RightSidebarWidgetProps {
@@ -56,11 +64,10 @@ interface RightSidebarWidgetProps {
 }
 
 interface GroupItemProps {
+  id: string;
   name: string;
   members: number;
-  unread?: number;
-  iconBg: string;
-  icon: LucideIcon;
+  url?: string;
 }
 
 type ApiPost = {

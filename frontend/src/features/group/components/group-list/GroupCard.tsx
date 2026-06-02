@@ -1,6 +1,7 @@
 import { Clock, Users } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import type { GroupMembershipStatus } from "@/features/group/types/group.type";
+import { DEFAULT_COVER } from "@/constants/app";
 
 type GroupCardProps = {
   groupId: string;
@@ -13,9 +14,6 @@ type GroupCardProps = {
   membershipStatus?: GroupMembershipStatus;
   joinGroup: (groupId: string) => void;
 };
-
-const DEFAULT_COVER =
-  "https://images.unsplash.com/photo-1506744038136-46273834b3fb?ixlib=rb-4.0.3&auto=format&fit=crop&w=1170&q=80";
 
 const GroupCard = ({
   groupId,
