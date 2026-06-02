@@ -6,6 +6,15 @@ const router = express.Router();
 
 router.use(authMiddleware);
 
+// Chat search
+router.get("/search", chatController.searchChatUsers);
+router.get("/search/history", chatController.getChatSearchHistory);
+router.post("/search/history", chatController.addChatSearchHistory);
+router.delete(
+  "/search/history/:historyId",
+  chatController.deleteChatSearchHistoryItem,
+);
+
 // Conversations
 router.get("/conversations", chatController.listConversations);
 router.post("/conversations/direct", chatController.createDirectConversation);
@@ -13,6 +22,22 @@ router.post("/conversations/group", chatController.createGroupConversation);
 router.get(
   "/conversations/:conversationId",
   chatController.getConversationDetail,
+);
+router.delete(
+  "/conversations/:conversationId/avatar",
+  chatController.deleteGroupConversationAvatar,
+);
+router.post(
+  "/conversations/:conversationId/members",
+  chatController.addGroupConversationMembers,
+);
+router.post(
+  "/conversations/:conversationId/leave",
+  chatController.leaveGroupConversation,
+);
+router.delete(
+  "/conversations/:conversationId/members/:userId",
+  chatController.removeGroupConversationMember,
 );
 
 // Messages within a conversation

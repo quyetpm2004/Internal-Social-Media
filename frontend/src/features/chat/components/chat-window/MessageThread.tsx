@@ -151,10 +151,25 @@ const MessageThread = ({
           </div>
 
           {group.messages.map((message, index) => {
+            if (message.contentType === "SYSTEM") {
+              return (
+                <MessageBubble
+                  key={message.id}
+                  message={message}
+                  isOwn={false}
+                  showAvatar={false}
+                  showSenderName={false}
+                  conversationType={conversation.type}
+                />
+              );
+            }
+
             const isOwn = message.senderId === currentUserId;
             const prev = group.messages[index - 1];
             const isFirstFromSender =
-              !prev || prev.senderId !== message.senderId;
+              !prev ||
+              prev.senderId !== message.senderId ||
+              prev.contentType === "SYSTEM";
 
             const readers = isOwn
               ? readersByMessage.get(message.id)

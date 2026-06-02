@@ -14,7 +14,7 @@ const SharedMedia = ({ media, totalCount, loading }: SharedMediaProps) => {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h4 className="text-xs font-bold font-label uppercase tracking-widest text-on-surface-variant">
+        <h4 className="text-sm font-medium text-on-surface">
           File phương tiện
         </h4>
       </div>

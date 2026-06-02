@@ -27,6 +27,10 @@ const getLastMessagePreview = (
     return { content: "Tin nhắn đã bị thu hồi" };
   }
 
+  if (lastMessage.contentType === "SYSTEM") {
+    return { content: lastMessage.content };
+  }
+
   let content = lastMessage.content;
 
   if (!content) {
@@ -85,10 +89,18 @@ const ConversationItem = ({
     >
       <div className="flex gap-3">
         <div className="relative shrink-0">
-          {type === "GROUP" && !avatarUrl ? (
-            <div className="w-12 h-12 bg-secondary-container rounded-full flex items-center justify-center">
-              <Users size={20} className="text-on-secondary-container" />
-            </div>
+          {type === "GROUP" ? (
+            avatarUrl ? (
+              <img
+                className="w-12 h-12 rounded-full object-cover"
+                src={avatarUrl}
+                alt={name}
+              />
+            ) : (
+              <div className="w-12 h-12 bg-secondary-container rounded-full flex items-center justify-center">
+                <Users size={20} className="text-on-secondary-container" />
+              </div>
+            )
           ) : (
             <img
               className="w-12 h-12 rounded-full object-cover"

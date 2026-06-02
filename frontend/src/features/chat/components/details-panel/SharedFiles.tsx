@@ -1,9 +1,6 @@
 import { Download, FileText, Table2 } from "lucide-react";
 import type { SharedAttachmentItem } from "@/features/chat/types/chat.type";
-import {
-  formatFileSize,
-  getShortDateLabel,
-} from "@/features/chat/utils/format-file-size";
+import { formatFileSize } from "@/features/chat/utils/format-file-size";
 
 interface SharedFilesProps {
   files: SharedAttachmentItem[];
@@ -35,9 +32,7 @@ const SharedFiles = ({ files, loading }: SharedFilesProps) => {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h4 className="text-xs font-bold font-label uppercase tracking-widest text-on-surface-variant">
-          Files
-        </h4>
+        <h4 className="text-sm font-medium text-on-surface">Files</h4>
       </div>
 
       {loading ? (
@@ -88,6 +83,5 @@ const SharedFiles = ({ files, loading }: SharedFilesProps) => {
 };
 
 // keep helper exported in case other components want consistent meta
-export { getShortDateLabel };
 
 export default SharedFiles;

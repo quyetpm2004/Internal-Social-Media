@@ -4,6 +4,10 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { s3 } from "../lib/s3";
 import prisma from "../utils/prisma";
 import { getFileUrl } from "./file.service";
+import {
+  getConversationMemberUserIds,
+  invalidateConversationForMembers,
+} from "./redis/chat-cache.service";
 
 type UploadPurpose =
   | "avatar"
@@ -11,6 +15,7 @@ type UploadPurpose =
   | "post-video"
   | "post-file"
   | "group-cover"
+  | "conversation-avatar"
   | "message-image"
   | "message-video"
   | "message-file";
@@ -45,6 +50,12 @@ export async function createUploadUrls(input: CreateUploadUrlsInput) {
       maxSize: 10 * 1024 * 1024,
       allowedTypes: ["image/jpeg", "image/png", "image/webp"],
       folder: "groups/cover",
+    },
+
+    "conversation-avatar": {
+      maxSize: 2 * 1024 * 1024,
+      allowedTypes: ["image/jpeg", "image/png", "image/webp"],
+      folder: "chat/avatars",
     },
 
     "post-image": {
@@ -207,8 +218,9 @@ type ConfirmUploadInput = {
   items: {
     key: string;
     purpose: UploadPurpose;
-    attachmentId: number;
-    groupId: string;
+    attachmentId?: number;
+    groupId?: string;
+    conversationId?: string;
   }[];
 };
 
@@ -218,7 +230,7 @@ export async function confirmUploads(input: ConfirmUploadInput) {
   const results = [];
 
   for (const item of items) {
-    const { purpose, key, attachmentId, groupId } = item;
+    const { purpose, key, attachmentId, groupId, conversationId } = item;
 
     const headObject = await s3.send(
       new HeadObjectCommand({
@@ -253,6 +265,55 @@ export async function confirmUploads(input: ConfirmUploadInput) {
       results.push({
         type: "avatar",
         key,
+      });
+
+      continue;
+    }
+
+    /**
+     * CONVERSATION AVATAR (chat group)
+     */
+    if (purpose === "conversation-avatar") {
+      if (!conversationId) {
+        throw new Error("CONVERSATION_ID_REQUIRED");
+      }
+
+      const convId = Number(conversationId);
+      const conversation = await prisma.conversation.findUnique({
+        where: { id: convId },
+        select: { type: true },
+      });
+
+      if (!conversation || conversation.type !== "GROUP") {
+        throw new Error("CONVERSATION_NOT_FOUND");
+      }
+
+      const member = await prisma.conversationMember.findUnique({
+        where: {
+          conversationId_userId: {
+            conversationId: convId,
+            userId,
+          },
+        },
+        select: { role: true, leftAt: true },
+      });
+
+      if (!member || member.leftAt || member.role !== "ADMIN") {
+        throw new Error("FORBIDDEN");
+      }
+
+      await prisma.conversation.update({
+        where: { id: convId },
+        data: { avatarKey: key },
+      });
+
+      const memberUserIds = await getConversationMemberUserIds(convId);
+      await invalidateConversationForMembers(convId, memberUserIds);
+
+      results.push({
+        type: "conversation-avatar",
+        key,
+        conversationId: convId,
       });
 
       continue;

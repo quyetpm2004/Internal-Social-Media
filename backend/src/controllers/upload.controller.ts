@@ -8,6 +8,7 @@ const uploadPurposeEnum = z.enum([
   "post-video",
   "post-file",
   "group-cover",
+  "conversation-avatar",
   "message-image",
   "message-video",
   "message-file",
@@ -70,6 +71,8 @@ export const confirmUploadSchema = z.object({
       attachmentId: z.number().optional(),
 
       groupId: z.number().optional(),
+
+      conversationId: z.number().optional(),
     }),
   ),
 });

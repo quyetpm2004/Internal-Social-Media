@@ -1,3 +1,4 @@
+import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import {
   AttachmentType,
   ConversationMemberRole,
@@ -7,6 +8,7 @@ import {
   MessageStatus,
   Prisma,
 } from "@prisma/client";
+import { s3 } from "../lib/s3";
 import prisma from "../utils/prisma";
 import { getFileUrl } from "./file.service";
 import {
@@ -159,6 +161,25 @@ const findConversationOrThrow = async (conversationId: number) => {
 
   if (!conversation) {
     throw new Error("Không tìm thấy cuộc trò chuyện");
+  }
+
+  return conversation;
+};
+
+const assertGroupConversationAdmin = async (
+  conversationId: number,
+  userId: number,
+) => {
+  const conversation = await findConversationOrThrow(conversationId);
+
+  if (conversation.type !== ConversationType.GROUP) {
+    throw new Error("Chỉ áp dụng cho nhóm chat");
+  }
+
+  const member = await assertConversationMember(conversationId, userId);
+
+  if (member.role !== ConversationMemberRole.ADMIN) {
+    throw new Error("Bạn không có quyền thực hiện thao tác này");
   }
 
   return conversation;
@@ -329,13 +350,7 @@ export const listConversationsService = async ({
     },
   };
 
-  await setCachedConversations(
-    userId,
-    normalizedFilter,
-    page,
-    limit,
-    result,
-  );
+  await setCachedConversations(userId, normalizedFilter, page, limit, result);
 
   return result;
 };
@@ -388,9 +403,10 @@ export const getConversationDetailService = async ({
     unreadCount,
   );
 
-  const members = await Promise.all(conversation.members.map(mapMemberUser));
+  const activeMembers = conversation.members.filter((m) => !m.leftAt);
+  const members = await Promise.all(activeMembers.map(mapMemberUser));
 
-  const result = { ...display, members };
+  const result = { ...display, members, memberCount: activeMembers.length };
   await setCachedConversationDetail(conversationId, userId, result);
   return result;
 };
@@ -862,6 +878,389 @@ export const getSharedFilesService = async ({
       totalPages: Math.max(1, Math.ceil(total / limit)),
     },
   };
+};
+
+export const updateGroupConversationAvatarService = async ({
+  conversationId,
+  userId,
+  avatarKey,
+}: {
+  conversationId: number;
+  userId: number;
+  avatarKey: string;
+}) => {
+  await assertGroupConversationAdmin(conversationId, userId);
+
+  await prisma.conversation.update({
+    where: { id: conversationId },
+    data: { avatarKey },
+  });
+
+  await invalidateConversationCaches(conversationId);
+
+  return getConversationDetailService({ conversationId, userId });
+};
+
+const getUserDisplayNames = async (userIds: number[]) => {
+  if (userIds.length === 0) return [];
+
+  const users = await prisma.user.findMany({
+    where: { id: { in: userIds } },
+    select: { id: true, fullName: true },
+  });
+
+  const nameById = new Map(users.map((u) => [u.id, u.fullName]));
+  return userIds.map((id) => nameById.get(id) ?? "Người dùng");
+};
+
+const formatAddedMembersMessage = (actorName: string, names: string[]) => {
+  if (names.length === 0) return `${actorName} đã thêm thành viên vào nhóm`;
+  if (names.length === 1) {
+    return `${actorName} đã thêm ${names[0]} vào nhóm`;
+  }
+  if (names.length === 2) {
+    return `${actorName} đã thêm ${names[0]} và ${names[1]} vào nhóm`;
+  }
+  const last = names[names.length - 1];
+  const rest = names.slice(0, -1).join(", ");
+  return `${actorName} đã thêm ${rest} và ${last} vào nhóm`;
+};
+
+export const createSystemMessageService = async ({
+  conversationId,
+  actorUserId,
+  content,
+}: {
+  conversationId: number;
+  actorUserId: number;
+  content: string;
+}) => {
+  await assertConversationMember(conversationId, actorUserId);
+
+  const trimmed = content.trim();
+  if (!trimmed) {
+    throw new Error("Nội dung thông báo không hợp lệ");
+  }
+
+  const now = new Date();
+
+  const message = await prisma.$transaction(async (tx) => {
+    const created = await tx.message.create({
+      data: {
+        conversationId,
+        senderId: actorUserId,
+        contentType: MessageContentType.SYSTEM,
+        content: trimmed,
+      },
+      include: messageInclude,
+    });
+
+    await tx.conversation.update({
+      where: { id: conversationId },
+      data: { lastMessageAt: now },
+    });
+
+    return created;
+  });
+
+  const mapped = await mapMessage(message);
+  await invalidateConversationCaches(conversationId);
+  return mapped;
+};
+
+export const addGroupConversationMembersService = async ({
+  conversationId,
+  userId,
+  memberIds,
+}: {
+  conversationId: number;
+  userId: number;
+  memberIds: number[];
+}) => {
+  await assertConversationMember(conversationId, userId);
+
+  const conversation = await findConversationOrThrow(conversationId);
+
+  if (conversation.type !== ConversationType.GROUP) {
+    throw new Error("Chỉ áp dụng cho nhóm chat");
+  }
+
+  const uniqueMemberIds = Array.from(new Set(memberIds)).filter(
+    (id) => id !== userId,
+  );
+
+  if (uniqueMemberIds.length === 0) {
+    throw new Error("Vui lòng chọn ít nhất một người");
+  }
+
+  const users = await prisma.user.findMany({
+    where: { id: { in: uniqueMemberIds } },
+    select: { id: true },
+  });
+
+  if (users.length !== uniqueMemberIds.length) {
+    throw new Error("Một số người dùng được chọn không tồn tại");
+  }
+
+  const existingMembers = await prisma.conversationMember.findMany({
+    where: {
+      conversationId,
+      userId: { in: uniqueMemberIds },
+    },
+  });
+
+  const existingByUserId = new Map(existingMembers.map((m) => [m.userId, m]));
+
+  const toCreate: number[] = [];
+  const toRejoin: number[] = [];
+
+  for (const targetId of uniqueMemberIds) {
+    const existing = existingByUserId.get(targetId);
+    if (!existing) {
+      toCreate.push(targetId);
+    } else if (existing.leftAt) {
+      toRejoin.push(targetId);
+    }
+  }
+
+  if (toCreate.length === 0 && toRejoin.length === 0) {
+    throw new Error("Tất cả người được chọn đã là thành viên nhóm");
+  }
+
+  await prisma.$transaction([
+    ...toRejoin.map((targetId) =>
+      prisma.conversationMember.update({
+        where: {
+          conversationId_userId: { conversationId, userId: targetId },
+        },
+        data: { leftAt: null, joinedAt: new Date() },
+      }),
+    ),
+    ...toCreate.map((targetId) =>
+      prisma.conversationMember.create({
+        data: {
+          conversationId,
+          userId: targetId,
+          role: ConversationMemberRole.MEMBER,
+        },
+      }),
+    ),
+  ]);
+
+  const allAffected = [...toCreate, ...toRejoin, userId];
+  await Promise.all(
+    Array.from(new Set(allAffected)).map((id) =>
+      invalidateUserConversations(id),
+    ),
+  );
+  await invalidateConversationCaches(conversationId);
+
+  const addedUserIds = [...toCreate, ...toRejoin];
+  const [actorName, addedNames] = await Promise.all([
+    getUserDisplayNames([userId]).then((n) => n[0]),
+    getUserDisplayNames(addedUserIds),
+  ]);
+
+  const systemMessage = await createSystemMessageService({
+    conversationId,
+    actorUserId: userId,
+    content: formatAddedMembersMessage(actorName, addedNames),
+  });
+
+  return {
+    detail: await getConversationDetailService({ conversationId, userId }),
+    addedUserIds,
+    systemMessage,
+  };
+};
+
+const promoteNextAdminIfNeeded = async (
+  conversationId: number,
+  excludingUserId: number,
+) => {
+  const remainingAdmins = await prisma.conversationMember.count({
+    where: {
+      conversationId,
+      leftAt: null,
+      role: ConversationMemberRole.ADMIN,
+      userId: { not: excludingUserId },
+    },
+  });
+
+  if (remainingAdmins > 0) return;
+
+  const nextAdmin = await prisma.conversationMember.findFirst({
+    where: {
+      conversationId,
+      leftAt: null,
+      userId: { not: excludingUserId },
+      role: ConversationMemberRole.MEMBER,
+    },
+    orderBy: { joinedAt: "asc" },
+  });
+
+  if (nextAdmin) {
+    await prisma.conversationMember.update({
+      where: { id: nextAdmin.id },
+      data: { role: ConversationMemberRole.ADMIN },
+    });
+  }
+};
+
+export const leaveGroupConversationService = async ({
+  conversationId,
+  userId,
+}: {
+  conversationId: number;
+  userId: number;
+}) => {
+  await assertConversationMember(conversationId, userId);
+
+  const conversation = await findConversationOrThrow(conversationId);
+
+  if (conversation.type !== ConversationType.GROUP) {
+    throw new Error("Chỉ áp dụng cho nhóm chat");
+  }
+
+  const me = await prisma.conversationMember.findUnique({
+    where: {
+      conversationId_userId: { conversationId, userId },
+    },
+  });
+
+  if (!me || me.leftAt) {
+    throw new Error("Bạn không phải thành viên cuộc trò chuyện này");
+  }
+
+  if (me.role === ConversationMemberRole.ADMIN) {
+    await promoteNextAdminIfNeeded(conversationId, userId);
+  }
+
+  const [actorName] = await getUserDisplayNames([userId]);
+
+  const systemMessage = await createSystemMessageService({
+    conversationId,
+    actorUserId: userId,
+    content: `${actorName} đã rời nhóm`,
+  });
+
+  await prisma.conversationMember.update({
+    where: {
+      conversationId_userId: { conversationId, userId },
+    },
+    data: { leftAt: new Date() },
+  });
+
+  await invalidateUserConversations(userId);
+  await invalidateConversationCaches(conversationId);
+
+  return { success: true, systemMessage };
+};
+
+export const removeGroupConversationMemberService = async ({
+  conversationId,
+  userId,
+  targetUserId,
+}: {
+  conversationId: number;
+  userId: number;
+  targetUserId: number;
+}) => {
+  await assertGroupConversationAdmin(conversationId, userId);
+
+  if (targetUserId === userId) {
+    throw new Error("Vui lòng dùng chức năng rời nhóm");
+  }
+
+  const conversation = await findConversationOrThrow(conversationId);
+
+  if (conversation.type !== ConversationType.GROUP) {
+    throw new Error("Chỉ áp dụng cho nhóm chat");
+  }
+
+  const target = await prisma.conversationMember.findUnique({
+    where: {
+      conversationId_userId: { conversationId, userId: targetUserId },
+    },
+  });
+
+  if (!target || target.leftAt) {
+    throw new Error("Không tìm thấy thành viên trong nhóm");
+  }
+
+  if (target.role === ConversationMemberRole.ADMIN) {
+    const adminCount = await prisma.conversationMember.count({
+      where: {
+        conversationId,
+        leftAt: null,
+        role: ConversationMemberRole.ADMIN,
+      },
+    });
+
+    if (adminCount <= 1) {
+      throw new Error("Không thể xóa quản trị viên duy nhất");
+    }
+  }
+
+  const [actorName, targetName] = await getUserDisplayNames([
+    userId,
+    targetUserId,
+  ]);
+
+  const systemMessage = await createSystemMessageService({
+    conversationId,
+    actorUserId: userId,
+    content: `${actorName} đã xóa ${targetName} khỏi nhóm`,
+  });
+
+  await prisma.conversationMember.update({
+    where: {
+      conversationId_userId: { conversationId, userId: targetUserId },
+    },
+    data: { leftAt: new Date() },
+  });
+
+  await invalidateUserConversations(targetUserId);
+  await invalidateConversationCaches(conversationId);
+
+  const detail = await getConversationDetailService({ conversationId, userId });
+
+  return { detail, systemMessage };
+};
+
+export const deleteGroupConversationAvatarService = async ({
+  conversationId,
+  userId,
+}: {
+  conversationId: number;
+  userId: number;
+}) => {
+  const conversation = await assertGroupConversationAdmin(
+    conversationId,
+    userId,
+  );
+
+  if (conversation.avatarKey) {
+    try {
+      await s3.send(
+        new DeleteObjectCommand({
+          Bucket: process.env.AWS_S3_BUCKET!,
+          Key: conversation.avatarKey,
+        }),
+      );
+    } catch {
+      /* ignore S3 errors */
+    }
+  }
+
+  await prisma.conversation.update({
+    where: { id: conversationId },
+    data: { avatarKey: null },
+  });
+
+  await invalidateConversationCaches(conversationId);
+
+  return getConversationDetailService({ conversationId, userId });
 };
 
 export const CHAT_DEFAULTS = {

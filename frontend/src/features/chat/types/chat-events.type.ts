@@ -33,3 +33,12 @@ export interface PresencePayload {
 export interface PresenceSnapshotPayload {
   onlineUserIds: number[];
 }
+
+export type MembersUpdatedAction = "added" | "removed" | "left";
+
+export interface MembersUpdatedPayload {
+  conversationId: number;
+  action: MembersUpdatedAction;
+  affectedUserIds: number[];
+  actorUserId: number;
+}

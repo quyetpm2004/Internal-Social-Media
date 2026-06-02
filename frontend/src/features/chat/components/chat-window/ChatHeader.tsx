@@ -39,8 +39,16 @@ const ChatHeader = ({
 
         <div className="relative shrink-0">
           <div className="w-10 h-10 rounded-full overflow-hidden bg-secondary-container flex items-center justify-center">
-            {type === "GROUP" && !avatarUrl ? (
-              <Users size={18} className="text-on-secondary-container" />
+            {type === "GROUP" ? (
+              avatarUrl ? (
+                <img
+                  alt={name}
+                  className="w-full h-full object-cover"
+                  src={avatarUrl}
+                />
+              ) : (
+                <Users size={18} className="text-on-secondary-container" />
+              )
             ) : (
               <img
                 alt={name}

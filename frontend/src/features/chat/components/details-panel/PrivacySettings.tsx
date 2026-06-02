@@ -15,7 +15,7 @@ const PrivacySettings = ({
 }: PrivacySettingsProps) => {
   return (
     <div className="space-y-4">
-      <h4 className="text-xs font-bold font-label uppercase tracking-widest text-on-surface-variant">
+      <h4 className="text-sm font-medium text-on-surface">
         Quyền riêng tư &amp; cài đặt
       </h4>
 

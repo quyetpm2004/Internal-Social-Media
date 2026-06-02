@@ -66,10 +66,20 @@ export interface PresenceSnapshotPayload {
   onlineUserIds: number[];
 }
 
+export type MembersUpdatedAction = "added" | "removed" | "left";
+
+export interface MembersUpdatedPayload {
+  conversationId: number;
+  action: MembersUpdatedAction;
+  affectedUserIds: number[];
+  actorUserId: number;
+}
+
 // ---------- Event signatures ----------
 
 interface ServerToClientEvents {
   "message:new": (payload: MessageNewPayload) => void;
+  "members:updated": (payload: MembersUpdatedPayload) => void;
   "message:edited": (payload: MessageEditedPayload) => void;
   "message:deleted": (payload: MessageDeletedPayload) => void;
   "read:update": (payload: ReadUpdatePayload) => void;
@@ -373,5 +383,34 @@ export const joinUsersToConversationRoom = (
   const room = conversationRoom(conversationId);
   for (const userId of userIds) {
     io.in(userRoom(userId)).socketsJoin(room);
+  }
+};
+
+export const leaveUsersFromConversationRoom = (
+  userIds: number[],
+  conversationId: number,
+) => {
+  if (!io) return;
+  const room = conversationRoom(conversationId);
+  for (const userId of userIds) {
+    io.in(userRoom(userId)).socketsLeave(room);
+  }
+};
+
+export const emitMembersUpdated = (payload: MembersUpdatedPayload) => {
+  if (!io) return;
+
+  io.to(conversationRoom(payload.conversationId)).emit(
+    "members:updated",
+    payload,
+  );
+
+  const notifyUserIds = new Set([
+    ...payload.affectedUserIds,
+    payload.actorUserId,
+  ]);
+
+  for (const userId of notifyUserIds) {
+    io.to(userRoom(userId)).emit("members:updated", payload);
   }
 };

@@ -4,15 +4,7 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import {
-  Check,
-  Download,
-  FileText,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Check, Download, FileText, MoreHorizontal, X } from "lucide-react";
 import type {
   ChatMessage,
   ChatUser,
@@ -164,8 +156,8 @@ const ReadReceiptIndicator = ({
     const visible = readers.slice(0, 3);
     const extra = readers.length - visible.length;
     return (
-      <span className="flex items-center gap-1">
-        <span className="flex -space-x-1.5">
+      <span className="flex items-center gap-1 mt-1">
+        <span className="flex gap-x-0.5">
           {visible.map((user) => (
             <ReaderAvatar key={user.id} user={user} size={14} />
           ))}
@@ -393,6 +385,16 @@ const MessageBubble = ({
     await onDelete(message.id);
   };
 
+  if (message.contentType === "SYSTEM") {
+    return (
+      <div className="flex justify-center my-1 px-4">
+        <p className="text-center text-[11px] leading-relaxed text-on-surface-variant bg-surface-container-high px-3 py-1.5 rounded-full max-w-[90%]">
+          {message.content}
+        </p>
+      </div>
+    );
+  }
+
   if (isOwn) {
     return (
       <div className="flex gap-3 max-w-[80%] self-end flex-row-reverse group">
@@ -419,7 +421,7 @@ const MessageBubble = ({
                   renderAttachment(attachment, true),
                 )}
                 {message.content && (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 justify-end">
                     {showActions && !isEditing && (
                       <div className="self-center opacity-0 group-hover:opacity-100 transition-opacity">
                         <ActionsMenu
@@ -435,7 +437,7 @@ const MessageBubble = ({
                         {time}
                       </span>
                     </div>
-                    <div className="bg-primary text-on-primary px-3 py-1.5 rounded-xl text-sm leading-relaxed shadow-md whitespace-pre-wrap wrap-break-word">
+                    <div className="bg-primary text-on-primary px-3 py-1.5 rounded-xl w-fit text-sm leading-relaxed shadow-md whitespace-pre-wrap wrap-break-word">
                       {message.content}
                     </div>
                   </div>
@@ -476,7 +478,9 @@ const MessageBubble = ({
           </span>
         )}
       </div>
-      <div className="flex gap-3 max-w-[80%] items-center relative group">
+      <div
+        className={`flex gap-3 max-w-[80%] ${showSenderName ? "items-end" : "items-center"} relative group`}
+      >
         <img
           alt={message.sender.fullName}
           className="w-8 h-8 rounded-full shrink-0 mt-1 object-cover"
@@ -503,7 +507,7 @@ const MessageBubble = ({
                 renderAttachment(attachment, false),
               )}
               {message.content && (
-                <div className="bg-surface-container px-3 py-1.5 rounded-xl text-sm leading-relaxed text-on-surface shadow-sm whitespace-pre-wrap wrap-break-word">
+                <div className="bg-surface-container px-3 py-1.5 rounded-xl text-sm leading-relaxed text-on-surface shadow-sm whitespace-pre-wrap wrap-break-word w-fit">
                   {message.content}
                 </div>
               )}

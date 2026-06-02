@@ -21,6 +21,9 @@ const ChatConversationPage = () => {
     onEditMessage,
     onDeleteMessage,
     onMuteChanged,
+    onConversationUpdated,
+    onGroupCreated,
+    onLeftGroup,
     onTypingStart,
     onTypingStop,
   } = useOutletContext<ChatOutletContext>();
@@ -63,7 +66,11 @@ const ChatConversationPage = () => {
 
       <DetailsPanel
         conversation={conversation}
+        currentUserId={currentUserId}
         onMuteChanged={onMuteChanged}
+        onConversationUpdated={onConversationUpdated}
+        onGroupCreated={onGroupCreated}
+        onLeftGroup={onLeftGroup}
         showDetailPanel={showDetailPanel}
       />
     </>

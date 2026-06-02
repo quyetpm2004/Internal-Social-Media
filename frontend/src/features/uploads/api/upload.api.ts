@@ -3,6 +3,7 @@ import { axiosClient } from "@/lib/axios";
 export type UploadPurpose =
   | "avatar"
   | "group-cover"
+  | "conversation-avatar"
   | "post-image"
   | "post-video"
   | "post-file"
@@ -45,6 +46,7 @@ export const uploadApi = {
       key: string;
       attachmentId?: number;
       groupId?: number;
+      conversationId?: number;
     }[],
   ) {
     return axiosClient.post("/uploads/confirm", {

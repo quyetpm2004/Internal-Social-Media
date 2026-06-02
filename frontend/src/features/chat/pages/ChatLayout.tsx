@@ -11,6 +11,7 @@ import type {
   ConversationDetail,
 } from "@/features/chat/types/chat.type";
 import type {
+  MembersUpdatedPayload,
   MessageDeletedPayload,
   MessageEditedPayload,
   MessageNewPayload,
@@ -42,6 +43,9 @@ export interface ChatOutletContext {
   onEditMessage: (messageId: number, content: string) => Promise<void>;
   onDeleteMessage: (messageId: number) => Promise<void>;
   onMuteChanged: (isMuted: boolean) => void;
+  onConversationUpdated: (conversation: ConversationDetail) => void;
+  onGroupCreated: (conversationId: number) => void;
+  onLeftGroup: () => void;
   onTypingStart: () => void;
   onTypingStop: () => void;
 }
@@ -127,7 +131,8 @@ const ChatLayout = () => {
 
         const current = prev[idx];
         const isOwn = incoming.senderId === currentUserId;
-        const shouldIncrementUnread = !isOwn && !isViewing;
+        const isSystem = incoming.contentType === "SYSTEM";
+        const shouldIncrementUnread = !isOwn && !isViewing && !isSystem;
 
         const updated: Conversation = {
           ...current,
@@ -318,6 +323,42 @@ const ChatLayout = () => {
     [],
   );
 
+  const handleMembersUpdated = useCallback(
+    async ({
+      conversationId: convId,
+      action,
+      affectedUserIds,
+    }: MembersUpdatedPayload) => {
+      const isViewing = activeConversationIdRef.current === convId;
+      const isAffected = affectedUserIds.includes(currentUserId);
+
+      if (isAffected && (action === "removed" || action === "left")) {
+        if (activeConversationIdRef.current === convId) {
+          const message =
+            action === "left" ? "Bạn đã rời nhóm" : "Bạn đã bị xóa khỏi nhóm";
+          toast.info(message);
+          setActiveConversation(null);
+          setMessages([]);
+          navigate("/messages");
+        }
+        await refreshConversations();
+        return;
+      }
+
+      if (isViewing) {
+        try {
+          const res = await chatApi.getConversationDetail(convId);
+          setActiveConversation(res.data);
+        } catch (error) {
+          toast.error(getErrorMessage(error));
+        }
+      }
+
+      await refreshConversations();
+    },
+    [currentUserId, navigate, refreshConversations],
+  );
+
   const { emitTypingStart, emitTypingStop } = useChatSocket({
     onMessageNew: handleMessageNew,
     onMessageEdited: handleMessageEdited,
@@ -328,6 +369,7 @@ const ChatLayout = () => {
     onPresenceOnline: handlePresenceOnline,
     onPresenceOffline: handlePresenceOffline,
     onPresenceSnapshot: handlePresenceSnapshot,
+    onMembersUpdated: handleMembersUpdated,
   });
 
   // ----- Effects -----
@@ -427,6 +469,55 @@ const ChatLayout = () => {
   const handleSelectConversation = (id: number) => {
     navigate(`/messages/${id}`);
   };
+
+  const handleOpenUserChat = useCallback(
+    async (otherUserId: number) => {
+      try {
+        const res = await chatApi.createDirectConversation(otherUserId);
+        const conversation = res.data;
+        await refreshConversations();
+        navigate(`/messages/${conversation.id}`);
+      } catch (error) {
+        toast.error(getErrorMessage(error));
+        throw error;
+      }
+    },
+    [navigate, refreshConversations],
+  );
+
+  const handleConversationUpdated = useCallback(
+    (updated: ConversationDetail) => {
+      setActiveConversation(updated);
+      setConversations((prev) =>
+        prev.map((item) =>
+          item.id === updated.id
+            ? {
+                ...item,
+                name: updated.name,
+                avatarUrl: updated.avatarUrl,
+                memberCount: updated.memberCount,
+              }
+            : item,
+        ),
+      );
+    },
+    [],
+  );
+
+  const handleGroupCreated = useCallback(
+    async (newConversationId: number) => {
+      await refreshConversations();
+      navigate(`/messages/${newConversationId}`);
+    },
+    [navigate, refreshConversations],
+  );
+
+  const handleLeftGroup = useCallback(async () => {
+    setActiveConversation(null);
+    setMessages([]);
+    await refreshConversations();
+    navigate("/messages");
+  }, [navigate, refreshConversations]);
 
   const handleLoadOlderMessages = useCallback(async () => {
     if (!conversationId || !hasMoreMessages || !nextCursor || loadingMessages) {
@@ -631,6 +722,9 @@ const ChatLayout = () => {
     onEditMessage: handleEditMessage,
     onDeleteMessage: handleDeleteMessage,
     onMuteChanged: handleMuteChanged,
+    onConversationUpdated: handleConversationUpdated,
+    onGroupCreated: handleGroupCreated,
+    onLeftGroup: handleLeftGroup,
     onTypingStart: handleTypingStartUser,
     onTypingStop: handleTypingStopUser,
   };
@@ -644,6 +738,7 @@ const ChatLayout = () => {
         loading={loadingConversations}
         onlineUserIds={onlineUserIdsList}
         onSelectConversation={handleSelectConversation}
+        onOpenUserChat={handleOpenUserChat}
         className={conversationId ? "hidden md:flex" : "flex"}
       />
 

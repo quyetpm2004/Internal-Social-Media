@@ -6,6 +6,7 @@ import {
   getSocket,
 } from "@/lib/socket";
 import type {
+  MembersUpdatedPayload,
   MessageDeletedPayload,
   MessageEditedPayload,
   MessageNewPayload,
@@ -25,6 +26,7 @@ export interface UseChatSocketHandlers {
   onPresenceOnline?: (payload: PresencePayload) => void;
   onPresenceOffline?: (payload: PresencePayload) => void;
   onPresenceSnapshot?: (payload: PresenceSnapshotPayload) => void;
+  onMembersUpdated?: (payload: MembersUpdatedPayload) => void;
 }
 
 export interface UseChatSocketReturn {
@@ -78,8 +80,11 @@ export const useChatSocket = (
       handlersRef.current.onPresenceOffline?.(payload);
     const handlePresenceSnapshot = (payload: PresenceSnapshotPayload) =>
       handlersRef.current.onPresenceSnapshot?.(payload);
+    const handleMembersUpdated = (payload: MembersUpdatedPayload) =>
+      handlersRef.current.onMembersUpdated?.(payload);
 
     socket.on("message:new", handleMessageNew);
+    socket.on("members:updated", handleMembersUpdated);
     socket.on("message:edited", handleMessageEdited);
     socket.on("message:deleted", handleMessageDeleted);
     socket.on("read:update", handleReadUpdate);
@@ -99,6 +104,7 @@ export const useChatSocket = (
       socket.off("presence:online", handlePresenceOnline);
       socket.off("presence:offline", handlePresenceOffline);
       socket.off("presence:snapshot", handlePresenceSnapshot);
+      socket.off("members:updated", handleMembersUpdated);
       disconnectSocket();
     };
   }, [accessToken]);

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import ProfileSummary from "./ProfileSummary";
+import GroupMembersList from "./GroupMembersList";
+import CreateChatGroupModal from "./CreateChatGroupModal";
 import SharedFiles from "./SharedFiles";
 import SharedMedia from "./SharedMedia";
 import PrivacySettings from "./PrivacySettings";
@@ -12,7 +14,11 @@ import type {
 
 interface DetailsPanelProps {
   conversation: ConversationDetail;
+  currentUserId: number;
   onMuteChanged?: (isMuted: boolean) => void;
+  onConversationUpdated: (conversation: ConversationDetail) => void;
+  onGroupCreated: (conversationId: number) => void;
+  onLeftGroup: () => void;
   className?: string;
   showDetailPanel: boolean;
 }
@@ -31,7 +37,11 @@ const getErrorMessage = (error: unknown) => {
 
 const DetailsPanel = ({
   conversation,
+  currentUserId,
   onMuteChanged,
+  onConversationUpdated,
+  onGroupCreated,
+  onLeftGroup,
   className,
   showDetailPanel,
 }: DetailsPanelProps) => {
@@ -41,6 +51,10 @@ const DetailsPanel = ({
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [loadingMedia, setLoadingMedia] = useState(false);
   const [muteSubmitting, setMuteSubmitting] = useState(false);
+  const [createGroupOpen, setCreateGroupOpen] = useState(false);
+
+  const isGroup = conversation.type === "GROUP";
+  const counterpart = conversation.counterpart;
 
   useEffect(() => {
     let cancelled = false;
@@ -92,32 +106,75 @@ const DetailsPanel = ({
     }
   };
 
+  const handleCreateGroup = async (data: {
+    name: string;
+    memberIds: number[];
+  }) => {
+    const res = await chatApi.createGroupConversation(data);
+    onGroupCreated(res.data.id);
+    toast.success("Tạo nhóm chat thành công");
+  };
+
   if (!showDetailPanel) {
-    return;
+    return null;
   }
 
   return (
-    <section
-      className={`w-80 border-l border-outline-variant/30 bg-surface-container-low hidden xl:flex flex-col overflow-y-auto flex-shrink-0 ${className ?? ""}`}
-    >
-      <ProfileSummary conversation={conversation} />
-
-      <div className="px-6 space-y-8 pb-10">
-        <SharedFiles files={files} loading={loadingFiles} />
-
-        <SharedMedia
-          media={media}
-          totalCount={mediaTotal}
-          loading={loadingMedia}
+    <>
+      <section
+        className={`w-80 border-l border-outline-variant/30 bg-surface-container-low hidden xl:flex flex-col overflow-y-auto flex-shrink-0 ${className ?? ""}`}
+      >
+        <ProfileSummary
+          conversation={conversation}
+          currentUserId={currentUserId}
+          onConversationUpdated={onConversationUpdated}
+          onCreateGroup={
+            !isGroup && counterpart
+              ? () => setCreateGroupOpen(true)
+              : undefined
+          }
         />
 
-        <PrivacySettings
-          muteNotifications={conversation.isMuted}
-          submitting={muteSubmitting}
-          onToggleMute={handleToggleMute}
+        {isGroup && (
+          <GroupMembersList
+            conversationId={conversation.id}
+            members={conversation.members}
+            currentUserId={currentUserId}
+            onMembersUpdated={async () => {
+              const res = await chatApi.getConversationDetail(conversation.id);
+              onConversationUpdated(res.data);
+            }}
+            onLeftGroup={onLeftGroup}
+          />
+        )}
+
+        <div className="px-6 space-y-8 pb-10">
+          <SharedFiles files={files} loading={loadingFiles} />
+
+          <SharedMedia
+            media={media}
+            totalCount={mediaTotal}
+            loading={loadingMedia}
+          />
+
+          <PrivacySettings
+            muteNotifications={conversation.isMuted}
+            submitting={muteSubmitting}
+            onToggleMute={handleToggleMute}
+          />
+        </div>
+      </section>
+
+      {counterpart && (
+        <CreateChatGroupModal
+          open={createGroupOpen}
+          onClose={() => setCreateGroupOpen(false)}
+          initialMember={counterpart}
+          currentUserId={currentUserId}
+          onSubmit={handleCreateGroup}
         />
-      </div>
-    </section>
+      )}
+    </>
   );
 };
 
