@@ -117,6 +117,16 @@ enum MessageStatus {
   DELETED
 }
 
+enum NotificationType {
+  POST_APPROVED
+  POST_REJECTED
+  POST_PINNED
+  POST_UNPINNED
+  POST_REACTION
+  POST_COMMENT
+  COMMENT_REPLY
+}
+
 model User {
   id       Int    @id @default(autoincrement())
   fullName String
@@ -152,6 +162,9 @@ model User {
   createdConversations Conversation[]       @relation("ConversationCreator")
   conversationMembers  ConversationMember[]
   sentMessages         Message[]
+
+  notificationsReceived Notification[] @relation("NotificationRecipient")
+  notificationsSent     Notification[] @relation("NotificationActor")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -256,6 +269,8 @@ model Group {
   postPermission       GroupPermission @default(ANY_MEMBER) @map("post_permission")
   postApprovalRequired Boolean         @default(false) @map("post_approval_required")
 
+  notifications Notification[]
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
@@ -292,14 +307,16 @@ model Post {
   viewCount     Int               @default(0) @map("view_count")
   isPinned      Boolean           @default(false) @map("is_pinned")
   status        PostStatus        @default(ACTIVE)
+  isAnonymous   Boolean           @default(false) @map("is_anonymous")
 
   user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   group Group? @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
-  comments    Comment[]
-  attachments PostAttachment[]
-  reactions   Reaction[]
-  mentions    PostMention[]
+  comments      Comment[]
+  attachments   PostAttachment[]
+  reactions     Reaction[]
+  mentions      PostMention[]
+  notifications Notification[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -316,6 +333,7 @@ model Comment {
   parentCommentId Int?          @map("parent_comment_id")
   content         String        @db.Text
   status          CommentStatus @default(ACTIVE)
+  isAnonymous     Boolean       @default(false) @map("is_anonymous")
 
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -323,8 +341,9 @@ model Comment {
   parentComment Comment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: SetNull)
   replies       Comment[] @relation("CommentReplies")
 
-  reactions Reaction[]
-  mentions  CommentMention[]
+  reactions     Reaction[]
+  mentions      CommentMention[]
+  notifications Notification[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -475,4 +494,27 @@ model MessageAttachment {
 
   @@index([messageId])
   @@map("message_attachments")
+}
+
+model Notification {
+  id          Int              @id @default(autoincrement()) @map("notification_id")
+  recipientId Int              @map("recipient_id")
+  actorId     Int?             @map("actor_id")
+  type        NotificationType
+  postId      Int?             @map("post_id")
+  commentId   Int?             @map("comment_id")
+  groupId     Int?             @map("group_id")
+  metadata    Json?
+  readAt      DateTime?        @map("read_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  recipient User     @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor     User?    @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  group     Group?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId, createdAt])
+  @@index([recipientId, readAt])
+  @@map("notifications")
 }

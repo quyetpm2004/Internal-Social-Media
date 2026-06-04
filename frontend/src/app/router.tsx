@@ -16,6 +16,7 @@ import { GroupJoinRequestsPage } from "@/features/group/pages/GroupJoinRequestsP
 import PostDetailPage from "@/features/new-feed/pages/PostDetailPage";
 import PostDetailInGroupPage from "@/features/group/pages/PostDetailInGroupPage";
 import GroupSettingPage from "@/features/group/pages/GroupSettingPage";
+import { GroupPostReviewPage } from "@/features/group/pages/GroupPostReviewPage";
 import GroupMediaPage from "@/features/group/pages/GroupMediaPage";
 import GroupFilesPage from "@/features/group/pages/GroupFilesPage";
 import SearchPage from "@/features/search/pages/SearchPage";
@@ -119,6 +120,11 @@ export const router = createBrowserRouter([
               {
                 path: "setting",
                 element: <GroupSettingPage />,
+              },
+
+              {
+                path: "review",
+                element: <GroupPostReviewPage />,
               },
             ],
           },

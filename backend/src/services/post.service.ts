@@ -15,6 +15,11 @@ import type { PostContentFormat as PostContentFormatType } from "../constants/po
 import prisma from "../utils/prisma";
 import { getFileUrl } from "./file.service";
 import { processPostContent } from "../utils/sanitize-html";
+import {
+  assertGroupAllowsAnonymousContent,
+  maskGroupPostAuthors,
+} from "../utils/group-anonymous";
+import * as notificationService from "./notification.service";
 
 type GetPostListParams = {
   page?: number;
@@ -35,20 +40,7 @@ export const getPostListService = async ({
   let postStatusFilter: PostStatus | { in: PostStatus[] } = PostStatus.ACTIVE;
 
   if (groupId) {
-    const membership = await prisma.groupMember.findUnique({
-      where: {
-        groupId_userId: { groupId, userId },
-      },
-      select: { memberRole: true, status: true },
-    });
-
-    const isGroupAdmin =
-      membership?.status === GroupMemberStatus.ACTIVE &&
-      membership.memberRole === GroupMemberRole.ADMIN;
-
-    postStatusFilter = isGroupAdmin
-      ? { in: [PostStatus.ACTIVE, PostStatus.PENDING_REVIEW] }
-      : PostStatus.ACTIVE;
+    postStatusFilter = PostStatus.ACTIVE;
   }
 
   const where: Prisma.PostWhereInput = {
@@ -141,6 +133,7 @@ export const getPostListService = async ({
           id: true,
           fullName: true,
           email: true,
+          role: true,
           profile: {
             select: {
               avatarKey: true,
@@ -212,6 +205,28 @@ export const getPostListService = async ({
     }),
   );
 
+  if (groupId) {
+    const maskedPinned = await maskGroupPostAuthors(
+      groupId,
+      userId,
+      pinnedPostsWithUrlAttachments,
+    );
+    const maskedPosts = await maskGroupPostAuthors(
+      groupId,
+      userId,
+      normalizePostsWithUrlAttachments,
+    );
+
+    return {
+      page,
+      limit,
+      sort,
+      hasMore,
+      pinnedPosts: maskedPinned,
+      posts: maskedPosts,
+    };
+  }
+
   return {
     page,
     limit,
@@ -229,6 +244,7 @@ type CreatePostParams = {
   visibility?: PostVisibility;
   groupId?: number;
   attachmentIds?: number[];
+  isAnonymous?: boolean;
 };
 
 export const createPostService = async ({
@@ -238,9 +254,11 @@ export const createPostService = async ({
   visibility = "PUBLIC",
   groupId,
   attachmentIds = [],
+  isAnonymous: wantsAnonymous = false,
 }: CreatePostParams) => {
   const processed = processPostContent(content, contentFormat);
   let groupPostStatus: PostStatus = PostStatus.ACTIVE;
+  const isAnonymous = wantsAnonymous === true;
 
   if (groupId) {
     const existingGroup = await prisma.group.findUnique({
@@ -250,6 +268,7 @@ export const createPostService = async ({
         status: true,
         postPermission: true,
         postApprovalRequired: true,
+        allowAnonymousJoin: true,
       },
     });
 
@@ -277,6 +296,8 @@ export const createPostService = async ({
     ) {
       throw new Error("Chỉ quản trị viên mới có thể đăng bài trong nhóm này");
     }
+
+    await assertGroupAllowsAnonymousContent(groupId, isAnonymous);
 
     groupPostStatus = existingGroup.postApprovalRequired
       ? PostStatus.PENDING_REVIEW
@@ -318,19 +339,14 @@ export const createPostService = async ({
     const createdPost = await tx.post.create({
       data: {
         userId,
-
         groupId: groupId || null,
-
         content: processed.content,
         contentFormat: processed.contentFormat,
-
         visibility,
-
         isPinned: false,
-
         status: groupId ? groupPostStatus : PostStatus.ACTIVE,
-
         viewCount: 0,
+        isAnonymous: groupId ? isAnonymous : false,
       },
     });
 
@@ -343,15 +359,11 @@ export const createPostService = async ({
           id: {
             in: attachmentIds,
           },
-
           uploadedById: userId,
-
           status: "READY",
         },
-
         data: {
           postId: createdPost.id,
-
           status: "ACTIVE",
         },
       });
@@ -364,16 +376,12 @@ export const createPostService = async ({
       where: {
         id: createdPost.id,
       },
-
       include: {
         user: {
           select: {
             id: true,
-
             fullName: true,
-
             email: true,
-
             profile: {
               select: {
                 avatarKey: true,
@@ -381,21 +389,16 @@ export const createPostService = async ({
             },
           },
         },
-
         group: {
           select: {
             id: true,
-
             groupName: true,
           },
         },
-
         attachments: true,
-
         _count: {
           select: {
             comments: true,
-
             reactions: true,
           },
         },
@@ -487,6 +490,12 @@ export const reactPostService = async ({
       },
       {} as Record<string, number>,
     );
+
+    await notificationService
+      .notifyPostReaction(postId, userId, reactionType)
+      .catch((error: unknown) => {
+        console.error("notifyPostReaction failed:", error);
+      });
 
     return {
       message: "Thả cảm xúc thành công",
@@ -742,6 +751,19 @@ export const getPostById = async (postId: number, userId: number) => {
     }),
   );
 
+  if (existingPost.groupId) {
+    const [maskedPost] = await maskGroupPostAuthors(
+      existingPost.groupId,
+      userId,
+      [{ ...existingPost, userId: existingPost.userId }],
+    );
+
+    return {
+      ...maskedPost,
+      attachments: attachmentsWithUrl,
+    };
+  }
+
   return {
     ...existingPost,
     attachments: attachmentsWithUrl,
@@ -787,7 +809,7 @@ export const pinPostByUserId = async (
     }
   }
 
-  return prisma.post.update({
+  const updated = await prisma.post.update({
     where: {
       id: postId,
     },
@@ -795,4 +817,12 @@ export const pinPostByUserId = async (
       isPinned,
     },
   });
+
+  await notificationService
+    .notifyPostPinned(postId, userId, isPinned)
+    .catch((error: unknown) => {
+      console.error("notifyPostPinned failed:", error);
+    });
+
+  return updated;
 };

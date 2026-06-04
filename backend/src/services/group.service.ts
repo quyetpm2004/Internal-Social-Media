@@ -11,6 +11,14 @@ import {
   PostVisibility,
 } from "@prisma/client";
 import { getFileUrl } from "./file.service";
+import {
+  assertGroupAllowsAnonymousContent,
+  getGroupViewerContext,
+  maskGroupPostAuthors,
+  maskUserForGroupDisplay,
+  shouldHideAnonymousAuthor,
+} from "../utils/group-anonymous";
+import * as notificationService from "./notification.service";
 
 const ROLE_RANK: Record<GroupMemberRole, number> = {
   [GroupMemberRole.MEMBER]: 1,
@@ -419,16 +427,32 @@ export const getGroupById = async (groupId: number, userId: number) => {
   const activeMemberCount = await countActiveMembers(groupId);
 
   let pendingRequestCount = 0;
+  const isActiveMember = currentMembership?.status === GroupMemberStatus.ACTIVE;
   const canManage =
-    currentMembership?.status === GroupMemberStatus.ACTIVE &&
+    isActiveMember &&
     (currentMembership.memberRole === GroupMemberRole.ADMIN ||
       currentMembership.memberRole === GroupMemberRole.MODERATOR);
+  const canApproveJoin =
+    isActiveMember &&
+    group.groupType === GroupType.PRIVATE &&
+    (group.joinApprovalPolicy === GroupPermission.ANY_MEMBER || canManage);
 
-  if (canManage && group.groupType === GroupType.PRIVATE) {
+  if (canApproveJoin) {
     pendingRequestCount = await prisma.groupMember.count({
       where: {
         groupId,
         status: GroupMemberStatus.PENDING,
+      },
+    });
+  }
+
+  let pendingPostCount = 0;
+  if (canManage && group.postApprovalRequired) {
+    pendingPostCount = await prisma.post.count({
+      where: {
+        groupId,
+        status: PostStatus.PENDING_REVIEW,
+        visibility: PostVisibility.GROUP,
       },
     });
   }
@@ -461,6 +485,7 @@ export const getGroupById = async (groupId: number, userId: number) => {
     isMember,
     membershipStatus,
     pendingRequestCount,
+    pendingPostCount,
   };
 };
 
@@ -917,11 +942,12 @@ export const getJoinRequests = async (
   limit: number = 10,
 ) => {
   const group = await checkGroupExists(groupId);
-  await checkCanManageMember(groupId, currentUserId);
 
   if (group.groupType !== GroupType.PRIVATE) {
     throw new Error("Chỉ nhóm riêng tư mới có yêu cầu tham gia");
   }
+
+  await checkCanApproveJoinRequest(groupId, currentUserId);
 
   const where = {
     groupId,
@@ -1052,7 +1078,7 @@ export const createGroupPost = async (
   userId: number,
   data: any,
 ) => {
-  const { content } = data;
+  const { content, isAnonymous: wantsAnonymous } = data;
 
   if (!content) {
     throw new Error("Nội dung bài viết không được để trống");
@@ -1063,6 +1089,9 @@ export const createGroupPost = async (
   if (group.status !== GroupStatus.ACTIVE) {
     throw new Error("Nhóm không hoạt động");
   }
+
+  const isAnonymous = wantsAnonymous === true;
+  await assertGroupAllowsAnonymousContent(groupId, isAnonymous);
 
   const postStatus = group.postApprovalRequired
     ? PostStatus.PENDING_REVIEW
@@ -1075,6 +1104,7 @@ export const createGroupPost = async (
       content,
       visibility: PostVisibility.GROUP,
       status: postStatus,
+      isAnonymous,
     },
     include: {
       user: {
@@ -1238,8 +1268,12 @@ export const getGroupPostDetail = async (
     }),
   );
 
+  const [maskedPost] = await maskGroupPostAuthors(groupId, userId, [
+    { ...existingPost, userId: existingPost.userId },
+  ]);
+
   return {
-    ...existingPost,
+    ...maskedPost,
     attachments: attachmentsWithUrl,
   };
 };
@@ -1387,6 +1421,8 @@ export const getGroupAttachments = async (
             id: true,
             content: true,
             createdAt: true,
+            isAnonymous: true,
+            userId: true,
             user: {
               select: {
                 id: true,
@@ -1410,12 +1446,45 @@ export const getGroupAttachments = async (
     prisma.postAttachment.count({ where }),
   ]);
 
+  const viewer = await getGroupViewerContext(groupId, userId);
+
   const items = await Promise.all(
     attachments.map(async (attachment) => {
       const fileUrl = await getFileUrl(attachment.fileKey, 7 * 24 * 60 * 60);
-      const avatarUrl = attachment.post?.user.profile?.avatarKey
-        ? await getFileUrl(attachment.post.user.profile.avatarKey, 24 * 60 * 60)
-        : null;
+
+      if (!attachment.post) {
+        return {
+          id: attachment.id,
+          fileName: attachment.fileName,
+          fileUrl,
+          mimeType: attachment.mimeType,
+          fileSize: attachment.fileSize,
+          attachmentType: attachment.attachmentType,
+          uploadedAt: attachment.uploadedAt,
+          post: null,
+        };
+      }
+
+      const authorId = attachment.post.userId;
+      const hideIdentity = shouldHideAnonymousAuthor(
+        attachment.post.isAnonymous,
+        authorId,
+        viewer,
+      );
+      const avatarUrl =
+        !hideIdentity && attachment.post.user.profile?.avatarKey
+          ? await getFileUrl(
+              attachment.post.user.profile.avatarKey,
+              24 * 60 * 60,
+            )
+          : null;
+      const displayAuthor = maskUserForGroupDisplay(
+        {
+          id: authorId,
+          fullName: attachment.post.user.fullName,
+        },
+        hideIdentity,
+      );
 
       return {
         id: attachment.id,
@@ -1425,18 +1494,17 @@ export const getGroupAttachments = async (
         fileSize: attachment.fileSize,
         attachmentType: attachment.attachmentType,
         uploadedAt: attachment.uploadedAt,
-        post: attachment.post
-          ? {
-              id: attachment.post.id,
-              content: attachment.post.content,
-              createdAt: attachment.post.createdAt,
-              author: {
-                id: attachment.post.user.id,
-                fullName: attachment.post.user.fullName,
-                avatarUrl,
-              },
-            }
-          : null,
+        post: {
+          id: attachment.post.id,
+          content: attachment.post.content,
+          createdAt: attachment.post.createdAt,
+          author: {
+            id: displayAuthor.id,
+            fullName: displayAuthor.fullName,
+            avatarUrl,
+            isAnonymous: displayAuthor.isAnonymous,
+          },
+        },
       };
     }),
   );
@@ -1450,4 +1518,178 @@ export const getGroupAttachments = async (
       totalPages: Math.ceil(total / limit) || 1,
     },
   };
+};
+
+const mapPendingPostForReview = async (post: {
+  id: number;
+  content: string;
+  createdAt: Date;
+  user: {
+    id: number;
+    fullName: string;
+    email: string;
+    profile: { avatarKey: string | null } | null;
+  };
+  _count: { attachments: number };
+}) => ({
+  id: post.id,
+  content: post.content,
+  createdAt: post.createdAt,
+  attachmentCount: post._count.attachments,
+  author: {
+    id: post.user.id,
+    fullName: post.user.fullName,
+    email: post.user.email,
+    avatarUrl: post.user.profile?.avatarKey
+      ? await getFileUrl(post.user.profile.avatarKey, 24 * 60 * 60)
+      : null,
+  },
+});
+
+export const getPendingGroupPosts = async (
+  groupId: number,
+  currentUserId: number,
+  page: number = 1,
+  limit: number = 10,
+) => {
+  const group = await checkGroupExists(groupId);
+  await checkCanManageMember(groupId, currentUserId);
+
+  if (!group.postApprovalRequired) {
+    throw new Error("Nhóm này không bật phê duyệt bài viết");
+  }
+
+  const where = {
+    groupId,
+    status: PostStatus.PENDING_REVIEW,
+    visibility: PostVisibility.GROUP,
+  };
+
+  const [posts, total] = await Promise.all([
+    prisma.post.findMany({
+      where,
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            profile: {
+              select: {
+                avatarKey: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            attachments: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.post.count({ where }),
+  ]);
+
+  return {
+    posts: await Promise.all(posts.map(mapPendingPostForReview)),
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit) || 1,
+    },
+  };
+};
+
+export const approveGroupPost = async (
+  groupId: number,
+  postId: number,
+  currentUserId: number,
+) => {
+  const group = await checkGroupExists(groupId);
+  await checkCanManageMember(groupId, currentUserId);
+
+  if (!group.postApprovalRequired) {
+    throw new Error("Nhóm này không bật phê duyệt bài viết");
+  }
+
+  const post = await prisma.post.findFirst({
+    where: {
+      id: postId,
+      groupId,
+      status: PostStatus.PENDING_REVIEW,
+      visibility: PostVisibility.GROUP,
+    },
+  });
+
+  if (!post) {
+    throw new Error("Không tìm thấy bài viết chờ duyệt");
+  }
+
+  const updated = await prisma.post.update({
+    where: { id: postId },
+    data: { status: PostStatus.ACTIVE },
+    include: {
+      user: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+        },
+      },
+    },
+  });
+
+  await notificationService
+    .notifyPostApproved(postId, groupId, currentUserId)
+    .catch((error: unknown) => {
+      console.error("notifyPostApproved failed:", error);
+    });
+
+  return updated;
+};
+
+export const rejectGroupPost = async (
+  groupId: number,
+  postId: number,
+  currentUserId: number,
+) => {
+  const group = await checkGroupExists(groupId);
+  await checkCanManageMember(groupId, currentUserId);
+
+  if (!group.postApprovalRequired) {
+    throw new Error("Nhóm này không bật phê duyệt bài viết");
+  }
+
+  const post = await prisma.post.findFirst({
+    where: {
+      id: postId,
+      groupId,
+      status: PostStatus.PENDING_REVIEW,
+      visibility: PostVisibility.GROUP,
+    },
+  });
+
+  if (!post) {
+    throw new Error("Không tìm thấy bài viết chờ duyệt");
+  }
+
+  const updated = await prisma.post.update({
+    where: { id: postId },
+    data: { status: PostStatus.DELETED },
+  });
+
+  await notificationService
+    .notifyPostRejected(postId, groupId, currentUserId)
+    .catch((error: unknown) => {
+      console.error("notifyPostRejected failed:", error);
+    });
+
+  return updated;
 };

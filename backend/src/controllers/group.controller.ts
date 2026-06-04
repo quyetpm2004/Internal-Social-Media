@@ -298,6 +298,71 @@ export const rejectJoinRequest = async (req: Request, res: Response) => {
   }
 };
 
+export const getPendingGroupPosts = async (req: Request, res: Response) => {
+  try {
+    const groupId = Number(req.params.groupId);
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { page = 1, limit = 10 } = req.query;
+
+    const data = await groupService.getPendingGroupPosts(
+      groupId,
+      userId,
+      +page,
+      +limit,
+    );
+
+    return res.status(200).json({
+      message: "Lấy danh sách bài viết chờ duyệt thành công",
+      data,
+    });
+  } catch (error: any) {
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+export const approveGroupPost = async (req: Request, res: Response) => {
+  try {
+    const groupId = Number(req.params.groupId);
+    const postId = Number(req.params.postId);
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const post = await groupService.approveGroupPost(groupId, postId, userId);
+
+    return res.status(200).json({
+      message: "Đã duyệt bài viết",
+      data: post,
+    });
+  } catch (error: any) {
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+export const rejectGroupPost = async (req: Request, res: Response) => {
+  try {
+    const groupId = Number(req.params.groupId);
+    const postId = Number(req.params.postId);
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    await groupService.rejectGroupPost(groupId, postId, userId);
+
+    return res.status(200).json({
+      message: "Đã từ chối bài viết",
+    });
+  } catch (error: any) {
+    return res.status(400).json({ message: error.message });
+  }
+};
+
 export const createGroupPost = async (req: Request, res: Response) => {
   try {
     const groupId = Number(req.params.groupId);

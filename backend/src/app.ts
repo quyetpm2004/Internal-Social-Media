@@ -13,6 +13,7 @@ import fileRoutes from "./routes/file.routes";
 import groupRoutes from "./routes/group.routes";
 import searchRoutes from "./routes/search.routes";
 import chatRoutes from "./routes/chat.routes";
+import notificationRoutes from "./routes/notification.routes";
 dotenv.config();
 
 const app = express();
@@ -43,5 +44,6 @@ app.use("/api/file-url", fileRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 export default app;

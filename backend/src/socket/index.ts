@@ -75,6 +75,31 @@ export interface MembersUpdatedPayload {
   actorUserId: number;
 }
 
+export interface NotificationNewPayload {
+  notification: {
+    id: number;
+    type: string;
+    postId: number | null;
+    commentId: number | null;
+    groupId: number | null;
+    metadata: unknown;
+    readAt: Date | null;
+    createdAt: Date;
+    actor: {
+      id: number;
+      fullName: string;
+      avatarUrl: string | null;
+    } | null;
+    group: { id: number; groupName: string } | null;
+    post: { id: number; snippet: string } | null;
+    comment: { id: number; snippet: string } | null;
+  };
+}
+
+export interface NotificationUnreadCountPayload {
+  unreadCount: number;
+}
+
 // ---------- Event signatures ----------
 
 interface ServerToClientEvents {
@@ -88,6 +113,10 @@ interface ServerToClientEvents {
   "presence:online": (payload: PresencePayload) => void;
   "presence:offline": (payload: PresencePayload) => void;
   "presence:snapshot": (payload: PresenceSnapshotPayload) => void;
+  "notification:new": (payload: NotificationNewPayload) => void;
+  "notification:unread-count": (
+    payload: NotificationUnreadCountPayload,
+  ) => void;
 }
 
 interface ClientToServerEvents {

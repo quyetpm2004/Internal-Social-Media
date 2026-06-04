@@ -2,7 +2,7 @@ import { axiosClient } from "@/lib/axios";
 import type {
   ApiPost,
   GetPostsResponse,
-} from "@/features/new-feed/types/new-feed.type";
+} from "@/features/new-feed/types/post.type";
 import type { PostContentFormat } from "@/features/new-feed/utils/rich-text";
 import type { ApiResponse } from "@/types/api.type";
 import type { GroupApiResponse } from "@/features/group/types/group.type";
@@ -24,8 +24,9 @@ export const PostsApi = {
     visibility: "PUBLIC" | "GROUP";
     groupId?: number;
     attachmentIds: number[];
+    isAnonymous?: boolean;
   }) {
-    return axiosClient.post("/posts", data);
+    return axiosClient.post<ApiResponse<ApiPost>>("/posts", data);
   },
 
   deletePost(postId: number) {

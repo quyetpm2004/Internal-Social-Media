@@ -10,6 +10,7 @@ import { groupApi } from "@/features/group/apis/group.api";
 import { toast } from "sonner";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import {
+  canApproveJoinRequests,
   canManageGroupMembers,
   type GroupMemberRole,
 } from "@/features/group/utils/group-member";
@@ -67,6 +68,13 @@ const GroupDetailLayout = () => {
   }, [groupDetail, currentUser]);
 
   const canManageMembers = canManageGroupMembers(currentMemberRole);
+
+  const canApproveJoin = canApproveJoinRequests({
+    isMember: groupDetail?.isMember ?? false,
+    groupType: groupDetail?.groupType,
+    joinApprovalPolicy: groupDetail?.joinApprovalPolicy,
+    memberRole: currentMemberRole,
+  });
 
   const membershipStatus: GroupMembershipStatus =
     groupDetail?.membershipStatus ?? null;
@@ -210,6 +218,8 @@ const GroupDetailLayout = () => {
             isMember={groupDetail?.isMember || false}
             membershipStatus={membershipStatus}
             pendingRequestCount={groupDetail?.pendingRequestCount ?? 0}
+            pendingPostCount={groupDetail?.pendingPostCount ?? 0}
+            postApprovalRequired={groupDetail?.postApprovalRequired ?? false}
             coverUrl={groupDetail?.coverUrl}
             canEditMedia={canManageMembers}
             coverUploading={coverUploading}
@@ -256,6 +266,7 @@ const GroupDetailLayout = () => {
                   groupDetail,
                   currentMemberRole,
                   canManageMembers,
+                  canApproveJoinRequests: canApproveJoin,
                   refreshGroupDetail: fetchGroupDetail,
                 }}
               />

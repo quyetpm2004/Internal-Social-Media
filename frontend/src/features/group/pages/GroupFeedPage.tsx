@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import type { Post } from "@/features/new-feed/types/new-feed.type";
+import type { Post } from "@/features/new-feed/types/post.type";
 import PostCreator from "@/features/new-feed/components/PostCreator";
 import PostCard from "@/features/new-feed/components/PostCard";
 import { mapApiPostToPostCard } from "@/utils/formatTimeAgo";
@@ -32,6 +32,8 @@ const GroupFeedPage: React.FC = () => {
     isMember: boolean;
     groupDetail: GroupDetail | null;
   }>();
+
+  const allowAnonymous = groupDetail?.allowAnonymousJoin ?? false;
 
   // Refs để theo dõi state trong IntersectionObserver
   const hasMoreRef = useRef(hasMore);
@@ -163,7 +165,11 @@ const GroupFeedPage: React.FC = () => {
       <div className="md:col-span-8 space-y-6">
         {/* 1. Tạo bài viết */}
         {isMember && (
-          <PostCreator fetchPosts={fetchPosts} groupVisibility="GROUP" />
+          <PostCreator
+            fetchPosts={fetchPosts}
+            groupVisibility="GROUP"
+            allowAnonymousPost={allowAnonymous}
+          />
         )}
 
         {/* 2. Trạng thái Loading ban đầu */}
@@ -202,6 +208,7 @@ const GroupFeedPage: React.FC = () => {
                 canPinPost={canManageMembers}
                 pinGroupId={numericGroupId}
                 onPinned={handlePinPost}
+                allowAnonymousComment={allowAnonymous}
               />
             ))}
           </div>
@@ -233,6 +240,7 @@ const GroupFeedPage: React.FC = () => {
               canPinPost={canManageMembers}
               pinGroupId={numericGroupId}
               onPinned={handlePinPost}
+              allowAnonymousComment={allowAnonymous}
             />
           ))}
         </div>

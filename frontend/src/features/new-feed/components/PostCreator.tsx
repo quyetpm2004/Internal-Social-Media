@@ -24,6 +24,7 @@ import { getDefaultAvatarUrl } from "@/lib/utils";
 type PostCreatorProps = {
   fetchPosts: (currentPage: number) => Promise<void>;
   groupVisibility: "PUBLIC" | "GROUP";
+  allowAnonymousPost?: boolean;
 };
 
 type UploadedAttachment = {
@@ -31,11 +32,16 @@ type UploadedAttachment = {
   key: string;
 };
 
-const PostCreator = ({ fetchPosts, groupVisibility }: PostCreatorProps) => {
+const PostCreator = ({
+  fetchPosts,
+  groupVisibility,
+  allowAnonymousPost = false,
+}: PostCreatorProps) => {
   const { groupId } = useParams();
   const user = useAuthStore((state) => state.user);
 
   const [content, setContent] = useState("");
+  const [postAsAnonymous, setPostAsAnonymous] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [previews, setPreviews] = useState<
     { url: string; type: string; name: string }[]
@@ -142,17 +148,26 @@ const PostCreator = ({ fetchPosts, groupVisibility }: PostCreatorProps) => {
       setLoading(true);
       const uploadedAttachments = await uploadAttachments();
 
-      await PostsApi.createPost({
+      const res = await PostsApi.createPost({
         content: sanitizedContent,
         contentFormat: "HTML",
         visibility: groupVisibility,
         groupId: groupId ? Number(groupId) : undefined,
         attachmentIds: uploadedAttachments.map((item) => item.attachmentId),
+        isAnonymous:
+          groupVisibility === "GROUP" && allowAnonymousPost && postAsAnonymous,
       });
+
+      toast.success(
+        res.data.status === "PENDING_REVIEW"
+          ? "Đã gửi bài viết để duyệt. Vui lòng chờ phê duyệt."
+          : "Đăng bài viết thành công.",
+      );
 
       // Reset Form
       setContent("");
       setAttachments([]);
+      setPostAsAnonymous(false);
       await fetchPosts(1);
     } catch (error: any) {
       console.error("Lỗi khi tạo bài viết:", error);
@@ -257,6 +272,21 @@ const PostCreator = ({ fetchPosts, groupVisibility }: PostCreatorProps) => {
                 </div>
               ))}
             </div>
+          )}
+
+          {allowAnonymousPost && groupVisibility === "GROUP" && (
+            <label className="mt-4 flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={postAsAnonymous}
+                onChange={(e) => setPostAsAnonymous(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600"
+              />
+              <span className="text-sm text-slate-600 dark:text-slate-400">
+                Đăng ẩn danh — thành viên khác (trừ quản trị/kiểm duyệt) không
+                thấy tên thật của bạn.
+              </span>
+            </label>
           )}
 
           {/* Footer Actions */}

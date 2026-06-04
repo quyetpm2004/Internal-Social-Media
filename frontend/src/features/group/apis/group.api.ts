@@ -3,6 +3,7 @@ import type {
   GetGroupAttachmentsResponse,
   GetJoinRequestsResponse,
   GetMembersResponse,
+  GetPendingGroupPostsResponse,
   GroupApiResponse,
   GroupDetail,
   GroupSettings,
@@ -11,7 +12,7 @@ import type {
 import type {
   ApiPost,
   GetPostsResponse,
-} from "@/features/new-feed/types/new-feed.type";
+} from "@/features/new-feed/types/post.type";
 import type { ApiResponse } from "@/types/api.type";
 
 export const groupApi = {
@@ -127,6 +128,21 @@ export const groupApi = {
     return axiosClient.delete(`/groups/${groupId}/join-requests/${userId}`);
   },
 
+  getPendingGroupPosts: (groupId: string, page = 1, limit = 10) => {
+    return axiosClient.get<ApiResponse<GetPendingGroupPostsResponse>>(
+      `/groups/${groupId}/posts/pending-review`,
+      { params: { page, limit } },
+    );
+  },
+
+  approveGroupPost: (groupId: string, postId: number) => {
+    return axiosClient.post(`/groups/${groupId}/posts/${postId}/approve`);
+  },
+
+  rejectGroupPost: (groupId: string, postId: number) => {
+    return axiosClient.delete(`/groups/${groupId}/posts/${postId}/reject`);
+  },
+
   updateGroup: (groupId: string, groupName: string, description: string) => {
     return axiosClient.put(`/groups/${groupId}`, {
       groupName,
@@ -140,10 +156,7 @@ export const groupApi = {
     );
   },
 
-  updateGroupSetting: (
-    groupId: string,
-    data: Partial<GroupSettings>,
-  ) => {
+  updateGroupSetting: (groupId: string, data: Partial<GroupSettings>) => {
     return axiosClient.patch<ApiResponse<GroupSettings>>(
       `/groups/${groupId}/settings`,
       data,

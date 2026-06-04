@@ -2,7 +2,7 @@ import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import PostCard from "@/features/new-feed/components/PostCard";
 import { toast } from "sonner";
-import type { Post } from "@/features/new-feed/types/new-feed.type";
+import type { Post } from "@/features/new-feed/types/post.type";
 import { mapApiPostToPostCard } from "@/utils/formatTimeAgo";
 import { groupApi } from "@/features/group/apis/group.api";
 import AboutSidebar from "@/features/group/components/group-detail/main-detail/AboutSidebar";
@@ -65,6 +65,7 @@ const PostDetailInGroupPage = () => {
       <div className="md:col-span-8 space-y-6">
         <PostCard
           {...post}
+          allowAnonymousComment={groupDetail?.allowAnonymousJoin ?? false}
           onUpdated={(postId, newContent, newFormat) => {
             setPost((prev) =>
               prev && prev.id === postId

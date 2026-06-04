@@ -23,8 +23,11 @@ export const CommentApi = {
     );
   },
 
-  createComment(postId: number, content: string) {
-    return axiosClient.post(`/posts/${postId}/comments`, { content });
+  createComment(postId: number, content: string, isAnonymous?: boolean) {
+    return axiosClient.post(`/posts/${postId}/comments`, {
+      content,
+      ...(isAnonymous ? { isAnonymous: true } : {}),
+    });
   },
 
   getReplies(commentId: number, page = 1, limit = 10) {
@@ -36,8 +39,11 @@ export const CommentApi = {
     );
   },
 
-  replyComment(commentId: number, content: string) {
-    return axiosClient.post(`/comments/${commentId}/replies`, { content });
+  replyComment(commentId: number, content: string, isAnonymous?: boolean) {
+    return axiosClient.post(`/comments/${commentId}/replies`, {
+      content,
+      ...(isAnonymous ? { isAnonymous: true } : {}),
+    });
   },
 
   updateComment(commentId: number, content: string) {

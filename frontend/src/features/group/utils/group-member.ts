@@ -1,5 +1,7 @@
 export type GroupMemberRole = "ADMIN" | "MODERATOR" | "MEMBER";
 
+export const ANONYMOUS_MEMBER_NAME = "Thành viên ẩn danh";
+
 export type MemberRoleFilter = "STAFF" | "MEMBER";
 
 export const MEMBER_ROLE_FILTER_OPTIONS: {
@@ -24,6 +26,25 @@ export function canManageGroupMembers(
   role: GroupMemberRole | null | undefined,
 ): boolean {
   return role === "ADMIN" || role === "MODERATOR";
+}
+
+export function canApproveJoinRequests(options: {
+  isMember: boolean;
+  groupType?: "PUBLIC" | "PRIVATE" | "DEPARTMENT";
+  joinApprovalPolicy?: "ADMIN_ONLY" | "ANY_MEMBER";
+  memberRole?: GroupMemberRole | null;
+}): boolean { 
+  const { isMember, groupType, joinApprovalPolicy, memberRole } = options;
+
+  if (!isMember || groupType !== "PRIVATE") {
+    return false;
+  }
+
+  if (joinApprovalPolicy === "ANY_MEMBER") {
+    return true;
+  }
+
+  return canManageGroupMembers(memberRole);
 }
 
 export function canManageTargetMember(

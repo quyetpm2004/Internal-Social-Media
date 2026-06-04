@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Post } from "@/features/new-feed/types/new-feed.type";
+import type { Post } from "@/features/new-feed/types/post.type";
 import PostCreator from "@/features/new-feed/components/PostCreator";
 import PostCard from "@/features/new-feed/components/PostCard";
 import { Bell, Cake, Calendar, Users2 } from "lucide-react";

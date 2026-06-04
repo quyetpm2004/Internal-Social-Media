@@ -71,6 +71,7 @@ const createPostSchema = z.object({
   visibility: z.enum(["PUBLIC", "PRIVATE", "GROUP"]).default("PUBLIC"),
   groupId: z.number().optional(),
   attachmentIds: z.array(z.number()).optional(),
+  isAnonymous: z.boolean().optional(),
 });
 
 const updatePostSchema = z.object({
@@ -108,15 +109,16 @@ export const createPostController = async (
       visibility: body.visibility,
       groupId: body.groupId,
       attachmentIds: body.attachmentIds || [],
+      isAnonymous: body.isAnonymous,
     });
 
     return res.status(201).json({
       message: "Đăng bài viết thành công",
       data: newPost,
     });
-  } catch (error) {
+  } catch (error: any) {
     if (handlePostContentError(error, res)) return;
-    next(error);
+    return res.status(404).json({ message: error.message });
   }
 };
 

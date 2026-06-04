@@ -62,7 +62,34 @@ export interface GroupDetail {
   };
   isMember: boolean;
   membershipStatus: GroupMembershipStatus;
+  joinApprovalPolicy?: GroupPermission;
+  allowAnonymousJoin?: boolean;
   pendingRequestCount?: number;
+  pendingPostCount?: number;
+  postApprovalRequired?: boolean;
+}
+
+export interface PendingGroupPost {
+  id: number;
+  content: string;
+  createdAt: string;
+  attachmentCount: number;
+  author: {
+    id: number;
+    fullName: string;
+    email: string;
+    avatarUrl: string | null;
+  };
+}
+
+export interface GetPendingGroupPostsResponse {
+  posts: PendingGroupPost[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 export interface JoinRequest {

@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 type ConfirmModalProps = {
   open: boolean;
   title: string;
@@ -5,6 +7,7 @@ type ConfirmModalProps = {
   confirmText?: string;
   cancelText?: string;
   loading?: boolean;
+  children?: ReactNode;
   onConfirm: () => void;
   onCancel: () => void;
   variant?: "danger" | "primary";
@@ -17,6 +20,7 @@ const ConfirmModal = ({
   confirmText = "Xác nhận",
   cancelText = "Hủy",
   loading = false,
+  children,
   onConfirm,
   onCancel,
   variant = "danger",
@@ -40,6 +44,8 @@ const ConfirmModal = ({
             {description}
           </p>
         )}
+
+        {children}
 
         <div className="mt-6 flex justify-end gap-3">
           <button

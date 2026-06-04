@@ -4,10 +4,9 @@ import type { GroupOutletContext } from "@/features/group/types/group-outlet.typ
 export const GroupMembersLayout = () => {
   const { groupId } = useParams();
   const outletContext = useOutletContext<GroupOutletContext>();
-  const { canManageMembers, groupDetail } = outletContext;
+  const { canApproveJoinRequests, groupDetail } = outletContext;
 
-  const showJoinRequestsTab =
-    canManageMembers && groupDetail?.groupType === "PRIVATE";
+  const showJoinRequestsTab = canApproveJoinRequests;
 
   const pendingCount = groupDetail?.pendingRequestCount ?? 0;
 

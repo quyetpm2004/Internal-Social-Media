@@ -2,6 +2,11 @@ import { PrismaClient, ReactionType } from "@prisma/client";
 
 import prisma from "../utils/prisma";
 import { getFileUrl } from "./file.service";
+import {
+  assertGroupAllowsAnonymousContent,
+  maskGroupCommentAuthors,
+} from "../utils/group-anonymous";
+import * as notificationService from "./notification.service";
 
 type GetPostCommentsParams = {
   userId: number;
@@ -22,6 +27,7 @@ type CreateCommentParams = {
   postId: number;
   content: string;
   mentionedUserIds?: number[];
+  isAnonymous?: boolean;
 };
 
 type ReplyCommentParams = {
@@ -29,6 +35,7 @@ type ReplyCommentParams = {
   parentCommentId: number;
   content: string;
   mentionedUserIds?: number[];
+  isAnonymous?: boolean;
 };
 
 type ReactCommentParams = {
@@ -56,6 +63,7 @@ const formatCommentResponse = async (comment: any) => ({
   parentCommentId: comment.parentCommentId,
   content: comment.content,
   status: comment.status,
+  isAnonymous: comment.isAnonymous ?? false,
   createdAt: comment.createdAt,
   updatedAt: comment.updatedAt,
   user: {
@@ -131,6 +139,7 @@ export const getPostCommentsService = async ({
     select: {
       id: true,
       status: true,
+      groupId: true,
     },
   });
 
@@ -201,11 +210,23 @@ export const getPostCommentsService = async ({
   const hasMore = comments.length > limit;
   const normalizedComments = hasMore ? comments.slice(0, limit) : comments;
 
+  let formattedComments = await Promise.all(
+    normalizedComments.map(formatCommentResponse),
+  );
+
+  if (existingPost.groupId) {
+    formattedComments = await maskGroupCommentAuthors(
+      existingPost.groupId,
+      userId,
+      formattedComments,
+    );
+  }
+
   return {
     page,
     limit,
     hasMore,
-    comments: await Promise.all(normalizedComments.map(formatCommentResponse)),
+    comments,
   };
 };
 
@@ -222,6 +243,12 @@ export const getCommentRepliesService = async ({
     select: {
       id: true,
       status: true,
+      postId: true,
+      post: {
+        select: {
+          groupId: true,
+        },
+      },
     },
   });
 
@@ -291,11 +318,24 @@ export const getCommentRepliesService = async ({
   const hasMore = replies.length > limit;
   const normalizedReplies = hasMore ? replies.slice(0, limit) : replies;
 
+  let formattedReplies = await Promise.all(
+    normalizedReplies.map(formatCommentResponse),
+  );
+
+  const groupId = existingComment.post?.groupId;
+  if (groupId) {
+    formattedReplies = await maskGroupCommentAuthors(
+      groupId,
+      userId,
+      formattedReplies,
+    );
+  }
+
   return {
     page,
     limit,
     hasMore,
-    replies: await Promise.all(normalizedReplies.map(formatCommentResponse)),
+    replies: formattedReplies,
   };
 };
 
@@ -304,6 +344,7 @@ export const createCommentService = async ({
   postId,
   content,
   mentionedUserIds = [],
+  isAnonymous: wantsAnonymous = false,
 }: CreateCommentParams) => {
   const [existingUser, existingPost] = await Promise.all([
     prisma.user.findUnique({
@@ -312,7 +353,7 @@ export const createCommentService = async ({
     }),
     prisma.post.findUnique({
       where: { id: postId },
-      select: { id: true, status: true },
+      select: { id: true, status: true, groupId: true },
     }),
   ]);
 
@@ -326,6 +367,13 @@ export const createCommentService = async ({
 
   if (existingPost.status !== "ACTIVE") {
     throw new Error("Bài viết không khả dụng");
+  }
+
+  const isAnonymous = wantsAnonymous === true;
+  if (existingPost.groupId) {
+    await assertGroupAllowsAnonymousContent(existingPost.groupId, isAnonymous);
+  } else if (isAnonymous) {
+    throw new Error("Chỉ có thể bình luận ẩn danh trong nhóm");
   }
 
   const uniqueMentionedUserIds = [
@@ -354,6 +402,7 @@ export const createCommentService = async ({
       parentCommentId: null,
       content,
       status: "ACTIVE",
+      isAnonymous,
       mentions: uniqueMentionedUserIds.length
         ? {
             create: uniqueMentionedUserIds.map((mentionedUserId) => ({
@@ -399,7 +448,21 @@ export const createCommentService = async ({
     },
   });
 
-  return await formatCommentResponse(comment);
+  await notificationService
+    .notifyPostComment(postId, comment.id, userId)
+    .catch((error: unknown) => {
+      console.error("notifyPostComment failed:", error);
+    });
+
+  const formatted = await formatCommentResponse(comment);
+  if (!existingPost.groupId) {
+    return formatted;
+  }
+
+  const [masked] = await maskGroupCommentAuthors(existingPost.groupId, userId, [
+    formatted,
+  ]);
+  return masked;
 };
 
 export const replyCommentService = async ({
@@ -407,6 +470,7 @@ export const replyCommentService = async ({
   parentCommentId,
   content,
   mentionedUserIds = [],
+  isAnonymous: wantsAnonymous = false,
 }: ReplyCommentParams) => {
   const [existingUser, parentComment] = await Promise.all([
     prisma.user.findUnique({
@@ -419,6 +483,11 @@ export const replyCommentService = async ({
         id: true,
         postId: true,
         status: true,
+        post: {
+          select: {
+            groupId: true,
+          },
+        },
       },
     }),
   ]);
@@ -433,6 +502,14 @@ export const replyCommentService = async ({
 
   if (parentComment.status !== "ACTIVE") {
     throw new Error("Comment cha không khả dụng");
+  }
+
+  const isAnonymous = wantsAnonymous === true;
+  const groupId = parentComment.post?.groupId;
+  if (groupId) {
+    await assertGroupAllowsAnonymousContent(groupId, isAnonymous);
+  } else if (isAnonymous) {
+    throw new Error("Chỉ có thể bình luận ẩn danh trong nhóm");
   }
 
   const uniqueMentionedUserIds = [
@@ -461,6 +538,7 @@ export const replyCommentService = async ({
       parentCommentId,
       content,
       status: "ACTIVE",
+      isAnonymous,
       mentions: uniqueMentionedUserIds.length
         ? {
             create: uniqueMentionedUserIds.map((mentionedUserId) => ({
@@ -506,7 +584,19 @@ export const replyCommentService = async ({
     },
   });
 
-  return await formatCommentResponse(reply);
+  await notificationService
+    .notifyCommentReply(parentComment.postId, reply.id, parentCommentId, userId)
+    .catch((error: unknown) => {
+      console.error("notifyCommentReply failed:", error);
+    });
+
+  const formatted = await formatCommentResponse(reply);
+  if (!groupId) {
+    return formatted;
+  }
+
+  const [masked] = await maskGroupCommentAuthors(groupId, userId, [formatted]);
+  return masked;
 };
 
 export const reactCommentService = async ({

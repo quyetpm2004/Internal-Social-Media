@@ -1,4 +1,5 @@
-import type { ApiPost, Post } from "@/features/new-feed/types/new-feed.type";
+import type { GroupMemberRole } from "@/features/group/utils/group-member";
+import type { ApiPost, Post } from "@/features/new-feed/types/post.type";
 import { getDefaultAvatarUrl } from "@/lib/utils";
 
 export const formatTimeAgo = (dateString: string) => {
@@ -16,18 +17,41 @@ export const formatTimeAgo = (dateString: string) => {
   return `${days} ngày trước`;
 };
 
+const mapRoleToLabel = (role: GroupMemberRole) => {
+  switch (role) {
+    case "MEMBER":
+      return "Thành viên";
+    case "MODERATOR":
+      return "Kiểm duyệt viên";
+    case "ADMIN":
+      return "Quản trị viên";
+    default:
+      return "Thành viên";
+  }
+};
+
 export const mapApiPostToPostCard = (post: ApiPost): Post => {
+  const isViewAnonymous = post.isAnonymous && !post.user?.isAnonymous;
+
+  const getAvatarUrl = (avatarUrl: string | null, fullName: string) => {
+    return avatarUrl ? avatarUrl : getDefaultAvatarUrl(fullName);
+  };
+
   return {
     id: post.id,
     isPinned: post.isPinned,
     author: {
       id: post.user?.id ?? 0,
-      name: post.user?.fullName || "Người dùng",
-      avatar: post.user?.profile?.avatarUrl
-        ? `${import.meta.env.VITE_BASE_URL_BACKEND}/uploads/avatar/${post.user?.profile?.avatarUrl}`
-        : getDefaultAvatarUrl(post.user?.fullName),
+      name: isViewAnonymous
+        ? "Ẩn Danh " + `(${post.user?.fullName})`
+        : post.user?.fullName,
+      avatar: isViewAnonymous
+        ? getAvatarUrl(post.user?.profile?.avatarUrl, post.user?.fullName)
+        : post.isAnonymous
+          ? getAvatarUrl(null, "Người dùng ẩn danh")
+          : getAvatarUrl(post.user?.profile?.avatarUrl, post.user?.fullName),
     },
-    role: "Thành viên",
+    role: mapRoleToLabel(post.role || "MEMBER"),
     time: formatTimeAgo(post.createdAt),
     content: post.content,
     contentFormat: post.contentFormat,

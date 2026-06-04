@@ -79,7 +79,7 @@ export const createCommentController = async (
   try {
     const userId = Number(req.user?.id);
     const postId = Number(req.params.postId);
-    const { content, mentionedUserIds } = req.body;
+    const { content, mentionedUserIds, isAnonymous } = req.body;
 
     if (!Number.isInteger(userId) || userId <= 0) {
       return res.status(401).json({ message: "Người dùng chưa đăng nhập" });
@@ -100,6 +100,7 @@ export const createCommentController = async (
       postId,
       content: content.trim(),
       mentionedUserIds: Array.isArray(mentionedUserIds) ? mentionedUserIds : [],
+      isAnonymous: isAnonymous === true,
     });
 
     return res.status(201).json({
@@ -119,7 +120,7 @@ export const replyCommentController = async (
   try {
     const userId = Number(req.user?.id);
     const commentId = Number(req.params.commentId);
-    const { content, mentionedUserIds } = req.body;
+    const { content, mentionedUserIds, isAnonymous } = req.body;
 
     if (!Number.isInteger(userId) || userId <= 0) {
       return res.status(401).json({ message: "Người dùng chưa đăng nhập" });
@@ -140,6 +141,7 @@ export const replyCommentController = async (
       parentCommentId: commentId,
       content: content.trim(),
       mentionedUserIds: Array.isArray(mentionedUserIds) ? mentionedUserIds : [],
+      isAnonymous: isAnonymous === true,
     });
 
     return res.status(201).json({
@@ -211,7 +213,7 @@ export const updateCommentController = async (
   try {
     const userId = Number(req.user?.id);
     const commentId = Number(req.params.commentId);
-    const { content, mentionedUserIds } = req.body;
+    const { content, mentionedUserIds, isAnonymous } = req.body;
 
     if (!Number.isInteger(userId) || userId <= 0) {
       return res.status(401).json({ message: "Người dùng chưa đăng nhập" });

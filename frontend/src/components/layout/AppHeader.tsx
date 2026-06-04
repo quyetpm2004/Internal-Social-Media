@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Bell,
   Bookmark,
   ChevronDown,
   Group,
@@ -23,6 +22,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { getDefaultAvatarUrl } from "@/lib/utils";
+import NotificationBell from "@/features/notification/components/NotificationBell";
 
 type UserMenuPanelProps = {
   onClose: () => void;
@@ -197,12 +197,7 @@ export default function AppHeader() {
           >
             <Search size={20} />
           </button>
-          <button
-            type="button"
-            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors active:scale-95 duration-200"
-          >
-            <Bell size={20} />
-          </button>
+          <NotificationBell />
 
           <button
             type="button"

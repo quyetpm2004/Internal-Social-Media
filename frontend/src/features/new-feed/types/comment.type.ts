@@ -4,6 +4,7 @@ export type CommentUser = {
   id: number;
   fullName: string;
   email: string;
+  isAnonymous?: boolean;
   profile: {
     avatarUrl?: string | null;
   };
@@ -16,6 +17,7 @@ export type CommentItemType = {
   parentCommentId: number | null;
   content: string;
   status: string;
+  isAnonymous?: boolean;
   createdAt: string;
   updatedAt: string;
   user: CommentUser;

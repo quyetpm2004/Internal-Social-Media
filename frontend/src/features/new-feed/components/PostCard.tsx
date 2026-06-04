@@ -8,7 +8,7 @@ import {
   Share2,
   ThumbsUp,
 } from "lucide-react";
-import type { PostCardProps } from "@/features/new-feed/types/new-feed.type";
+import type { PostCardProps } from "@/features/new-feed/types/post.type";
 import {
   ReactionApi,
   type ReactionType,
@@ -27,6 +27,7 @@ import "yet-another-react-lightbox/styles.css";
 import { toast } from "sonner";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import ConfirmModal from "@/components/common/ConfirmModal";
+import { Link } from "react-router-dom";
 
 const reactionOptions: {
   type: ReactionType;
@@ -89,8 +90,10 @@ const PostCard: React.FC<PostCardProps> = ({
   canPinPost,
   pinGroupId = null,
   onPinned,
+  allowAnonymousComment = false,
+  showComment = false,
 }) => {
-  const [showComments, setShowComments] = useState(false);
+  const [showComments, setShowComments] = useState(showComment);
   const [reactionCount, setReactionCount] = useState(stats.likes);
   const [currentReaction, setCurrentReaction] = useState<ReactionType | null>(
     initialReaction,
@@ -205,7 +208,13 @@ const PostCard: React.FC<PostCardProps> = ({
           </div>
 
           <div>
-            <h3 className="text-sm font-bold">{author.name}</h3>
+            {author.id !== 0 ? (
+              <Link to={`/profile/${author.id}`}>
+                <h3 className="text-sm font-bold">{author.name}</h3>
+              </Link>
+            ) : (
+              <h3 className="text-sm font-bold">{author.name}</h3>
+            )}
             <p className="text-[11px] text-slate-500">
               {role} • {time}
             </p>
@@ -449,7 +458,10 @@ const PostCard: React.FC<PostCardProps> = ({
         </div>
         {showComments && (
           <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-            <CommentSection postId={postId} />
+            <CommentSection
+              postId={postId}
+              allowAnonymousComment={allowAnonymousComment}
+            />
           </div>
         )}
       </div>

@@ -37,12 +37,24 @@ router.post(
 );
 router.delete(
   "/:groupId/join-requests/:userId",
-  groupController.rejectJoinRequest,
+  groupController.rejectJoinRequest, 
 );
 
 // Group posts
 router.post("/:groupId/posts", groupController.createGroupPost);
 router.get("/:groupId/posts", groupController.getGroupPosts);
+router.get(
+  "/:groupId/posts/pending-review",
+  groupController.getPendingGroupPosts,
+);
+router.post(
+  "/:groupId/posts/:postId/approve",
+  groupController.approveGroupPost,
+);
+router.delete(
+  "/:groupId/posts/:postId/reject",
+  groupController.rejectGroupPost,
+);
 
 // Group post detail
 router.get("/:groupId/posts/:postId", groupController.getGroupPostDetail);

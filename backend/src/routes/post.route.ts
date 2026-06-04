@@ -16,15 +16,17 @@ import {
 
 const postRoutes = Router();
 
-postRoutes.get("/new-feed", authMiddleware, getPostListController);
-postRoutes.post("/", authMiddleware, createPostController);
-postRoutes.post("/:postId/reactions", authMiddleware, reactPostController);
-postRoutes.patch("/:postId", authMiddleware, updatePostController);
-postRoutes.delete("/:postId", authMiddleware, deletePostController);
+postRoutes.use(authMiddleware);
 
-postRoutes.get("/:postId/comments", authMiddleware, getPostCommentsController);
-postRoutes.post("/:postId/comments", authMiddleware, createCommentController);
-postRoutes.get("/:postId", authMiddleware, getPostByIdController);
-postRoutes.patch("/:postId/pin", authMiddleware, pinPostByUserIdController);
+postRoutes.get("/new-feed", getPostListController);
+postRoutes.post("/", createPostController);
+postRoutes.post("/:postId/reactions", reactPostController);
+postRoutes.patch("/:postId", updatePostController);
+postRoutes.delete("/:postId", deletePostController);
+
+postRoutes.get("/:postId/comments", getPostCommentsController);
+postRoutes.post("/:postId/comments", createCommentController);
+postRoutes.get("/:postId", getPostByIdController);
+postRoutes.patch("/:postId/pin", pinPostByUserIdController);
 
 export default postRoutes;

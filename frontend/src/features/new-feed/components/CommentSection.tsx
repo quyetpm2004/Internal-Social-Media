@@ -7,9 +7,13 @@ import { toast } from "sonner";
 
 type CommentSectionProps = {
   postId: number;
+  allowAnonymousComment?: boolean;
 };
 
-const CommentSection = ({ postId }: CommentSectionProps) => {
+const CommentSection = ({
+  postId,
+  allowAnonymousComment = false,
+}: CommentSectionProps) => {
   const [comments, setComments] = useState<CommentItemType[]>([]);
   const [repliesMap, setRepliesMap] = useState<
     Record<number, CommentItemType[]>
@@ -57,11 +61,11 @@ const CommentSection = ({ postId }: CommentSectionProps) => {
     }
   };
 
-  const handleCreateComment = async (content: string) => {
+  const handleCreateComment = async (content: string, isAnonymous?: boolean) => {
     try {
       setCreating(true);
 
-      const res = await CommentApi.createComment(postId, content);
+      const res = await CommentApi.createComment(postId, content, isAnonymous);
       const newComment = res.data;
 
       setComments((prev) => [newComment, ...prev]);
@@ -178,6 +182,7 @@ const CommentSection = ({ postId }: CommentSectionProps) => {
       <CommentInput
         loading={creating}
         placeholder="Viết bình luận..."
+        allowAnonymous={allowAnonymousComment}
         onSubmit={handleCreateComment}
       />
 
@@ -192,6 +197,7 @@ const CommentSection = ({ postId }: CommentSectionProps) => {
             <div key={comment.id} className="space-y-2">
               <CommentItem
                 comment={comment}
+                allowAnonymousComment={allowAnonymousComment}
                 onDeleted={handleDeleted}
                 onUpdated={handleUpdated}
                 onReplyCreated={handleReplyCreated}
@@ -212,6 +218,7 @@ const CommentSection = ({ postId }: CommentSectionProps) => {
                   key={reply.id}
                   comment={reply}
                   isReply
+                  allowAnonymousComment={allowAnonymousComment}
                   onDeleted={handleDeleted}
                   onUpdated={handleUpdated}
                 />

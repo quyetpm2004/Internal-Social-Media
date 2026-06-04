@@ -33,7 +33,7 @@ const DEFAULT_SETTINGS: SettingConfig[] = [
   },
   {
     id: "anonymous",
-    label: "Tham gia ẩn danh",
+    label: "Đăng & bình luận ẩn danh",
     value: BOOL_LABELS.false,
     type: "radio",
     options: [BOOL_LABELS.true, BOOL_LABELS.false],

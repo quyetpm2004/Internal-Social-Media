@@ -1,14 +1,5 @@
 import { useState } from "react";
-import {
-  Angry,
-  Frown,
-  Heart,
-  Laugh,
-  Pencil,
-  SmilePlus,
-  ThumbsUp,
-  Trash2,
-} from "lucide-react";
+import { Pencil, ThumbsUp, Trash2 } from "lucide-react";
 import {
   CommentApi,
   type CommentReactionType,
@@ -18,6 +9,8 @@ import CommentInput from "@/features/new-feed/components/CommentInput";
 import { toast } from "sonner";
 import type { ReactionType } from "../api/reaction.api";
 import { getDefaultAvatarUrl } from "@/lib/utils";
+import { ANONYMOUS_MEMBER_NAME } from "@/features/group/utils/group-member";
+import { formatTimeAgo } from "@/utils/formatTimeAgo";
 
 const reactionOptions: {
   type: ReactionType;
@@ -66,6 +59,7 @@ const reactionOptions: {
 type CommentItemProps = {
   comment: CommentItemType;
   isReply?: boolean;
+  allowAnonymousComment?: boolean;
   onDeleted: (commentId: number) => void;
   onUpdated: (commentId: number, content: string) => void;
   onReplyCreated?: (parentId: number, reply: CommentItemType) => void;
@@ -74,6 +68,7 @@ type CommentItemProps = {
 const CommentItem = ({
   comment,
   isReply = false,
+  allowAnonymousComment = false,
   onDeleted,
   onUpdated,
   onReplyCreated,
@@ -141,9 +136,13 @@ const CommentItem = ({
     }
   };
 
-  const handleReply = async (content: string) => {
+  const handleReply = async (content: string, isAnonymous?: boolean) => {
     try {
-      const res = await CommentApi.replyComment(comment.id, content);
+      const res = await CommentApi.replyComment(
+        comment.id,
+        content,
+        isAnonymous,
+      );
       const newReply = res.data;
 
       onReplyCreated?.(comment.id, newReply);
@@ -158,58 +157,74 @@ const CommentItem = ({
     }
   };
 
+  const displayName =
+    comment.user.isAnonymous ||
+    comment.isAnonymous ||
+    comment.user.fullName === ANONYMOUS_MEMBER_NAME
+      ? ANONYMOUS_MEMBER_NAME
+      : comment.user.fullName;
+
   const avatarSrc =
-    comment.user.profile.avatarUrl ||
-    getDefaultAvatarUrl(comment.user.fullName);
+    comment.user.isAnonymous || comment.isAnonymous
+      ? getDefaultAvatarUrl(displayName)
+      : comment.user.profile?.avatarUrl || getDefaultAvatarUrl(displayName);
 
   return (
     <div className={`flex gap-2 ${isReply ? "ml-10" : ""}`}>
       <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-200 shrink-0">
         <img
           src={avatarSrc}
-          alt={comment.user.fullName}
+          alt={displayName}
           className="w-full h-full object-cover"
         />
       </div>
 
       <div className="flex-1">
-        <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl px-4 py-2">
-          <div className="text-xs font-bold text-slate-900 dark:text-slate-100">
-            {comment.user.fullName}
+        <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl px-4 py-2 flex">
+          <div className="flex-1">
+            <div className="text-xs font-bold text-slate-900 dark:text-slate-100">
+              {displayName}
+            </div>
+
+            {editing ? (
+              <div className="mt-2 flex gap-2">
+                <input
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  className="flex-1 bg-white dark:bg-slate-900 rounded-lg px-3 py-2 text-sm outline-none text-slate-900 dark:text-slate-100"
+                />
+
+                <button
+                  type="button"
+                  onClick={handleUpdate}
+                  className="text-xs text-blue-700 font-semibold"
+                >
+                  Lưu
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditing(false);
+                    setEditContent(comment.content);
+                  }}
+                  className="text-xs text-slate-500"
+                >
+                  Hủy
+                </button>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-700 dark:text-slate-300 mt-1">
+                {comment.content}
+              </p>
+            )}
           </div>
 
-          {editing ? (
-            <div className="mt-2 flex gap-2">
-              <input
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                className="flex-1 bg-white dark:bg-slate-900 rounded-lg px-3 py-2 text-sm outline-none text-slate-900 dark:text-slate-100"
-              />
-
-              <button
-                type="button"
-                onClick={handleUpdate}
-                className="text-xs text-blue-700 font-semibold"
-              >
-                Lưu
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setEditing(false);
-                  setEditContent(comment.content);
-                }}
-                className="text-xs text-slate-500"
-              >
-                Hủy
-              </button>
-            </div>
-          ) : (
-            <p className="text-sm text-slate-700 dark:text-slate-300 mt-1">
-              {comment.content}
-            </p>
-          )}
+          <span className="text-xs text-slate-500">
+            {comment.updatedAt
+              ? formatTimeAgo(comment.updatedAt)
+              : formatTimeAgo(comment.createdAt)}
+          </span>
         </div>
 
         <div className="flex items-center gap-3 mt-1 px-2 text-xs text-slate-500">
@@ -291,6 +306,7 @@ const CommentItem = ({
             <CommentInput
               autoFocus
               placeholder="Viết phản hồi..."
+              allowAnonymous={allowAnonymousComment}
               onSubmit={handleReply}
             />
           </div>

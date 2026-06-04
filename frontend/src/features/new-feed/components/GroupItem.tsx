@@ -1,4 +1,4 @@
-import type { GroupItemProps } from "@/features/new-feed/types/new-feed.type";
+import type { GroupItemProps } from "@/features/new-feed/types/post.type";
 import { DEFAULT_COVER } from "@/constants/app";
 import { Link } from "react-router-dom";
 

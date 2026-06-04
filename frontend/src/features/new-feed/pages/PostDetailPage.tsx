@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { PostsApi } from "@/features/new-feed/api/post.api";
 import PostCard from "@/features/new-feed/components/PostCard";
 import { toast } from "sonner";
-import type { Post } from "../types/new-feed.type";
+import type { Post } from "../types/post.type";
 import { mapApiPostToPostCard } from "@/utils/formatTimeAgo";
 import { ArrowLeft } from "lucide-react";
 
@@ -68,6 +68,7 @@ const PostDetailPage = () => {
       </div>
       <PostCard
         {...post}
+        showComment={true}
         onUpdated={(postId, newContent, newFormat) => {
           setPost((prev) =>
             prev && prev.id === postId

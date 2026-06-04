@@ -14,7 +14,10 @@ import { NavLink, useParams } from "react-router-dom";
 import ConfirmModal from "@/components/common/ConfirmModal";
 import { toast } from "sonner";
 import type { GroupMembershipStatus } from "@/features/group/types/group.type";
-import type { GroupMemberRole } from "@/features/group/utils/group-member";
+import {
+  canManageGroupMembers,
+  type GroupMemberRole,
+} from "@/features/group/utils/group-member";
 import { DEFAULT_COVER } from "@/constants/app";
 import Lightbox from "yet-another-react-lightbox";
 
@@ -25,6 +28,8 @@ type GroupHeaderProps = {
   isMember: boolean;
   membershipStatus: GroupMembershipStatus;
   pendingRequestCount?: number;
+  pendingPostCount?: number;
+  postApprovalRequired?: boolean;
   coverUrl?: string;
   canEditMedia?: boolean;
   coverUploading?: boolean;
@@ -38,6 +43,7 @@ const tabs = [
   { label: "File phương tiện", path: "media" },
   { label: "File", path: "files" },
   { label: "Cài đặt nhóm", path: "setting" },
+  { label: "Duyệt bài viết", path: "review" },
 ];
 
 const GroupHeader: React.FC<GroupHeaderProps> = ({
@@ -47,6 +53,8 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
   isMember,
   membershipStatus,
   pendingRequestCount = 0,
+  pendingPostCount = 0,
+  postApprovalRequired = false,
   coverUrl,
   canEditMedia = false,
   coverUploading = false,
@@ -252,12 +260,22 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
               ? `/groups/${groupId}/${item.path}`
               : `/groups/${groupId}`;
 
-            const showBadge =
+            const showJoinBadge =
               item.path === "members" && pendingRequestCount > 0;
+            const showPostReviewBadge =
+              item.path === "review" && pendingPostCount > 0;
 
             if (
               item.label === "Cài đặt nhóm" &&
               currentMemberRole !== "ADMIN"
+            ) {
+              return null;
+            }
+
+            if (
+              item.path === "review" &&
+              (!postApprovalRequired ||
+                !canManageGroupMembers(currentMemberRole))
             ) {
               return null;
             }
@@ -277,9 +295,14 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
               >
                 {item.label}
 
-                {showBadge && (
+                {showJoinBadge && (
                   <span className="min-w-5 h-5 px-1.5 flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full">
                     {pendingRequestCount > 99 ? "99+" : pendingRequestCount}
+                  </span>
+                )}
+                {showPostReviewBadge && (
+                  <span className="min-w-5 h-5 px-1.5 flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full">
+                    {pendingPostCount > 99 ? "99+" : pendingPostCount}
                   </span>
                 )}
               </NavLink>

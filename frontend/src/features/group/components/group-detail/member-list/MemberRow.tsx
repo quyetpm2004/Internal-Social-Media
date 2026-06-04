@@ -42,7 +42,6 @@ export const MemberRow = ({
     member.id,
     currentUserId,
   );
-
   return (
     <tr className="hover:bg-surface-container/30 transition-colors">
       <td className="px-6 py-4">

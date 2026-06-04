@@ -20,7 +20,7 @@ function getErrorMessage(error: unknown): string {
 
 export const GroupJoinRequestsPage = () => {
   const { groupId } = useParams();
-  const { canManageMembers, groupDetail, refreshGroupDetail } =
+  const { canApproveJoinRequests, refreshGroupDetail } =
     useOutletContext<GroupOutletContext>();
 
   const [requests, setRequests] = useState<JoinRequest[]>([]);
@@ -81,7 +81,7 @@ export const GroupJoinRequestsPage = () => {
     }
   };
 
-  if (!canManageMembers || groupDetail?.groupType !== "PRIVATE") {
+  if (!canApproveJoinRequests) {
     return <Navigate to={`/groups/${groupId}/members`} replace />;
   }
 

@@ -2,8 +2,10 @@ import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import type { ReactionType } from "@/features/new-feed/api/reaction.api";
 import type { PostContentFormat } from "@/features/new-feed/utils/rich-text";
+import type { GroupMemberRole } from "@/features/group/utils/group-member";
 
 type SortType = "latest" | "trending";
+type PostStatus = "ACTIVE" | "PENDING_REVIEW" | "HIDDEN" | "DELETED";
 
 interface Author {
   id: number;
@@ -55,6 +57,8 @@ interface PostCardProps extends Post {
     groupId: number | null,
     isPinned: boolean,
   ) => void | Promise<void>;
+  allowAnonymousComment?: boolean;
+  showComment?: boolean;
 }
 
 interface RightSidebarWidgetProps {
@@ -75,11 +79,14 @@ type ApiPost = {
   content: string;
   contentFormat?: PostContentFormat;
   isPinned: boolean;
+  isAnonymous?: boolean;
   createdAt: string;
+  status?: PostStatus;
   user?: {
     id: number;
     fullName: string;
     email: string;
+    isAnonymous?: boolean;
     profile: {
       avatarUrl: string;
     };
@@ -97,6 +104,7 @@ type ApiPost = {
   reactions?: {
     reactionType: ReactionType;
   }[];
+  role?: GroupMemberRole;
 };
 
 type GetPostsResponse = {

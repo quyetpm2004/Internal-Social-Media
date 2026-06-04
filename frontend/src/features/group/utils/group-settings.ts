@@ -37,6 +37,7 @@ export const settingsToFormValues = (data: GroupSettings) => ({
   description: data.description ?? "",
   hide: hiddenToLabel(data.isHidden),
   approve: permissionToLabel(data.joinApprovalPolicy),
+  /** Cho phép đăng bài / bình luận ẩn danh trong nhóm */
   anonymous: boolToLabel(data.allowAnonymousJoin),
   post: permissionToLabel(data.postPermission),
   review: boolToLabel(data.postApprovalRequired),
