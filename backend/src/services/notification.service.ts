@@ -1,4 +1,10 @@
-import { NotificationType, Prisma, ReactionType } from "@prisma/client";
+import {
+  GroupMemberRole,
+  GroupMemberStatus,
+  NotificationType,
+  Prisma,
+  ReactionType,
+} from "@prisma/client";
 import prisma from "../utils/prisma";
 import { getFileUrl } from "./file.service";
 import {
@@ -245,6 +251,33 @@ export const notifyPostReaction = async (
   });
 };
 
+export const notifyCommentReaction = async (
+  commentId: number,
+  actorId: number,
+  reactionType: ReactionType,
+): Promise<void> => {
+  const comment = await prisma.comment.findUnique({
+    where: { id: commentId },
+    select: {
+      userId: true,
+      content: true,
+    },
+  });
+
+  if (!comment) return;
+
+  await createNotification({
+    recipientId: comment.userId,
+    actorId,
+    type: NotificationType.COMMENT_REACTION,
+    commentId,
+    metadata: {
+      reactionType,
+      commentSnippet: truncateContent(comment.content),
+    },
+  });
+};
+
 export const notifyPostComment = async (
   postId: number,
   commentId: number,
@@ -332,6 +365,144 @@ export const notifyCommentReply = async (
     commentId,
     groupId: post.groupId,
     metadata,
+  });
+};
+
+export const notifyGroupMemberAdded = async (
+  groupId: number,
+  actorId: number,
+  memberId: number,
+): Promise<void> => {
+  const member = await prisma.groupMember.findUnique({
+    where: {
+      groupId_userId: {
+        groupId,
+        userId: memberId,
+      },
+    },
+    select: {
+      userId: true,
+      group: { select: { groupName: true } },
+    },
+  });
+
+  if (!member) return;
+  await createNotification({
+    recipientId: member.userId,
+    actorId,
+    type: NotificationType.GROUP_MEMBER_ADDED,
+    groupId,
+    metadata: {
+      groupName: member.group?.groupName ?? null,
+    },
+  });
+};
+
+export const notifyGroupMemberKicked = async (
+  groupId: number,
+  actorId: number,
+  memberId: number,
+): Promise<void> => {
+  const group = await prisma.group.findUnique({
+    where: { id: groupId },
+    select: { groupName: true },
+  });
+
+  await createNotification({
+    recipientId: memberId,
+    actorId,
+    type: NotificationType.GROUP_MEMBER_KICKED,
+    groupId,
+    metadata: {
+      groupName: group?.groupName ?? null,
+    },
+  });
+};
+
+export const notifyGroupMemberRoleChanged = async (
+  groupId: number,
+  actorId: number,
+  memberId: number,
+  newRole: GroupMemberRole,
+): Promise<void> => {
+  const member = await prisma.groupMember.findUnique({
+    where: {
+      groupId_userId: {
+        groupId,
+        userId: memberId,
+      },
+    },
+    select: {
+      userId: true,
+      group: { select: { groupName: true } },
+    },
+  });
+  if (!member) return;
+  await createNotification({
+    recipientId: member.userId,
+    actorId,
+    type: NotificationType.GROUP_MEMBER_ROLE_CHANGED,
+    groupId,
+    metadata: {
+      groupName: member.group?.groupName ?? null,
+      newRole,
+    },
+  });
+};
+
+export const notifyGroupMemberStatusChanged = async (
+  groupId: number,
+  actorId: number,
+  memberId: number,
+  newStatus: GroupMemberStatus,
+): Promise<void> => {
+  const member = await prisma.groupMember.findUnique({
+    where: {
+      groupId_userId: {
+        groupId,
+        userId: memberId,
+      },
+    },
+    select: {
+      userId: true,
+      group: { select: { groupName: true } },
+    },
+  });
+
+  if (!member) return;
+  await createNotification({
+    recipientId: member.userId,
+    actorId,
+    type: NotificationType.GROUP_MEMBER_STATUS_CHANGED,
+    groupId,
+    metadata: {
+      groupName: member.group?.groupName ?? null,
+      newStatus,
+    },
+  });
+};
+
+export const notifyGroupMemberRejected = async (
+  groupId: number,
+  actorId: number,
+  memberId: number,
+): Promise<void> => {
+  const member = await prisma.groupMember.findUnique({
+    where: { groupId_userId: { groupId, userId: memberId } },
+    select: {
+      userId: true,
+      group: { select: { groupName: true } },
+    },
+  });
+  if (!member) return;
+  await createNotification({
+    recipientId: member.userId,
+    actorId,
+    type: NotificationType.GROUP_MEMBER_REJECTED,
+    groupId,
+    metadata: {
+      groupName: member.group?.groupName ?? null,
+    },
   });
 };
 

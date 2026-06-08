@@ -1,4 +1,6 @@
 import type { SharedAttachmentItem } from "@/features/chat/types/chat.type";
+import { useState } from "react";
+import Lightbox from "yet-another-react-lightbox";
 
 interface SharedMediaProps {
   media: SharedAttachmentItem[];
@@ -10,6 +12,7 @@ const SharedMedia = ({ media, totalCount, loading }: SharedMediaProps) => {
   const visibleItems = media.slice(0, 6);
   const remaining =
     totalCount > visibleItems.length ? totalCount - visibleItems.length : 0;
+  const [index, setIndex] = useState(-1);
 
   return (
     <div className="space-y-4">
@@ -32,12 +35,10 @@ const SharedMedia = ({ media, totalCount, loading }: SharedMediaProps) => {
               index === visibleItems.length - 1 && remaining > 0;
 
             return (
-              <a
+              <div
                 key={item.id}
-                href={item.fileUrl ?? undefined}
-                target="_blank"
-                rel="noreferrer"
                 className="aspect-square rounded-lg overflow-hidden bg-surface-container-high hover:brightness-90 transition-all cursor-pointer relative"
+                onClick={() => setIndex(index)}
               >
                 {item.attachmentType === "IMAGE" && item.fileUrl ? (
                   <img
@@ -63,11 +64,22 @@ const SharedMedia = ({ media, totalCount, loading }: SharedMediaProps) => {
                     </span>
                   </div>
                 )}
-              </a>
+              </div>
             );
           })}
         </div>
       )}
+
+      <Lightbox
+        index={index}
+        open={index >= 0}
+        close={() => setIndex(-1)}
+        slides={media
+          ?.filter((item) => item.fileUrl)
+          .map((item) => ({
+            src: item.fileUrl!,
+          }))}
+      />
     </div>
   );
 };

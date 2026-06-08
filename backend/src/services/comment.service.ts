@@ -6,7 +6,11 @@ import {
   assertGroupAllowsAnonymousContent,
   maskGroupCommentAuthors,
 } from "../utils/group-anonymous";
-import * as notificationService from "./notification.service";
+import {
+  notifyCommentReaction,
+  notifyCommentReply,
+  notifyPostComment,
+} from "./notification.service";
 
 type GetPostCommentsParams = {
   userId: number;
@@ -448,11 +452,7 @@ export const createCommentService = async ({
     },
   });
 
-  await notificationService
-    .notifyPostComment(postId, comment.id, userId)
-    .catch((error: unknown) => {
-      console.error("notifyPostComment failed:", error);
-    });
+  await notifyPostComment(postId, comment.id, userId);
 
   const formatted = await formatCommentResponse(comment);
   if (!existingPost.groupId) {
@@ -584,11 +584,12 @@ export const replyCommentService = async ({
     },
   });
 
-  await notificationService
-    .notifyCommentReply(parentComment.postId, reply.id, parentCommentId, userId)
-    .catch((error: unknown) => {
-      console.error("notifyCommentReply failed:", error);
-    });
+  await notifyCommentReply(
+    parentComment.postId,
+    reply.id,
+    parentCommentId,
+    userId,
+  );
 
   const formatted = await formatCommentResponse(reply);
   if (!groupId) {
@@ -650,6 +651,8 @@ export const reactCommentService = async ({
     });
 
     const stats = await getCommentReactionStats(commentId);
+
+    await notifyCommentReaction(commentId, userId, reactionType);
 
     return {
       message: "Thả cảm xúc cho comment thành công",

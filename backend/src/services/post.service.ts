@@ -19,7 +19,7 @@ import {
   assertGroupAllowsAnonymousContent,
   maskGroupPostAuthors,
 } from "../utils/group-anonymous";
-import * as notificationService from "./notification.service";
+import { notifyPostPinned, notifyPostReaction } from "./notification.service";
 
 type GetPostListParams = {
   page?: number;
@@ -491,11 +491,7 @@ export const reactPostService = async ({
       {} as Record<string, number>,
     );
 
-    await notificationService
-      .notifyPostReaction(postId, userId, reactionType)
-      .catch((error: unknown) => {
-        console.error("notifyPostReaction failed:", error);
-      });
+    await notifyPostReaction(postId, userId, reactionType);
 
     return {
       message: "Thả cảm xúc thành công",
@@ -818,11 +814,7 @@ export const pinPostByUserId = async (
     },
   });
 
-  await notificationService
-    .notifyPostPinned(postId, userId, isPinned)
-    .catch((error: unknown) => {
-      console.error("notifyPostPinned failed:", error);
-    });
+  await notifyPostPinned(postId, userId, isPinned);
 
   return updated;
 };

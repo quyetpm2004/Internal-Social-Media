@@ -18,7 +18,15 @@ import {
   maskUserForGroupDisplay,
   shouldHideAnonymousAuthor,
 } from "../utils/group-anonymous";
-import * as notificationService from "./notification.service";
+import {
+  notifyGroupMemberAdded,
+  notifyGroupMemberKicked,
+  notifyGroupMemberRejected,
+  notifyGroupMemberRoleChanged,
+  notifyGroupMemberStatusChanged,
+  notifyPostApproved,
+  notifyPostRejected,
+} from "./notification.service";
 
 const ROLE_RANK: Record<GroupMemberRole, number> = {
   [GroupMemberRole.MEMBER]: 1,
@@ -595,6 +603,12 @@ export const addMemberToGroup = async (
           },
         },
       });
+      await notifyGroupMemberStatusChanged(
+        groupId,
+        currentUserId,
+        targetUserId,
+        GroupMemberStatus.ACTIVE,
+      );
       return member;
     }
     throw new Error("User đã là thành viên của nhóm");
@@ -619,10 +633,10 @@ export const addMemberToGroup = async (
     },
   });
 
+  await notifyGroupMemberAdded(groupId, currentUserId, targetUserId);
   return member;
 };
 
-// service
 export const getGroupMembers = async (
   groupId: number,
   userId: number,
@@ -765,6 +779,8 @@ export const removeMemberFromGroup = async (
     },
   });
 
+  await notifyGroupMemberKicked(groupId, currentUserId, userId);
+  console.log("Kicked member group service", userId);
   return true;
 };
 
@@ -832,6 +848,13 @@ export const updateMemberRole = async (
       },
     },
   });
+
+  await notifyGroupMemberRoleChanged(
+    groupId,
+    currentUserId,
+    userId,
+    memberRole,
+  );
 
   return updatedMember;
 };
@@ -1039,6 +1062,7 @@ export const approveJoinRequest = async (
       },
     },
   });
+  await notifyGroupMemberAdded(groupId, currentUserId, targetUserId);
 
   return updated;
 };
@@ -1069,6 +1093,7 @@ export const rejectJoinRequest = async (
       },
     },
   });
+  await notifyGroupMemberRejected(groupId, currentUserId, targetUserId);
 
   return true;
 };
@@ -1646,11 +1671,7 @@ export const approveGroupPost = async (
     },
   });
 
-  await notificationService
-    .notifyPostApproved(postId, groupId, currentUserId)
-    .catch((error: unknown) => {
-      console.error("notifyPostApproved failed:", error);
-    });
+  await notifyPostApproved(postId, groupId, currentUserId);
 
   return updated;
 };
@@ -1685,11 +1706,7 @@ export const rejectGroupPost = async (
     data: { status: PostStatus.DELETED },
   });
 
-  await notificationService
-    .notifyPostRejected(postId, groupId, currentUserId)
-    .catch((error: unknown) => {
-      console.error("notifyPostRejected failed:", error);
-    });
+  await notifyPostRejected(postId, groupId, currentUserId);
 
   return updated;
 };

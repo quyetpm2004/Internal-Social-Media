@@ -10,7 +10,7 @@ import type { AppNotification } from "@/features/notification/types/notification
 import {
   getNotificationLink,
   getNotificationMessage,
-} from "@/features/notification/utils/notification-message";
+} from "@/features/notification/utils/notification-message.tsx";
 import { formatTimeAgo } from "@/utils/formatTimeAgo";
 import { getDefaultAvatarUrl } from "@/lib/utils";
 
@@ -173,8 +173,7 @@ export default function NotificationBell() {
             ) : (
               notifications.map((notification) => {
                 const isUnread = !notification.readAt;
-                const actorName =
-                  notification.actor?.fullName ?? "Hệ thống";
+                const actorName = notification.actor?.fullName ?? "Hệ thống";
                 const avatarUrl =
                   notification.actor?.avatarUrl ??
                   getDefaultAvatarUrl(actorName);

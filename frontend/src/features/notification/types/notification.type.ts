@@ -5,7 +5,13 @@ export type NotificationType =
   | "POST_UNPINNED"
   | "POST_REACTION"
   | "POST_COMMENT"
-  | "COMMENT_REPLY";
+  | "COMMENT_REPLY"
+  | "COMMENT_REACTION"
+  | "GROUP_MEMBER_ADDED"
+  | "GROUP_MEMBER_ROLE_CHANGED"
+  | "GROUP_MEMBER_STATUS_CHANGED"
+  | "GROUP_MEMBER_KICKED"
+  | "GROUP_MEMBER_REJECTED";
 
 export type NotificationActor = {
   id: number;

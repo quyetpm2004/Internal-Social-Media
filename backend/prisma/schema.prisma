@@ -125,6 +125,12 @@ enum NotificationType {
   POST_REACTION
   POST_COMMENT
   COMMENT_REPLY
+  COMMENT_REACTION
+  GROUP_MEMBER_ADDED
+  GROUP_MEMBER_ROLE_CHANGED
+  GROUP_MEMBER_STATUS_CHANGED
+  GROUP_MEMBER_KICKED
+  GROUP_MEMBER_REJECTED
 }
 
 model User {
@@ -504,7 +510,7 @@ model Notification {
   postId      Int?             @map("post_id")
   commentId   Int?             @map("comment_id")
   groupId     Int?             @map("group_id")
-  metadata    Json?
+  metadata    Json? 
   readAt      DateTime?        @map("read_at")
   createdAt   DateTime         @default(now()) @map("created_at")
 
