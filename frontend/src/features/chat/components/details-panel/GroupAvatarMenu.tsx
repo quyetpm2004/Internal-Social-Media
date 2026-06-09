@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Camera, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { chatApi } from "@/features/chat/apis/chat.api";
-import { uploadConversationAvatar } from "@/features/chat/utils/uploadConversationAvatar";
+import { uploadConversationAvatar } from "@/features/chat/utils/upload-conversation-avatar";
 import type { ConversationDetail } from "@/features/chat/types/chat.type";
 
 interface GroupAvatarMenuProps {

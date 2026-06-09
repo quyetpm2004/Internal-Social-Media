@@ -17,7 +17,7 @@ import type {
 } from "@/modules/chat/chat.schema";
 import * as chatService from "@/modules/chat/chat.service";
 import * as chatSearchService from "@/modules/chat/services/chat-search.service";
-import * as presenceService from "@/services/redis/presence.service";
+import * as presenceService from "@/socket/presence.service";
 import {
   emitMembersUpdated,
   emitMessageDeleted,

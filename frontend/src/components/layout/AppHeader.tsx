@@ -201,8 +201,16 @@ export default function AppHeader() {
 
           <button
             type="button"
-            onClick={() => navigate("/messages")}
             className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors active:scale-95 duration-200"
+            aria-label="Tin nhắn"
+          >
+            <MessageCircleCheck size={20} />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate("/messages")}
+            className="p-2 hover:bg-slate-100 md:hidden dark:hover:bg-slate-800 rounded-full transition-colors active:scale-95 duration-200"
             aria-label="Tin nhắn"
           >
             <MessageCircleCheck size={20} />

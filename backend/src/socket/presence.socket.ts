@@ -1,5 +1,5 @@
 import prisma from "@/shared/utils/prisma";
-import * as presenceService from "@/services/redis/presence.service";
+import * as presenceService from "@/socket/presence.service";
 import { getIO } from "@/socket/io";
 import { loadConversationIds } from "@/socket/chat.socket";
 import { conversationRoom, userRoom } from "@/socket/rooms";
