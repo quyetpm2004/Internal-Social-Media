@@ -10,7 +10,7 @@ import postRoutes from "@/modules/post/post.routes";
 import commentRoutes from "@/modules/comment/comment.routes";
 import uploadRoutes from "@/modules/upload/upload.routes";
 import fileRoutes from "@/modules/file/file.routes";
-import groupRoutes from "@/routes/group.routes";
+import groupRoutes from "@/modules/group/group.routes";
 import searchRoutes from "@/modules/search/search.routes";
 import chatRoutes from "@/routes/chat.routes";
 import notificationRoutes from "@/modules/notification/notification.routes";
