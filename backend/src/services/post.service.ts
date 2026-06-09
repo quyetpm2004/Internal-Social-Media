@@ -13,7 +13,7 @@ import { PostContentFormat } from "@/shared/constants/post-content-format";
 import type { PostContentFormat as PostContentFormatType } from "@/shared/constants/post-content-format";
 
 import prisma from "@/shared/utils/prisma";
-import { getFileUrl } from "@/services/file.service";
+import { getFileUrl } from "@/modules/file/file.service";
 import { processPostContent } from "@/shared/utils/sanitize-html";
 import {
   assertGroupAllowsAnonymousContent,

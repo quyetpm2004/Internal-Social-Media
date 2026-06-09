@@ -8,7 +8,7 @@ import {
   signRefreshToken,
   verifyRefreshToken,
 } from "@/shared/utils/jwt";
-import { getFileUrl } from "@/services/file.service";
+import { getFileUrl } from "@/modules/file/file.service";
 
 function generateTokens(payload: JwtPayload) {
   const accessToken = signAccessToken(payload);

@@ -1,6 +1,6 @@
 import { GroupMemberStatus, GroupStatus, Status } from "@prisma/client";
 import prisma from "@/shared/utils/prisma";
-import { getFileUrl } from "@/services/file.service";
+import { getFileUrl } from "@/modules/file/file.service";
 
 const findGroupMember = async (groupId: number, userId: number) => {
   return prisma.groupMember.findUnique({

@@ -10,7 +10,7 @@ import {
   PostStatus,
   PostVisibility,
 } from "@prisma/client";
-import { getFileUrl } from "@/services/file.service";
+import { getFileUrl } from "@/modules/file/file.service";
 import {
   assertGroupAllowsAnonymousContent,
   getGroupViewerContext,

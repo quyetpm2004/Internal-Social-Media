@@ -10,7 +10,7 @@ import {
 } from "@prisma/client";
 import { s3 } from "@/shared/lib/s3";
 import prisma from "@/shared/utils/prisma";
-import { getFileUrl } from "@/services/file.service";
+import { getFileUrl } from "@/modules/file/file.service";
 import {
   getCachedConversationDetail,
   getCachedConversations,

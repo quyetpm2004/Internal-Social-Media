@@ -1,6 +1,6 @@
 import { Status } from "@prisma/client";
 import prisma from "@/shared/utils/prisma";
-import { getFileUrl } from "@/services/file.service";
+import { getFileUrl } from "@/modules/file/file.service";
 
 const MAX_HISTORY = 20;
 const DEFAULT_LIMIT = 20;
