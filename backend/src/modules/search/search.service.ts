@@ -1,6 +1,8 @@
 import { GroupMemberStatus, GroupStatus, Status } from "@prisma/client";
-import prisma from "@/shared/utils/prisma";
+import { AppError } from "@/shared/errors/app-error";
 import { getFileUrl } from "@/modules/file/file.service";
+import type { SearchQuery } from "@/modules/search/search.schema";
+import prisma from "@/shared/utils/prisma";
 
 const findGroupMember = async (groupId: number, userId: number) => {
   return prisma.groupMember.findUnique({
@@ -16,8 +18,6 @@ const countActiveMembers = async (groupId: number) => {
 
 const MAX_HISTORY = 20;
 const DEFAULT_LIMIT = 10;
-
-type SearchType = "all" | "people" | "groups";
 
 const normalizeQuery = (query: unknown) => String(query ?? "").trim();
 
@@ -181,20 +181,11 @@ export const searchAll = async (
   };
 };
 
-export const performSearch = async (
-  userId: number,
-  params: {
-    q?: unknown;
-    type?: unknown;
-    page?: unknown;
-    limit?: unknown;
-  },
-) => {
+export const performSearch = async (userId: number, params: SearchQuery) => {
   const query = normalizeQuery(params.q);
-  const type =
-    (String(params.type ?? "all").toLowerCase() as SearchType) || "all";
-  const page = params.page;
-  const limit = params.limit;
+  const type = params.type ?? "all";
+  const page = params.page ?? 1;
+  const limit = params.limit ?? DEFAULT_LIMIT;
 
   if (!query) {
     return {
@@ -207,27 +198,24 @@ export const performSearch = async (
     };
   }
 
-  const pageNum = Number(page) || 1;
-  const limitNum = Number(limit) || DEFAULT_LIMIT;
-
   if (type === "people") {
-    const result = await searchUsers(userId, query, pageNum, limitNum);
+    const result = await searchUsers(userId, query, page, limit);
     return { query, type, ...result, groups: [], counts: null };
   }
 
   if (type === "groups") {
-    const result = await searchGroups(userId, query, pageNum, limitNum);
+    const result = await searchGroups(userId, query, page, limit);
     return { query, type, users: [], ...result, counts: null };
   }
 
-  const result = await searchAll(userId, query, pageNum, limitNum);
+  const result = await searchAll(userId, query, page, limit);
   return { query, type: "all", ...result };
 };
 
 export const getSearchHistory = async (userId: number, limit = 10) => {
   const take = Math.min(Math.max(Number(limit) || 10, 1), MAX_HISTORY);
 
-  const histories = await prisma.searchHistory.findMany({
+  return prisma.searchHistory.findMany({
     where: { userId },
     orderBy: { searchedAt: "desc" },
     take,
@@ -237,22 +225,20 @@ export const getSearchHistory = async (userId: number, limit = 10) => {
       searchedAt: true,
     },
   });
-
-  return histories;
 };
 
-export const addSearchHistory = async (userId: number, rawQuery: unknown) => {
-  const query = normalizeQuery(rawQuery);
+export const addSearchHistory = async (userId: number, query: string) => {
+  const normalized = normalizeQuery(query);
 
-  if (!query || query.length > 255) {
-    throw new Error("Từ khóa tìm kiếm không hợp lệ");
+  if (!normalized || normalized.length > 255) {
+    throw new AppError(400, "Từ khóa tìm kiếm không hợp lệ");
   }
 
   await prisma.searchHistory.upsert({
     where: {
-      userId_query: { userId, query },
+      userId_query: { userId, query: normalized },
     },
-    create: { userId, query },
+    create: { userId, query: normalized },
     update: { searchedAt: new Date() },
   });
 
@@ -267,7 +253,7 @@ export const addSearchHistory = async (userId: number, rawQuery: unknown) => {
     });
 
     await prisma.searchHistory.deleteMany({
-      where: { id: { in: oldest.map((h: { id: number }) => h.id) } },
+      where: { id: { in: oldest.map((h) => h.id) } },
     });
   }
 
@@ -283,7 +269,7 @@ export const deleteSearchHistoryItem = async (
   });
 
   if (deleted.count === 0) {
-    throw new Error("Không tìm thấy lịch sử tìm kiếm");
+    throw new AppError(404, "Không tìm thấy lịch sử tìm kiếm");
   }
 };
 

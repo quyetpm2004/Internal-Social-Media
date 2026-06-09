@@ -1,40 +1,35 @@
 import { HeadObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { AppError } from "@/shared/errors/app-error";
 import { s3 } from "@/shared/lib/s3";
 import prisma from "@/shared/utils/prisma";
+import type {
+  ConfirmUploadInput,
+  CreateUploadUrlInput,
+  UploadPurpose,
+} from "@/modules/upload/upload.schema";
 import {
   getConversationMemberUserIds,
   invalidateConversationForMembers,
 } from "@/services/redis/chat-cache.service";
 
-type UploadPurpose =
-  | "avatar"
-  | "post-image"
-  | "post-video"
-  | "post-file"
-  | "group-cover"
-  | "conversation-avatar"
-  | "message-image"
-  | "message-video"
-  | "message-file";
-
-type CreateUploadUrlsInput = {
-  userId: string;
-  files: {
-    purpose: UploadPurpose;
-    fileName: string;
-    fileType: string;
-    fileSize: number;
-  }[];
-};
-
 interface UploadRule {
   maxSize: number;
-  allowedTypes: string[]; // Khai báo là mảng string chung
+  allowedTypes: string[];
   folder: string;
 }
 
-export async function createUploadUrls(input: CreateUploadUrlsInput) {
+type CreateUploadUrlsParams = {
+  userId: number;
+  files: CreateUploadUrlInput["files"];
+};
+
+type ConfirmUploadsParams = {
+  userId: number;
+  items: ConfirmUploadInput["items"];
+};
+
+export async function createUploadUrls(input: CreateUploadUrlsParams) {
   const { userId, files } = input;
 
   const uploadRules: Record<UploadPurpose, UploadRule> = {
@@ -43,31 +38,26 @@ export async function createUploadUrls(input: CreateUploadUrlsInput) {
       allowedTypes: ["image/jpeg", "image/png", "image/webp"],
       folder: "users/avatar",
     },
-
     "group-cover": {
       maxSize: 10 * 1024 * 1024,
       allowedTypes: ["image/jpeg", "image/png", "image/webp"],
       folder: "groups/cover",
     },
-
     "conversation-avatar": {
       maxSize: 2 * 1024 * 1024,
       allowedTypes: ["image/jpeg", "image/png", "image/webp"],
       folder: "chat/avatars",
     },
-
     "post-image": {
       maxSize: 10 * 1024 * 1024,
       allowedTypes: ["image/jpeg", "image/png", "image/webp"],
       folder: "posts/images",
     },
-
     "post-video": {
       maxSize: 200 * 1024 * 1024,
       allowedTypes: ["video/mp4", "video/webm"],
       folder: "posts/videos",
     },
-
     "post-file": {
       maxSize: 20 * 1024 * 1024,
       allowedTypes: [
@@ -85,19 +75,16 @@ export async function createUploadUrls(input: CreateUploadUrlsInput) {
       ],
       folder: "posts/files",
     },
-
     "message-image": {
       maxSize: 10 * 1024 * 1024,
       allowedTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
       folder: "chat/images",
     },
-
     "message-video": {
       maxSize: 100 * 1024 * 1024,
       allowedTypes: ["video/mp4", "video/webm"],
       folder: "chat/videos",
     },
-
     "message-file": {
       maxSize: 20 * 1024 * 1024,
       allowedTypes: [
@@ -123,22 +110,18 @@ export async function createUploadUrls(input: CreateUploadUrlsInput) {
       const rule = uploadRules[file.purpose];
 
       if (!rule.allowedTypes.includes(file.fileType)) {
-        throw new Error("FILE_TYPE_NOT_ALLOWED");
+        throw new AppError(400, "File type not allowed");
       }
 
       if (file.fileSize > rule.maxSize) {
-        throw new Error("FILE_TOO_LARGE");
+        throw new AppError(400, "File too large");
       }
 
       const extension = file.fileName.split(".").pop();
-
       const key = `${rule.folder}/${userId}/${crypto.randomUUID()}.${extension}`;
 
       let attachmentId: number | null = null;
 
-      /**
-       * Create DB record for post media
-       */
       if (file.purpose.startsWith("post-")) {
         const attachment = await prisma.postAttachment.create({
           data: {
@@ -151,7 +134,7 @@ export async function createUploadUrls(input: CreateUploadUrlsInput) {
                   ? "VIDEO"
                   : "FILE",
             mimeType: file.fileType,
-            uploadedById: +userId,
+            uploadedById: userId,
             fileSize: file.fileSize,
             status: "PENDING",
           },
@@ -160,9 +143,6 @@ export async function createUploadUrls(input: CreateUploadUrlsInput) {
         attachmentId = attachment.id;
       }
 
-      /**
-       * Create DB record for chat message attachments (linked later by sendMessage)
-       */
       if (file.purpose.startsWith("message-")) {
         const attachment = await prisma.messageAttachment.create({
           data: {
@@ -175,7 +155,7 @@ export async function createUploadUrls(input: CreateUploadUrlsInput) {
                   ? "VIDEO"
                   : "FILE",
             mimeType: file.fileType,
-            uploadedById: +userId,
+            uploadedById: userId,
             fileSize: file.fileSize,
             status: "PENDING",
           },
@@ -206,25 +186,11 @@ export async function createUploadUrls(input: CreateUploadUrlsInput) {
     }),
   );
 
-  return {
-    items,
-  };
+  return { items };
 }
 
-type ConfirmUploadInput = {
-  userId: number;
-  items: {
-    key: string;
-    purpose: UploadPurpose;
-    attachmentId?: number;
-    groupId?: string;
-    conversationId?: string;
-  }[];
-};
-
-export async function confirmUploads(input: ConfirmUploadInput) {
+export async function confirmUploads(input: ConfirmUploadsParams) {
   const { userId, items } = input;
-
   const results = [];
 
   for (const item of items) {
@@ -238,58 +204,38 @@ export async function confirmUploads(input: ConfirmUploadInput) {
     );
 
     if (!headObject.ContentLength || !headObject.ContentType) {
-      throw new Error("INVALID_FILE");
+      throw new AppError(400, "Invalid file");
     }
 
-    /**
-     * AVATAR
-     */
     if (purpose === "avatar") {
       await prisma.profile.upsert({
-        where: {
-          userId: userId,
-        },
-
-        update: {
-          avatarKey: key,
-        },
-
-        create: {
-          userId: userId,
-          avatarKey: key,
-        },
+        where: { userId },
+        update: { avatarKey: key },
+        create: { userId, avatarKey: key },
       });
 
-      results.push({
-        type: "avatar",
-        key,
-      });
-
+      results.push({ type: "avatar", key });
       continue;
     }
 
-    /**
-     * CONVERSATION AVATAR (chat group)
-     */
     if (purpose === "conversation-avatar") {
       if (!conversationId) {
-        throw new Error("CONVERSATION_ID_REQUIRED");
+        throw new AppError(400, "Conversation ID is required");
       }
 
-      const convId = Number(conversationId);
       const conversation = await prisma.conversation.findUnique({
-        where: { id: convId },
+        where: { id: conversationId },
         select: { type: true },
       });
 
       if (!conversation || conversation.type !== "GROUP") {
-        throw new Error("CONVERSATION_NOT_FOUND");
+        throw new AppError(404, "Conversation not found");
       }
 
       const member = await prisma.conversationMember.findUnique({
         where: {
           conversationId_userId: {
-            conversationId: convId,
+            conversationId,
             userId,
           },
         },
@@ -297,69 +243,50 @@ export async function confirmUploads(input: ConfirmUploadInput) {
       });
 
       if (!member || member.leftAt || member.role !== "ADMIN") {
-        throw new Error("FORBIDDEN");
+        throw new AppError(403, "Forbidden");
       }
 
       await prisma.conversation.update({
-        where: { id: convId },
+        where: { id: conversationId },
         data: { avatarKey: key },
       });
 
-      const memberUserIds = await getConversationMemberUserIds(convId);
-      await invalidateConversationForMembers(convId, memberUserIds);
+      const memberUserIds = await getConversationMemberUserIds(conversationId);
+      await invalidateConversationForMembers(conversationId, memberUserIds);
 
       results.push({
         type: "conversation-avatar",
         key,
-        conversationId: convId,
+        conversationId,
       });
-
       continue;
     }
 
-    /**
-     * GROUP COVER
-     */
     if (purpose === "group-cover") {
       if (!groupId) {
-        throw new Error("GROUP_ID_REQUIRED");
+        throw new AppError(400, "Group ID is required");
       }
 
       await prisma.group.update({
-        where: {
-          id: +groupId,
-        },
-
-        data: {
-          coverKey: key,
-        },
+        where: { id: groupId },
+        data: { coverKey: key },
       });
 
-      results.push({
-        type: "group-cover",
-        key,
-      });
-
+      results.push({ type: "group-cover", key });
       continue;
     }
 
-    /**
-     * MESSAGE MEDIA / FILE
-     */
     if (purpose.startsWith("message-")) {
       if (!attachmentId) {
-        throw new Error("ATTACHMENT_ID_REQUIRED");
+        throw new AppError(400, "Attachment ID is required");
       }
 
       const attachment = await prisma.messageAttachment.findFirst({
-        where: {
-          id: attachmentId,
-          status: "PENDING",
-        },
+        where: { id: attachmentId, status: "PENDING" },
       });
 
       if (!attachment) {
-        throw new Error("ATTACHMENT_NOT_FOUND");
+        throw new AppError(404, "Attachment not found");
       }
 
       const updatedAttachment = await prisma.messageAttachment.update({
@@ -375,38 +302,26 @@ export async function confirmUploads(input: ConfirmUploadInput) {
         type: "message-attachment",
         attachment: updatedAttachment,
       });
-
       continue;
     }
 
-    /**
-     * POST MEDIA
-     */
     if (!attachmentId) {
-      throw new Error("ATTACHMENT_ID_REQUIRED");
+      throw new AppError(400, "Attachment ID is required");
     }
 
     const attachment = await prisma.postAttachment.findFirst({
-      where: {
-        id: attachmentId,
-        status: "PENDING",
-      },
+      where: { id: attachmentId, status: "PENDING" },
     });
 
     if (!attachment) {
-      throw new Error("ATTACHMENT_NOT_FOUND");
+      throw new AppError(404, "Attachment not found");
     }
 
     const updatedAttachment = await prisma.postAttachment.update({
-      where: {
-        id: attachment.id,
-      },
-
+      where: { id: attachment.id },
       data: {
         mimeType: headObject.ContentType,
-
         fileSize: headObject.ContentLength,
-
         status: "READY",
       },
     });
@@ -417,7 +332,5 @@ export async function confirmUploads(input: ConfirmUploadInput) {
     });
   }
 
-  return {
-    items: results,
-  };
+  return { items: results };
 }
