@@ -12,6 +12,7 @@ import {
 import { PostContentFormat } from "@/shared/constants/post-content-format";
 import type { PostContentFormat as PostContentFormatType } from "@/shared/constants/post-content-format";
 
+import { AppError } from "@/shared/errors/app-error";
 import prisma from "@/shared/utils/prisma";
 import { getFileUrl } from "@/modules/file/file.service";
 import { processPostContent } from "@/shared/utils/sanitize-html";
@@ -22,7 +23,7 @@ import {
 import {
   notifyPostPinned,
   notifyPostReaction,
-} from "@/services/notification.service";
+} from "@/modules/notification/notification.service";
 
 type GetPostListParams = {
   page?: number;
@@ -276,11 +277,11 @@ export const createPostService = async ({
     });
 
     if (!existingGroup) {
-      throw new Error("GROUP_NOT_FOUND");
+      throw new AppError(404, "GROUP_NOT_FOUND");
     }
 
     if (existingGroup.status !== GroupStatus.ACTIVE) {
-      throw new Error("Nhóm không hoạt động");
+      throw new AppError(400, "Nhóm không hoạt động");
     }
 
     const membership = await prisma.groupMember.findUnique({
@@ -290,14 +291,14 @@ export const createPostService = async ({
     });
 
     if (!membership || membership.status !== GroupMemberStatus.ACTIVE) {
-      throw new Error("Bạn phải là thành viên nhóm");
+      throw new AppError(400, "Bạn phải là thành viên nhóm");
     }
 
     if (
       existingGroup.postPermission === GroupPermission.ADMIN_ONLY &&
       membership.memberRole !== GroupMemberRole.ADMIN
     ) {
-      throw new Error("Chỉ quản trị viên mới có thể đăng bài trong nhóm này");
+      throw new AppError(400, "Chỉ quản trị viên mới có thể đăng bài trong nhóm này");
     }
 
     await assertGroupAllowsAnonymousContent(groupId, isAnonymous);
@@ -328,7 +329,7 @@ export const createPostService = async ({
     });
 
     if (attachments.length !== attachmentIds.length) {
-      throw new Error("INVALID_ATTACHMENTS");
+      throw new AppError(400, "INVALID_ATTACHMENTS");
     }
   }
 
@@ -429,7 +430,7 @@ export const reactPostService = async ({
   });
 
   if (!existingUser) {
-    throw new Error("Người dùng không tồn tại");
+    throw new AppError(404, "Người dùng không tồn tại");
   }
 
   const existingPost = await prisma.post.findUnique({
@@ -441,11 +442,11 @@ export const reactPostService = async ({
   });
 
   if (!existingPost) {
-    throw new Error("Bài viết không tồn tại");
+    throw new AppError(404, "Bài viết không tồn tại");
   }
 
   if (existingPost.status !== "ACTIVE") {
-    throw new Error("Bài viết không khả dụng để tương tác");
+    throw new AppError(400, "Bài viết không khả dụng để tương tác");
   }
 
   const existingReaction = await prisma.reaction.findUnique({
@@ -623,15 +624,15 @@ export const updatePostService = async ({
   });
 
   if (!existingPost) {
-    throw new Error("Bài viết không tồn tại");
+    throw new AppError(404, "Bài viết không tồn tại");
   }
 
   if (existingPost.status !== "ACTIVE") {
-    throw new Error("Bài viết không khả dụng để chỉnh sửa");
+    throw new AppError(400, "Bài viết không khả dụng để chỉnh sửa");
   }
 
   if (existingPost.userId !== userId) {
-    throw new Error("Bạn không có quyền sửa bài viết này");
+    throw new AppError(403, "Bạn không có quyền sửa bài viết này");
   }
 
   const processed = processPostContent(content, contentFormat);
@@ -677,15 +678,15 @@ export const deletePostService = async (userId: number, postId: number) => {
   });
 
   if (!existingPost) {
-    throw new Error("Bài viết không tồn tại");
+    throw new AppError(404, "Bài viết không tồn tại");
   }
 
   if (existingPost.status !== "ACTIVE") {
-    throw new Error("Bài viết không khả dụng để xóa");
+    throw new AppError(400, "Bài viết không khả dụng để xóa");
   }
 
   if (existingPost.userId !== userId) {
-    throw new Error("Bạn không có quyền xóa bài viết này");
+    throw new AppError(403, "Bạn không có quyền xóa bài viết này");
   }
 
   await prisma.post.delete({
@@ -737,7 +738,7 @@ export const getPostById = async (postId: number, userId: number) => {
     },
   });
   if (!existingPost) {
-    throw new Error("Post không tồn tại");
+    throw new AppError(404, "Post không tồn tại");
   }
 
   const attachmentsWithUrl = await Promise.all(
@@ -782,7 +783,7 @@ export const pinPostByUserId = async (
   });
 
   if (!post || post.groupId !== groupId) {
-    throw new Error("Không tìm thấy bài post");
+    throw new AppError(404, "Không tìm thấy bài post");
   }
 
   if (groupId === null) {
@@ -793,7 +794,7 @@ export const pinPostByUserId = async (
     });
 
     if (!currentUser || currentUser.role !== Role.ADMIN) {
-      throw new Error("Bạn không có quyền thực hiện thao tác này");
+      throw new AppError(403, "Bạn không có quyền thực hiện thao tác này");
     }
   } else {
     const member = await prisma.groupMember.findFirst({
@@ -804,7 +805,7 @@ export const pinPostByUserId = async (
     });
 
     if (!member || member.memberRole === GroupMemberRole.MEMBER) {
-      throw new Error("Bạn không có quyền thực hiện thao tác này");
+      throw new AppError(403, "Bạn không có quyền thực hiện thao tác này");
     }
   }
 

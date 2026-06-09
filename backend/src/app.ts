@@ -6,14 +6,14 @@ import userRoutes from "@/modules/user/user.routes";
 import departmentRoutes from "@/modules/department/department.routes";
 import positionRoutes from "@/modules/position/position.routes";
 import dotenv from "dotenv";
-import postRoutes from "@/routes/post.routes";
-import commentRoutes from "@/routes/comment.route";
+import postRoutes from "@/modules/post/post.routes";
+import commentRoutes from "@/modules/comment/comment.routes";
 import uploadRoutes from "@/modules/upload/upload.routes";
 import fileRoutes from "@/modules/file/file.routes";
 import groupRoutes from "@/routes/group.routes";
 import searchRoutes from "@/modules/search/search.routes";
 import chatRoutes from "@/routes/chat.routes";
-import notificationRoutes from "@/routes/notification.routes";
+import notificationRoutes from "@/modules/notification/notification.routes";
 import { errorMiddleware } from "@/shared/middlewares/error.middleware";
 dotenv.config();
 

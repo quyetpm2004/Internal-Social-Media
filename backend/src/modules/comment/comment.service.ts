@@ -1,5 +1,6 @@
 import { ReactionType } from "@prisma/client";
 
+import { AppError } from "@/shared/errors/app-error";
 import prisma from "@/shared/utils/prisma";
 import { getFileUrl } from "@/modules/file/file.service";
 import {
@@ -10,7 +11,7 @@ import {
   notifyCommentReaction,
   notifyCommentReply,
   notifyPostComment,
-} from "@/services/notification.service";
+} from "@/modules/notification/notification.service";
 
 type GetPostCommentsParams = {
   userId: number;
@@ -148,11 +149,11 @@ export const getPostCommentsService = async ({
   });
 
   if (!existingPost) {
-    throw new Error("Bài viết không tồn tại");
+    throw new AppError(404, "Bài viết không tồn tại");
   }
 
   if (existingPost.status !== "ACTIVE") {
-    throw new Error("Bài viết không khả dụng");
+    throw new AppError(400, "Bài viết không khả dụng");
   }
 
   const comments = await prisma.comment.findMany({
@@ -257,11 +258,11 @@ export const getCommentRepliesService = async ({
   });
 
   if (!existingComment) {
-    throw new Error("Comment không tồn tại");
+    throw new AppError(404, "Comment không tồn tại");
   }
 
   if (existingComment.status !== "ACTIVE") {
-    throw new Error("Comment không khả dụng");
+    throw new AppError(400, "Comment không khả dụng");
   }
 
   const replies = await prisma.comment.findMany({
@@ -362,22 +363,22 @@ export const createCommentService = async ({
   ]);
 
   if (!existingUser) {
-    throw new Error("Người dùng không tồn tại");
+    throw new AppError(404, "Người dùng không tồn tại");
   }
 
   if (!existingPost) {
-    throw new Error("Bài viết không tồn tại");
+    throw new AppError(404, "Bài viết không tồn tại");
   }
 
   if (existingPost.status !== "ACTIVE") {
-    throw new Error("Bài viết không khả dụng");
+    throw new AppError(400, "Bài viết không khả dụng");
   }
 
   const isAnonymous = wantsAnonymous === true;
   if (existingPost.groupId) {
     await assertGroupAllowsAnonymousContent(existingPost.groupId, isAnonymous);
   } else if (isAnonymous) {
-    throw new Error("Chỉ có thể bình luận ẩn danh trong nhóm");
+    throw new AppError(400, "Chỉ có thể bình luận ẩn danh trong nhóm");
   }
 
   const uniqueMentionedUserIds = [
@@ -395,7 +396,7 @@ export const createCommentService = async ({
     });
 
     if (mentionedUsers.length !== uniqueMentionedUserIds.length) {
-      throw new Error("Có người dùng được mention không tồn tại");
+      throw new AppError(404, "Có người dùng được mention không tồn tại");
     }
   }
 
@@ -493,15 +494,15 @@ export const replyCommentService = async ({
   ]);
 
   if (!existingUser) {
-    throw new Error("Người dùng không tồn tại");
+    throw new AppError(404, "Người dùng không tồn tại");
   }
 
   if (!parentComment) {
-    throw new Error("Comment cha không tồn tại");
+    throw new AppError(404, "Comment cha không tồn tại");
   }
 
   if (parentComment.status !== "ACTIVE") {
-    throw new Error("Comment cha không khả dụng");
+    throw new AppError(400, "Comment cha không khả dụng");
   }
 
   const isAnonymous = wantsAnonymous === true;
@@ -509,7 +510,7 @@ export const replyCommentService = async ({
   if (groupId) {
     await assertGroupAllowsAnonymousContent(groupId, isAnonymous);
   } else if (isAnonymous) {
-    throw new Error("Chỉ có thể bình luận ẩn danh trong nhóm");
+    throw new AppError(400, "Chỉ có thể bình luận ẩn danh trong nhóm");
   }
 
   const uniqueMentionedUserIds = [
@@ -527,7 +528,7 @@ export const replyCommentService = async ({
     });
 
     if (mentionedUsers.length !== uniqueMentionedUserIds.length) {
-      throw new Error("Có người dùng được mention không tồn tại");
+      throw new AppError(404, "Có người dùng được mention không tồn tại");
     }
   }
 
@@ -620,15 +621,15 @@ export const reactCommentService = async ({
   ]);
 
   if (!existingUser) {
-    throw new Error("Người dùng không tồn tại");
+    throw new AppError(404, "Người dùng không tồn tại");
   }
 
   if (!existingComment) {
-    throw new Error("Comment không tồn tại");
+    throw new AppError(404, "Comment không tồn tại");
   }
 
   if (existingComment.status !== "ACTIVE") {
-    throw new Error("Comment không khả dụng để tương tác");
+    throw new AppError(400, "Comment không khả dụng để tương tác");
   }
 
   const existingReaction = await prisma.reaction.findUnique({
@@ -729,15 +730,15 @@ export const updateCommentService = async ({
   });
 
   if (!existingComment) {
-    throw new Error("Comment không tồn tại");
+    throw new AppError(404, "Comment không tồn tại");
   }
 
   if (existingComment.status !== "ACTIVE") {
-    throw new Error("Comment không khả dụng để chỉnh sửa");
+    throw new AppError(400, "Comment không khả dụng để chỉnh sửa");
   }
 
   if (existingComment.userId !== userId) {
-    throw new Error("Bạn không có quyền sửa comment này");
+    throw new AppError(403, "Bạn không có quyền sửa comment này");
   }
 
   const uniqueMentionedUserIds = [
@@ -755,7 +756,7 @@ export const updateCommentService = async ({
     });
 
     if (mentionedUsers.length !== uniqueMentionedUserIds.length) {
-      throw new Error("Có người dùng được mention không tồn tại");
+      throw new AppError(404, "Có người dùng được mention không tồn tại");
     }
   }
 
@@ -830,15 +831,15 @@ export const deleteCommentService = async ({
   });
 
   if (!existingComment) {
-    throw new Error("Comment không tồn tại");
+    throw new AppError(404, "Comment không tồn tại");
   }
 
   if (existingComment.status !== "ACTIVE") {
-    throw new Error("Comment đã bị xóa hoặc không khả dụng");
+    throw new AppError(400, "Comment đã bị xóa hoặc không khả dụng");
   }
 
   if (existingComment.userId !== userId) {
-    throw new Error("Bạn không có quyền xóa comment này");
+    throw new AppError(403, "Bạn không có quyền xóa comment này");
   }
 
   await prisma.$transaction([

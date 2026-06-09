@@ -5,6 +5,7 @@ import {
   Prisma,
   ReactionType,
 } from "@prisma/client";
+import { AppError } from "@/shared/errors/app-error";
 import prisma from "@/shared/utils/prisma";
 import { getFileUrl } from "@/modules/file/file.service";
 import {
@@ -650,7 +651,7 @@ export const markNotificationRead = async (
   });
 
   if (!existing) {
-    throw new Error("Không tìm thấy thông báo");
+    throw new AppError(404, "Không tìm thấy thông báo");
   }
 
   if (existing.readAt) {

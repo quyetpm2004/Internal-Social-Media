@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import * as groupService from "@/services/group.service";
-import { getPostListService } from "@/services/post.service";
+import { getPostListService } from "@/modules/post/post.service";
 
 export const createGroup = async (req: Request, res: Response) => {
   try {

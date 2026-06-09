@@ -26,7 +26,7 @@ import {
   notifyGroupMemberStatusChanged,
   notifyPostApproved,
   notifyPostRejected,
-} from "@/services/notification.service";
+} from "@/modules/notification/notification.service";
 
 const ROLE_RANK: Record<GroupMemberRole, number> = {
   [GroupMemberRole.MEMBER]: 1,
