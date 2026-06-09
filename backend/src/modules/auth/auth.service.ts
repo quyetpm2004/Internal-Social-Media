@@ -1,4 +1,6 @@
 import bcrypt from "bcrypt";
+import { Role } from "@prisma/client";
+import { AppError } from "@/shared/errors/app-error";
 import prisma from "@/shared/utils/prisma";
 import {
   JwtPayload,
@@ -6,7 +8,6 @@ import {
   signRefreshToken,
   verifyRefreshToken,
 } from "@/shared/utils/jwt";
-import { Role } from "@prisma/client";
 import { getFileUrl } from "@/services/file.service";
 
 function generateTokens(payload: JwtPayload) {
@@ -26,7 +27,7 @@ export async function register(
   });
 
   if (existingUser) {
-    throw new Error("Email đã tồn tại");
+    throw new AppError(400, "Email đã tồn tại");
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -77,13 +78,13 @@ export async function login(email: string, password: string) {
   });
 
   if (!user) {
-    throw new Error("Email hoặc mật khẩu không đúng");
+    throw new AppError(401, "Email hoặc mật khẩu không đúng");
   }
 
   const isMatch = await bcrypt.compare(password, user.password);
 
   if (!isMatch) {
-    throw new Error("Email hoặc mật khẩu không đúng");
+    throw new AppError(401, "Email hoặc mật khẩu không đúng");
   }
 
   const payload: JwtPayload = {
@@ -119,7 +120,7 @@ export async function login(email: string, password: string) {
 
 export async function refresh(refreshToken: string) {
   if (!refreshToken) {
-    throw new Error("Refresh token không tồn tại");
+    throw new AppError(401, "Refresh token không tồn tại");
   }
 
   const storedToken = await prisma.refreshToken.findFirst({
@@ -128,14 +129,19 @@ export async function refresh(refreshToken: string) {
   });
 
   if (!storedToken) {
-    throw new Error("Refresh token không hợp lệ");
+    throw new AppError(401, "Refresh token không hợp lệ");
   }
 
   if (storedToken.expiresAt < new Date()) {
-    throw new Error("Refresh token đã hết hạn");
+    throw new AppError(401, "Refresh token đã hết hạn");
   }
 
-  const decoded = verifyRefreshToken(refreshToken);
+  let decoded: JwtPayload;
+  try {
+    decoded = verifyRefreshToken(refreshToken);
+  } catch {
+    throw new AppError(401, "Refresh token không hợp lệ");
+  }
 
   const payload: JwtPayload = {
     id: decoded.id,
@@ -174,7 +180,7 @@ export async function refresh(refreshToken: string) {
 
 export async function logout(refreshToken: string) {
   if (!refreshToken) {
-    throw new Error("Refresh token không tồn tại");
+    throw new AppError(400, "Refresh token không tồn tại");
   }
 
   await prisma.refreshToken.deleteMany({
@@ -196,13 +202,13 @@ export async function getMe(userId: number) {
     },
   });
 
-  const avatarUrl = user?.profile?.avatarKey
+  if (!user) {
+    throw new AppError(404, "Người dùng không tồn tại");
+  }
+
+  const avatarUrl = user.profile?.avatarKey
     ? await getFileUrl(user.profile.avatarKey, 7 * 24 * 60 * 60)
     : null;
-
-  if (!user) {
-    throw new Error("Người dùng không tồn tại");
-  }
 
   return {
     id: user.id,
