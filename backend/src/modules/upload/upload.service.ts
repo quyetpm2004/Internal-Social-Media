@@ -11,7 +11,7 @@ import type {
 import {
   getConversationMemberUserIds,
   invalidateConversationForMembers,
-} from "@/services/redis/chat-cache.service";
+} from "@/modules/chat/services/chat-cache.service";
 
 interface UploadRule {
   maxSize: number;

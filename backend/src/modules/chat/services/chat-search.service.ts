@@ -1,11 +1,10 @@
 import { Status } from "@prisma/client";
-import prisma from "@/shared/utils/prisma";
+import { AppError } from "@/shared/errors/app-error";
 import { getFileUrl } from "@/modules/file/file.service";
+import prisma from "@/shared/utils/prisma";
 
 const MAX_HISTORY = 20;
 const DEFAULT_LIMIT = 20;
-
-const normalizeQuery = (query: unknown) => String(query ?? "").trim();
 
 const parsePagination = (page: unknown, limit: unknown) => {
   const currentPage = Math.max(Number(page) || 1, 1);
@@ -110,16 +109,10 @@ export const getChatSearchHistory = async (userId: number, limit = 10) => {
 
 export const addChatSearchHistory = async (
   userId: number,
-  rawTargetUserId: unknown,
+  targetUserId: number,
 ) => {
-  const targetUserId = Number(rawTargetUserId);
-
-  if (!Number.isInteger(targetUserId) || targetUserId <= 0) {
-    throw new Error("Người dùng không hợp lệ");
-  }
-
   if (targetUserId === userId) {
-    throw new Error("Không thể lưu lịch sử với chính bạn");
+    throw new AppError(400, "Không thể lưu lịch sử với chính bạn");
   }
 
   const targetUser = await prisma.user.findFirst({
@@ -128,7 +121,7 @@ export const addChatSearchHistory = async (
   });
 
   if (!targetUser) {
-    throw new Error("Không tìm thấy người dùng");
+    throw new AppError(404, "Không tìm thấy người dùng");
   }
 
   await prisma.chatSearchHistory.upsert({
@@ -166,6 +159,6 @@ export const deleteChatSearchHistoryItem = async (
   });
 
   if (deleted.count === 0) {
-    throw new Error("Không tìm thấy lịch sử tìm kiếm");
+    throw new AppError(404, "Không tìm thấy lịch sử tìm kiếm");
   }
 };

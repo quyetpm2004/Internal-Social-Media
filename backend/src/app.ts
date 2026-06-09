@@ -12,7 +12,7 @@ import uploadRoutes from "@/modules/upload/upload.routes";
 import fileRoutes from "@/modules/file/file.routes";
 import groupRoutes from "@/modules/group/group.routes";
 import searchRoutes from "@/modules/search/search.routes";
-import chatRoutes from "@/routes/chat.routes";
+import chatRoutes from "@/modules/chat/chat.routes";
 import notificationRoutes from "@/modules/notification/notification.routes";
 import { errorMiddleware } from "@/shared/middlewares/error.middleware";
 dotenv.config();
