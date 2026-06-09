@@ -3,8 +3,9 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRoutes from "@/routes/auth.routes";
 import userRoutes from "@/routes/user.routes";
-import departmentRoutes from "@/routes/department.routes";
-import positionRoutes from "@/routes/position.routes";
+import departmentRoutes from "@/modules/department/department.routes";
+import positionRoutes from "@/modules/position/position.routes";
+import { errorMiddleware } from "@/shared/middlewares/error.middleware";
 import dotenv from "dotenv";
 import postRoutes from "@/routes/post.routes";
 import commentRoutes from "@/routes/comment.route";
@@ -45,5 +46,7 @@ app.use("/api/groups", groupRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/notifications", notificationRoutes);
+
+app.use(errorMiddleware);
 
 export default app;
