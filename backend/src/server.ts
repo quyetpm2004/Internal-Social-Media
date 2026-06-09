@@ -1,9 +1,9 @@
 import http from "http";
-import { env } from "./config/env";
-import app from "./app";
-import prisma from "./utils/prisma";
-import { connectRedis, disconnectRedis } from "./utils/redis";
-import { initSocket } from "./socket";
+import { env } from "@/configs/env";
+import app from "@/app";
+import prisma from "@/shared/utils/prisma";
+import { connectRedis, disconnectRedis } from "@/shared/utils/redis";
+import { initSocket } from "@/socket";
 
 const startServer = async () => {
   try {

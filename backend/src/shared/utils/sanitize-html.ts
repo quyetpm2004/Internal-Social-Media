@@ -2,7 +2,7 @@ import DOMPurify, { type Config } from "isomorphic-dompurify";
 import {
   PostContentFormat,
   type PostContentFormat as PostContentFormatType,
-} from "../constants/post-content-format";
+} from "@/shared/constants/post-content-format";
 import { PostContentError } from "./post-content-error";
 
 let styleHookInstalled = false;
@@ -89,7 +89,10 @@ export function processPostContent(
 
   if (format === PostContentFormat.PLAIN) {
     if (!trimmed) {
-      throw new PostContentError("Nội dung bài viết không được để trống", "CONTENT_EMPTY");
+      throw new PostContentError(
+        "Nội dung bài viết không được để trống",
+        "CONTENT_EMPTY",
+      );
     }
     return {
       content: trimmed,
@@ -100,7 +103,10 @@ export function processPostContent(
   const sanitized = sanitizePostHtml(trimmed);
 
   if (isRichTextEmpty(sanitized)) {
-    throw new PostContentError("Nội dung bài viết không được để trống", "CONTENT_EMPTY");
+    throw new PostContentError(
+      "Nội dung bài viết không được để trống",
+      "CONTENT_EMPTY",
+    );
   }
 
   return {

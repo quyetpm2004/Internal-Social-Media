@@ -1,5 +1,5 @@
-import { getRedis, isRedisEnabled } from "../../utils/redis";
-import prisma from "../../utils/prisma";
+import { getRedis, isRedisEnabled } from "@/shared/utils/redis";
+import prisma from "@/shared/utils/prisma";
 
 export const CHAT_CACHE_TTL = {
   CONVERSATIONS: 60,

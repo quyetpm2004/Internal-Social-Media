@@ -1,5 +1,5 @@
 import jwt, { SignOptions } from "jsonwebtoken";
-import { env } from "../config/env";
+import { env } from "@/configs/env";
 
 export interface JwtPayload {
   id: number;

@@ -1,13 +1,13 @@
 import bcrypt from "bcrypt";
-import prisma from "../utils/prisma";
+import prisma from "@/shared/utils/prisma";
 import {
   JwtPayload,
   signAccessToken,
   signRefreshToken,
   verifyRefreshToken,
-} from "../utils/jwt";
+} from "@/shared/utils/jwt";
 import { Role } from "@prisma/client";
-import { getFileUrl } from "./file.service";
+import { getFileUrl } from "@/services/file.service";
 
 function generateTokens(payload: JwtPayload) {
   const accessToken = signAccessToken(payload);

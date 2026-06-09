@@ -1,16 +1,16 @@
-import { PrismaClient, ReactionType } from "@prisma/client";
+import { ReactionType } from "@prisma/client";
 
-import prisma from "../utils/prisma";
-import { getFileUrl } from "./file.service";
+import prisma from "@/shared/utils/prisma";
+import { getFileUrl } from "@/services/file.service";
 import {
   assertGroupAllowsAnonymousContent,
   maskGroupCommentAuthors,
-} from "../utils/group-anonymous";
+} from "@/shared/utils/group-anonymous";
 import {
   notifyCommentReaction,
   notifyCommentReply,
   notifyPostComment,
-} from "./notification.service";
+} from "@/services/notification.service";
 
 type GetPostCommentsParams = {
   userId: number;

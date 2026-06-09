@@ -7,9 +7,14 @@
     "moduleResolution": "node16",
     "esModuleInterop": true,
     "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "ignoreDeprecations": "6.0",
     "skipLibCheck": true,
     "types": ["node"],
-    "typeRoots": ["./node_modules/@types", "./src/types"]
+    "typeRoots": ["./node_modules/@types", "src/shared/types"]
   },
   "include": ["src"]
 }

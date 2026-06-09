@@ -1,6 +1,5 @@
-import { getIO } from "./index";
-
-const userRoom = (userId: number) => `user:${userId}`;
+import { getIO } from "@/socket/io";
+import { userRoom } from "@/socket/rooms";
 
 export type FormattedNotificationPayload = {
   id: number;
@@ -25,9 +24,7 @@ export const emitNotificationNew = (
   userId: number,
   notification: FormattedNotificationPayload,
 ) => {
-  getIO()
-    ?.to(userRoom(userId))
-    .emit("notification:new", { notification });
+  getIO()?.to(userRoom(userId)).emit("notification:new", { notification });
 };
 
 export const emitNotificationUnreadCount = (

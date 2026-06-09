@@ -1,6 +1,6 @@
-import { s3 } from "../lib/s3";
-import prisma from "../utils/prisma";
-import { getFileUrl } from "./file.service";
+import { s3 } from "@/shared/lib/s3";
+import prisma from "@/shared/utils/prisma";
+import { getFileUrl } from "@/services/file.service";
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 export interface UpdateProfileInput {

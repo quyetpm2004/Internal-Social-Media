@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import z from "zod";
 import { MessageContentType } from "@prisma/client";
-import * as chatService from "../services/chat.service";
-import * as chatSearchService from "../services/chat-search.service";
-import * as presenceService from "../services/redis/presence.service";
+import * as chatService from "@/services/chat.service";
+import * as chatSearchService from "@/services/chat-search.service";
+import * as presenceService from "@/services/redis/presence.service";
 import {
   emitMessageDeleted,
   emitMessageEdited,
@@ -12,7 +12,7 @@ import {
   emitReadUpdate,
   joinUsersToConversationRoom,
   leaveUsersFromConversationRoom,
-} from "../socket";
+} from "@/socket";
 
 const parseConversationId = (raw: unknown) => {
   const id = Number(raw);
@@ -654,7 +654,9 @@ export const addGroupConversationMembers = async (
 
     const conversationId = parseConversationId(req.params.conversationId);
     if (!conversationId) {
-      return res.status(400).json({ message: "ID cuộc trò chuyện không hợp lệ" });
+      return res
+        .status(400)
+        .json({ message: "ID cuộc trò chuyện không hợp lệ" });
     }
 
     const body = addGroupMembersSchema.parse(req.body);
@@ -697,7 +699,9 @@ export const leaveGroupConversation = async (
 
     const conversationId = parseConversationId(req.params.conversationId);
     if (!conversationId) {
-      return res.status(400).json({ message: "ID cuộc trò chuyện không hợp lệ" });
+      return res
+        .status(400)
+        .json({ message: "ID cuộc trò chuyện không hợp lệ" });
     }
 
     const result = await chatService.leaveGroupConversationService({
@@ -736,7 +740,9 @@ export const removeGroupConversationMember = async (
 
     const conversationId = parseConversationId(req.params.conversationId);
     if (!conversationId) {
-      return res.status(400).json({ message: "ID cuộc trò chuyện không hợp lệ" });
+      return res
+        .status(400)
+        .json({ message: "ID cuộc trò chuyện không hợp lệ" });
     }
 
     const targetUserId = Number(req.params.userId);
@@ -781,7 +787,9 @@ export const deleteGroupConversationAvatar = async (
 
     const conversationId = parseConversationId(req.params.conversationId);
     if (!conversationId) {
-      return res.status(400).json({ message: "ID cuộc trò chuyện không hợp lệ" });
+      return res
+        .status(400)
+        .json({ message: "ID cuộc trò chuyện không hợp lệ" });
     }
 
     const result = await chatService.deleteGroupConversationAvatarService({

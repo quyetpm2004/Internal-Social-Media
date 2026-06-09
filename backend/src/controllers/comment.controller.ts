@@ -7,7 +7,7 @@ import {
   reactCommentService,
   updateCommentService,
   deleteCommentService,
-} from "../services/comment.service";
+} from "@/services/comment.service";
 
 export const getPostCommentsController = async (
   req: Request,

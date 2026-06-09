@@ -9,17 +9,20 @@ import {
   ReactionType,
   Role,
 } from "@prisma/client";
-import { PostContentFormat } from "../constants/post-content-format";
-import type { PostContentFormat as PostContentFormatType } from "../constants/post-content-format";
+import { PostContentFormat } from "@/shared/constants/post-content-format";
+import type { PostContentFormat as PostContentFormatType } from "@/shared/constants/post-content-format";
 
-import prisma from "../utils/prisma";
-import { getFileUrl } from "./file.service";
-import { processPostContent } from "../utils/sanitize-html";
+import prisma from "@/shared/utils/prisma";
+import { getFileUrl } from "@/services/file.service";
+import { processPostContent } from "@/shared/utils/sanitize-html";
 import {
   assertGroupAllowsAnonymousContent,
   maskGroupPostAuthors,
-} from "../utils/group-anonymous";
-import { notifyPostPinned, notifyPostReaction } from "./notification.service";
+} from "@/shared/utils/group-anonymous";
+import {
+  notifyPostPinned,
+  notifyPostReaction,
+} from "@/services/notification.service";
 
 type GetPostListParams = {
   page?: number;

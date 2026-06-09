@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { authMiddleware } from "../middlewares/auth.middleware";
-import { getFileUrlController } from "../controllers/file.controller";
+import { authMiddleware } from "@/shared/middlewares/auth.middleware";
+import { getFileUrlController } from "@/controllers/file.controller";
 
 const router = Router();
 

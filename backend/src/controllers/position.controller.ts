@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import * as positionService from "../services/position.service";
+import * as positionService from "@/services/position.service";
 
 export async function getAllPositions(req: Request, res: Response) {
   try {

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
-import * as authService from "../services/auth.service";
-import { markUserOffline } from "../socket";
-import { verifyAccessToken } from "../utils/jwt";
+import * as authService from "@/services/auth.service";
+import { markUserOffline } from "@/socket";
+import { verifyAccessToken } from "@/shared/utils/jwt";
 import { Role } from "@prisma/client";
 
 export async function register(req: Request, res: Response): Promise<void> {

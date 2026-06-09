@@ -1,4 +1,4 @@
-import { getRedis, isRedisEnabled } from "../../utils/redis";
+import { getRedis, isRedisEnabled } from "@/shared/utils/redis";
 
 const PRESENCE_CONN_TTL_SECONDS = 120;
 

@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import * as searchService from "../services/search.service";
+import * as searchService from "@/services/search.service";
 
 export const search = async (req: Request, res: Response) => {
   try {
@@ -29,7 +29,10 @@ export const getSearchHistory = async (req: Request, res: Response) => {
     }
 
     const limit = req.query.limit;
-    const histories = await searchService.getSearchHistory(userId, Number(limit) || 10);
+    const histories = await searchService.getSearchHistory(
+      userId,
+      Number(limit) || 10,
+    );
 
     return res.status(200).json({
       message: "Lấy lịch sử tìm kiếm thành công",
@@ -38,7 +41,9 @@ export const getSearchHistory = async (req: Request, res: Response) => {
   } catch (error: unknown) {
     return res.status(400).json({
       message:
-        error instanceof Error ? error.message : "Lấy lịch sử tìm kiếm thất bại",
+        error instanceof Error
+          ? error.message
+          : "Lấy lịch sử tìm kiếm thất bại",
     });
   }
 };
@@ -62,7 +67,9 @@ export const addSearchHistory = async (req: Request, res: Response) => {
   } catch (error: unknown) {
     return res.status(400).json({
       message:
-        error instanceof Error ? error.message : "Lưu lịch sử tìm kiếm thất bại",
+        error instanceof Error
+          ? error.message
+          : "Lưu lịch sử tìm kiếm thất bại",
     });
   }
 };
@@ -83,7 +90,9 @@ export const deleteSearchHistoryItem = async (req: Request, res: Response) => {
   } catch (error: unknown) {
     return res.status(400).json({
       message:
-        error instanceof Error ? error.message : "Xóa lịch sử tìm kiếm thất bại",
+        error instanceof Error
+          ? error.message
+          : "Xóa lịch sử tìm kiếm thất bại",
     });
   }
 };

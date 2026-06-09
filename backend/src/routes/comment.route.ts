@@ -1,14 +1,12 @@
 import { Router } from "express";
 import {
-  getPostCommentsController,
   getCommentRepliesController,
-  createCommentController,
   replyCommentController,
   reactCommentController,
   deleteCommentController,
   updateCommentController,
-} from "../controllers/comment.controller";
-import { authMiddleware } from "../middlewares/auth.middleware";
+} from "@/controllers/comment.controller";
+import { authMiddleware } from "@/shared/middlewares/auth.middleware";
 
 const commentRoutes = Router();
 

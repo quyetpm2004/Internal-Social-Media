@@ -8,9 +8,9 @@ import {
   MessageStatus,
   Prisma,
 } from "@prisma/client";
-import { s3 } from "../lib/s3";
-import prisma from "../utils/prisma";
-import { getFileUrl } from "./file.service";
+import { s3 } from "@/shared/lib/s3";
+import prisma from "@/shared/utils/prisma";
+import { getFileUrl } from "@/services/file.service";
 import {
   getCachedConversationDetail,
   getCachedConversations,
@@ -22,7 +22,7 @@ import {
   setCachedConversationDetail,
   setCachedConversations,
   setCachedMessages,
-} from "./redis/chat-cache.service";
+} from "@/services/redis/chat-cache.service";
 
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_MESSAGES_PER_PAGE = 100;

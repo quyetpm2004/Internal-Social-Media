@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { getFileUrl } from "../services/file.service";
+import { getFileUrl } from "@/services/file.service";
 
 export async function getFileUrlController(req: Request, res: Response) {
   try {

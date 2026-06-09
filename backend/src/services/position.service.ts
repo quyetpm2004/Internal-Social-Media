@@ -1,4 +1,4 @@
-import prisma from "../utils/prisma";
+import prisma from "@/shared/utils/prisma";
 
 export async function getAllPositions() {
   return prisma.position.findMany({

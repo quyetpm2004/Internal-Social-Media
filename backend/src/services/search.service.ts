@@ -1,10 +1,6 @@
-import {
-  GroupMemberStatus,
-  GroupStatus,
-  Status,
-} from "@prisma/client";
-import prisma from "../utils/prisma";
-import { getFileUrl } from "./file.service";
+import { GroupMemberStatus, GroupStatus, Status } from "@prisma/client";
+import prisma from "@/shared/utils/prisma";
+import { getFileUrl } from "@/services/file.service";
 
 const findGroupMember = async (groupId: number, userId: number) => {
   return prisma.groupMember.findUnique({
@@ -32,11 +28,7 @@ const parsePagination = (page: unknown, limit: unknown) => {
   return { currentPage, take, skip };
 };
 
-const buildPagination = (
-  total: number,
-  currentPage: number,
-  take: number,
-) => {
+const buildPagination = (total: number, currentPage: number, take: number) => {
   const totalPages = Math.max(Math.ceil(total / take), 1);
   return {
     total,
@@ -59,10 +51,7 @@ export const searchUsers = async (
   const where = {
     status: Status.ACTIVE,
     id: { not: userId },
-    OR: [
-      { fullName: { contains: query } },
-      { email: { contains: query } },
-    ],
+    OR: [{ fullName: { contains: query } }, { email: { contains: query } }],
   };
 
   const [users, total] = await Promise.all([
@@ -202,12 +191,20 @@ export const performSearch = async (
   },
 ) => {
   const query = normalizeQuery(params.q);
-  const type = (String(params.type ?? "all").toLowerCase() as SearchType) || "all";
+  const type =
+    (String(params.type ?? "all").toLowerCase() as SearchType) || "all";
   const page = params.page;
   const limit = params.limit;
 
   if (!query) {
-    return { query: "", type, users: [], groups: [], counts: null, pagination: null };
+    return {
+      query: "",
+      type,
+      users: [],
+      groups: [],
+      counts: null,
+      pagination: null,
+    };
   }
 
   const pageNum = Number(page) || 1;

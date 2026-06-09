@@ -1,6 +1,6 @@
 import { Status } from "@prisma/client";
-import prisma from "../utils/prisma";
-import { getFileUrl } from "./file.service";
+import prisma from "@/shared/utils/prisma";
+import { getFileUrl } from "@/services/file.service";
 
 const MAX_HISTORY = 20;
 const DEFAULT_LIMIT = 20;
@@ -14,11 +14,7 @@ const parsePagination = (page: unknown, limit: unknown) => {
   return { currentPage, take, skip };
 };
 
-const buildPagination = (
-  total: number,
-  currentPage: number,
-  take: number,
-) => {
+const buildPagination = (total: number, currentPage: number, take: number) => {
   const totalPages = Math.max(Math.ceil(total / take), 1);
   return {
     total,
@@ -57,10 +53,7 @@ export const searchChatUsers = async (
   const where = {
     status: Status.ACTIVE,
     id: { not: userId },
-    OR: [
-      { fullName: { contains: query } },
-      { email: { contains: query } },
-    ],
+    OR: [{ fullName: { contains: query } }, { email: { contains: query } }],
   };
 
   const [users, total] = await Promise.all([

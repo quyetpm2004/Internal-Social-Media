@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { confirmUploads, createUploadUrls } from "../services/upload.service";
+import { confirmUploads, createUploadUrls } from "@/services/upload.service";
 
 const uploadPurposeEnum = z.enum([
   "avatar",

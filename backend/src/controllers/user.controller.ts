@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import * as userService from "../services/user.service";
-import { deleteAvatar } from "../services/user.service";
+import * as userService from "@/services/user.service";
+import { deleteAvatar } from "@/services/user.service";
 
 export async function getProfile(req: Request, res: Response): Promise<void> {
   try {

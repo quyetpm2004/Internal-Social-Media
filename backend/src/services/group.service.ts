@@ -1,4 +1,4 @@
-import prisma from "../utils/prisma";
+import prisma from "@/shared/utils/prisma";
 import {
   AttachmentType,
   GroupMemberRole,
@@ -10,14 +10,14 @@ import {
   PostStatus,
   PostVisibility,
 } from "@prisma/client";
-import { getFileUrl } from "./file.service";
+import { getFileUrl } from "@/services/file.service";
 import {
   assertGroupAllowsAnonymousContent,
   getGroupViewerContext,
   maskGroupPostAuthors,
   maskUserForGroupDisplay,
   shouldHideAnonymousAuthor,
-} from "../utils/group-anonymous";
+} from "@/shared/utils/group-anonymous";
 import {
   notifyGroupMemberAdded,
   notifyGroupMemberKicked,
@@ -26,7 +26,7 @@ import {
   notifyGroupMemberStatusChanged,
   notifyPostApproved,
   notifyPostRejected,
-} from "./notification.service";
+} from "@/services/notification.service";
 
 const ROLE_RANK: Record<GroupMemberRole, number> = {
   [GroupMemberRole.MEMBER]: 1,

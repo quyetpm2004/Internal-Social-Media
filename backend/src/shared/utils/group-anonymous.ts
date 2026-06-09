@@ -1,5 +1,5 @@
 import { GroupMemberRole, GroupMemberStatus } from "@prisma/client";
-import prisma from "./prisma";
+import prisma from "@/shared/utils/prisma";
 
 export const ANONYMOUS_MEMBER_NAME = "Thành viên ẩn danh";
 

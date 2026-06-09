@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import * as notificationService from "../services/notification.service";
+import * as notificationService from "@/services/notification.service";
 
 export const listNotifications = async (req: Request, res: Response) => {
   try {
@@ -87,10 +87,7 @@ export const markNotificationRead = async (req: Request, res: Response) => {
   }
 };
 
-export const markAllNotificationsRead = async (
-  req: Request,
-  res: Response,
-) => {
+export const markAllNotificationsRead = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
     if (!userId) {

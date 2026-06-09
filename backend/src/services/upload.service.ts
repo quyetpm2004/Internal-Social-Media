@@ -1,13 +1,11 @@
-import { randomUUID } from "crypto";
 import { HeadObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { s3 } from "../lib/s3";
-import prisma from "../utils/prisma";
-import { getFileUrl } from "./file.service";
+import { s3 } from "@/shared/lib/s3";
+import prisma from "@/shared/utils/prisma";
 import {
   getConversationMemberUserIds,
   invalidateConversationForMembers,
-} from "./redis/chat-cache.service";
+} from "@/services/redis/chat-cache.service";
 
 type UploadPurpose =
   | "avatar"

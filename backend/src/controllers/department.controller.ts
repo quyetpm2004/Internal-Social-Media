@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import * as departmentService from "../services/department.service";
+import * as departmentService from "@/services/department.service";
 
 export async function getAllDepartments(req: Request, res: Response) {
   try {

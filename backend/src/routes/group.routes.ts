@@ -1,6 +1,6 @@
 import express from "express";
-import * as groupController from "../controllers/group.controller";
-import { authMiddleware } from "../middlewares/auth.middleware";
+import * as groupController from "@/controllers/group.controller";
+import { authMiddleware } from "@/shared/middlewares/auth.middleware";
 
 const router = express.Router();
 
@@ -37,7 +37,7 @@ router.post(
 );
 router.delete(
   "/:groupId/join-requests/:userId",
-  groupController.rejectJoinRequest, 
+  groupController.rejectJoinRequest,
 );
 
 // Group posts

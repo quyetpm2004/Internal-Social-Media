@@ -7,8 +7,8 @@ import {
   pinPostByUserId,
   reactPostService,
   updatePostService,
-} from "../services/post.service";
-import { PostContentError } from "../utils/post-content-error";
+} from "@/services/post.service";
+import { PostContentError } from "@/shared/utils/post-content-error";
 import z from "zod";
 
 export const getPostListController = async (

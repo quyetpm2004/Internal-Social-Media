@@ -7,12 +7,12 @@ import {
   pinPostByUserIdController,
   reactPostController,
   updatePostController,
-} from "../controllers/post.controller";
-import { authMiddleware } from "../middlewares/auth.middleware";
+} from "@/controllers/post.controller";
+import { authMiddleware } from "@/shared/middlewares/auth.middleware";
 import {
   createCommentController,
   getPostCommentsController,
-} from "../controllers/comment.controller";
+} from "@/controllers/comment.controller";
 
 const postRoutes = Router();
 

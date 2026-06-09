@@ -5,17 +5,17 @@ import {
   Prisma,
   ReactionType,
 } from "@prisma/client";
-import prisma from "../utils/prisma";
-import { getFileUrl } from "./file.service";
+import prisma from "@/shared/utils/prisma";
+import { getFileUrl } from "@/services/file.service";
 import {
   getGroupViewerContext,
   maskUserForGroupDisplay,
   shouldHideAnonymousAuthor,
-} from "../utils/group-anonymous";
+} from "@/shared/utils/group-anonymous";
 import {
   emitNotificationNew,
   emitNotificationUnreadCount,
-} from "../socket/notification.socket";
+} from "@/socket/notification.socket";
 import { htmlToText } from "html-to-text";
 
 const NOTIFICATION_INCLUDE = {
