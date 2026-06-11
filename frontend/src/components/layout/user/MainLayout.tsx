@@ -1,5 +1,5 @@
 import { Outlet } from "react-router-dom";
-import AppHeader from "@/components/layout/AppHeader";
+import AppHeader from "@/components/layout/user/AppHeader";
 import AppSidebar from "./AppSidebar";
 
 export default function MainLayout() {

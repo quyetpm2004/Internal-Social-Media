@@ -14,6 +14,7 @@ import groupRoutes from "@/modules/group/group.routes";
 import searchRoutes from "@/modules/search/search.routes";
 import chatRoutes from "@/modules/chat/chat.routes";
 import notificationRoutes from "@/modules/notification/notification.routes";
+import adminRoutes from "@/modules/admin/admin.routes";
 import { errorMiddleware } from "@/shared/middlewares/error.middleware";
 dotenv.config();
 
@@ -46,6 +47,7 @@ app.use("/api/groups", groupRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.use(errorMiddleware);
 

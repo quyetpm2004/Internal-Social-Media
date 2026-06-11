@@ -1,7 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import ProtectedRoute from "@/components/common/ProtectedRoute";
-import AuthLayout from "@/components/layout/AuthLayout";
-import MainLayout from "@/components/layout/MainLayout";
+import AuthLayout from "@/components/layout/user/AuthLayout";
+import MainLayout from "@/components/layout/user/MainLayout";
 import LoginPage from "@/features/auth/pages/LoginPage";
 import ProfilePage from "@/features/profile/pages/ProfilePage";
 import NotFoundPage from "@/features/not-found/pages/NotFoundPage";
@@ -23,6 +23,14 @@ import SearchPage from "@/features/search/pages/SearchPage";
 import ChatLayout from "@/features/chat/pages/ChatLayout";
 import ChatEmptyPage from "@/features/chat/pages/ChatEmptyPage";
 import ChatConversationPage from "@/features/chat/pages/ChatConversationPage";
+import AdminRoute from "@/components/common/AdminRoute";
+import AdminLayout from "@/components/layout/admin/AdminLayout";
+import AdminDashboardPage from "@/features/admin/pages/AdminDashboardPage";
+import AdminUsersPage from "@/features/admin/pages/AdminUsersPage";
+import AdminPostsPage from "@/features/admin/pages/AdminPostsPage";
+import AdminPostDetailPage from "@/features/admin/pages/AdminPostDetailPage";
+import AdminGroupsPage from "@/features/admin/pages/AdminGroupsPage";
+import AdminGroupDetailPage from "@/features/admin/pages/AdminGroupDetailPage";
 
 export const router = createBrowserRouter([
   {
@@ -126,6 +134,23 @@ export const router = createBrowserRouter([
                 path: "review",
                 element: <GroupPostReviewPage />,
               },
+            ],
+          },
+        ],
+      },
+      {
+        element: <AdminRoute />,
+        children: [
+          {
+            element: <AdminLayout />,
+            path: "/admin",
+            children: [
+              { index: true, element: <AdminDashboardPage /> },
+              { path: "users", element: <AdminUsersPage /> },
+              { path: "posts", element: <AdminPostsPage /> },
+              { path: "posts/:postId", element: <AdminPostDetailPage /> },
+              { path: "groups", element: <AdminGroupsPage /> },
+              { path: "groups/:groupId", element: <AdminGroupDetailPage /> },
             ],
           },
         ],
