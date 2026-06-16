@@ -124,6 +124,7 @@ export async function sendMessage(req: Request, res: Response) {
     content: body.content ?? "",
     contentType: body.contentType,
     attachmentIds: body.attachmentIds ?? [],
+    poll: body.poll,
   });
 
   emitMessageNew(conversationId, result);

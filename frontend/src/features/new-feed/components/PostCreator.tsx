@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
+  BarChart3,
   FileIcon,
   ImageIcon,
   Paperclip,
@@ -12,6 +13,7 @@ import {
 
 import { PostsApi } from "@/features/new-feed/api/post.api";
 import RichTextEditor from "@/features/new-feed/components/RichTextEditor";
+import PollForm from "@/components/poll/PollForm";
 import {
   isRichTextEmpty,
   sanitizePostHtml,
@@ -20,6 +22,7 @@ import { uploadApi } from "@/features/uploads/api/upload.api";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { toast } from "sonner";
 import { getDefaultAvatarUrl } from "@/lib/utils";
+import type { PollInput } from "@/types/poll.type";
 
 type PostCreatorProps = {
   fetchPosts: (currentPage: number) => Promise<void>;
@@ -47,6 +50,17 @@ const PostCreator = ({
     { url: string; type: string; name: string }[]
   >([]);
   const [loading, setLoading] = useState(false);
+  const [poll, setPoll] = useState<PollInput | null>(null);
+
+  const emptyPoll = (): PollInput => ({
+    question: "",
+    options: ["", ""],
+    allowMultiple: false,
+  });
+
+  const isPollValid = (p: PollInput) =>
+    p.question.trim().length > 0 &&
+    p.options.filter((o) => o.trim().length > 0).length >= 2;
 
   // Xử lý tạo Preview và Cleanup
   useEffect(() => {
@@ -140,13 +154,22 @@ const PostCreator = ({
   };
 
   const handleCreatePost = async () => {
-    if (isRichTextEmpty(content) && attachments.length === 0) return;
+    const hasPoll = poll !== null && isPollValid(poll);
+    if (isRichTextEmpty(content) && attachments.length === 0 && !hasPoll) return;
 
     const sanitizedContent = sanitizePostHtml(content);
 
     try {
       setLoading(true);
       const uploadedAttachments = await uploadAttachments();
+
+      const pollPayload = hasPoll
+        ? {
+            question: poll!.question.trim(),
+            options: poll!.options.map((o) => o.trim()).filter(Boolean),
+            allowMultiple: poll!.allowMultiple,
+          }
+        : undefined;
 
       const res = await PostsApi.createPost({
         content: sanitizedContent,
@@ -156,6 +179,7 @@ const PostCreator = ({
         attachmentIds: uploadedAttachments.map((item) => item.attachmentId),
         isAnonymous:
           groupVisibility === "GROUP" && allowAnonymousPost && postAsAnonymous,
+        poll: pollPayload,
       });
 
       toast.success(
@@ -168,6 +192,7 @@ const PostCreator = ({
       setContent("");
       setAttachments([]);
       setPostAsAnonymous(false);
+      setPoll(null);
       await fetchPosts(1);
     } catch (error: any) {
       console.error("Lỗi khi tạo bài viết:", error);
@@ -274,6 +299,14 @@ const PostCreator = ({
             </div>
           )}
 
+          {poll && (
+            <PollForm
+              value={poll}
+              onChange={setPoll}
+              onRemove={() => setPoll(null)}
+            />
+          )}
+
           {allowAnonymousPost && groupVisibility === "GROUP" && (
             <label className="mt-4 flex items-start gap-2 cursor-pointer">
               <input
@@ -313,6 +346,18 @@ const PostCreator = ({
               >
                 <Paperclip size={20} />
               </label>
+              <button
+                type="button"
+                onClick={() => setPoll((prev) => prev ?? emptyPoll())}
+                className={`p-2 rounded-lg cursor-pointer transition-colors ${
+                  poll
+                    ? "text-blue-600 bg-blue-50 dark:bg-blue-900/20"
+                    : "text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+                }`}
+                title="Bình chọn"
+              >
+                <BarChart3 size={20} />
+              </button>
             </div>
 
             <button
@@ -320,7 +365,9 @@ const PostCreator = ({
               onClick={handleCreatePost}
               disabled={
                 loading ||
-                (isRichTextEmpty(content) && attachments.length === 0)
+                (isRichTextEmpty(content) &&
+                  attachments.length === 0 &&
+                  !(poll && isPollValid(poll)))
               }
               className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 text-white px-5 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2"
             >

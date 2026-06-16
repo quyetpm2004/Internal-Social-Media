@@ -109,6 +109,12 @@ enum MessageContentType {
   IMAGE
   FILE
   SYSTEM
+  POLL
+}
+
+enum PollStatus {
+  ACTIVE
+  CLOSED
 }
 
 enum MessageStatus {
@@ -168,6 +174,7 @@ model User {
   createdConversations Conversation[]       @relation("ConversationCreator")
   conversationMembers  ConversationMember[]
   sentMessages         Message[]
+  pollVotes            PollVote[]
 
   notificationsReceived Notification[] @relation("NotificationRecipient")
   notificationsSent     Notification[] @relation("NotificationActor")
@@ -323,6 +330,7 @@ model Post {
   reactions     Reaction[]
   mentions      PostMention[]
   notifications Notification[]
+  poll          Poll?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -478,6 +486,7 @@ model Message {
   conversation Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender       User                @relation(fields: [senderId], references: [id], onDelete: Cascade)
   attachments  MessageAttachment[]
+  poll         Poll?
 
   @@index([conversationId, createdAt])
   @@index([senderId])
@@ -523,4 +532,58 @@ model Notification {
   @@index([recipientId, createdAt])
   @@index([recipientId, readAt])
   @@map("notifications")
+}
+
+model Poll {
+  id            Int        @id @default(autoincrement()) @map("poll_id")
+  question      String     @db.VarChar(500)
+  allowMultiple Boolean    @default(false) @map("allow_multiple")
+  endsAt        DateTime?  @map("ends_at")
+  status        PollStatus @default(ACTIVE)
+
+  postId    Int? @unique @map("post_id")
+  messageId Int? @unique @map("message_id")
+
+  post    Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  message Message? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  options PollOption[]
+  votes   PollVote[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([postId])
+  @@index([messageId])
+  @@map("polls")
+}
+
+model PollOption {
+  id        Int    @id @default(autoincrement()) @map("poll_option_id")
+  pollId    Int    @map("poll_id")
+  label     String @db.VarChar(200)
+  sortOrder Int    @default(0) @map("sort_order")
+
+  poll  Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes PollVote[]
+
+  @@index([pollId])
+  @@map("poll_options")
+}
+
+model PollVote {
+  id       Int @id @default(autoincrement()) @map("poll_vote_id")
+  pollId   Int @map("poll_id")
+  optionId Int @map("option_id")
+  userId   Int @map("user_id")
+
+  poll   Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, userId, optionId])
+  @@index([pollId])
+  @@index([optionId])
+  @@index([userId])
+  @@map("poll_votes")
 }

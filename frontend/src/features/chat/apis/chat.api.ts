@@ -15,6 +15,7 @@ import type {
   ReadReceiptResponse,
   SharedAttachmentsResponse,
 } from "@/features/chat/types/chat.type";
+import type { PollInput } from "@/types/poll.type";
 
 export const chatApi = {
   listConversations(
@@ -64,6 +65,7 @@ export const chatApi = {
       content: string;
       contentType?: MessageContentType;
       attachmentIds?: number[];
+      poll?: PollInput;
     },
   ) {
     return axiosClient.post<ApiResponse<ChatMessage>>(
@@ -72,6 +74,7 @@ export const chatApi = {
         content: data.content,
         contentType: data.contentType ?? "TEXT",
         attachmentIds: data.attachmentIds ?? [],
+        poll: data.poll,
       },
     );
   },

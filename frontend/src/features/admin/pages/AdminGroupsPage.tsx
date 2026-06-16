@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import ConfirmModal from "@/components/common/ConfirmModal";
 import { adminApi } from "@/features/admin/api/admin.api";
 import AdminPagination from "@/features/admin/components/AdminPagination";
 import type { AdminGroup, Pagination } from "@/features/admin/types/admin.type";
@@ -31,6 +32,7 @@ export default function AdminGroupsPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   const fetchGroups = async (targetPage = page) => {
     setLoading(true);
@@ -55,12 +57,13 @@ export default function AdminGroupsPage() {
     fetchGroups(1);
   };
 
-  const handleDelete = async (groupId: number) => {
-    if (!confirm("Bạn có chắc muốn xóa nhóm này?")) return;
-    setDeletingId(groupId);
+  const handleConfirmDelete = async () => {
+    if (!confirmDeleteId) return;
+    setDeletingId(confirmDeleteId);
     try {
-      await adminApi.deleteGroup(groupId);
+      await adminApi.deleteGroup(confirmDeleteId);
       toast.success("Đã xóa nhóm");
+      setConfirmDeleteId(null);
       fetchGroups();
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -148,7 +151,7 @@ export default function AdminGroupsPage() {
                         disabled={
                           deletingId === group.id || group.status === "ARCHIVED"
                         }
-                        onClick={() => handleDelete(group.id)}
+                        onClick={() => setConfirmDeleteId(group.id)}
                       >
                         Xóa
                       </Button>
@@ -164,6 +167,17 @@ export default function AdminGroupsPage() {
           )}
         </>
       )}
+
+      <ConfirmModal
+        open={confirmDeleteId !== null}
+        title="Xóa nhóm?"
+        description="Bạn có chắc muốn xóa nhóm này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        loading={deletingId !== null}
+        variant="danger"
+        onCancel={() => setConfirmDeleteId(null)}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

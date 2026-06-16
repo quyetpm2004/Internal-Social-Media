@@ -22,6 +22,8 @@ export const adminGroupListQuerySchema = paginationQuerySchema.extend({
   status: z.enum(["ACTIVE", "INACTIVE", "ARCHIVED"]).optional(),
 });
 
+export const adminGroupMembersQuerySchema = paginationQuerySchema;
+
 export const userIdParamsSchema = z.object({
   userId: z.coerce.number().int().positive("userId không hợp lệ"),
 });
@@ -41,4 +43,5 @@ export const updateUserStatusSchema = z.object({
 export type AdminUserListQuery = z.infer<typeof adminUserListQuerySchema>;
 export type AdminPostListQuery = z.infer<typeof adminPostListQuerySchema>;
 export type AdminGroupListQuery = z.infer<typeof adminGroupListQuerySchema>;
+export type AdminGroupMembersQuery = z.infer<typeof adminGroupMembersQuerySchema>;
 export type UpdateUserStatusInput = z.infer<typeof updateUserStatusSchema>;

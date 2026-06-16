@@ -12,6 +12,19 @@ export type DashboardStats = {
   activeUsers: number;
 };
 
+export type DashboardAlerts = {
+  pendingReviewPosts: number;
+  inactiveUsers: number;
+  inactiveGroups: number;
+};
+
+export type DashboardData = {
+  stats: DashboardStats;
+  alerts: DashboardAlerts;
+  recentPosts: AdminPost[];
+  recentUsers: AdminUser[];
+};
+
 export type AdminUser = {
   id: number;
   fullName: string;
@@ -65,4 +78,12 @@ export type AdminGroupDetail = AdminGroup & {
   joinApprovalPolicy: string;
   postPermission: string;
   postApprovalRequired: boolean;
+};
+
+export type AdminGroupMember = {
+  id: number;
+  memberRole: "ADMIN" | "MODERATOR" | "MEMBER";
+  joinedAt: string;
+  status: "PENDING" | "ACTIVE" | "BLOCKED";
+  user: { id: number; fullName: string; email: string };
 };

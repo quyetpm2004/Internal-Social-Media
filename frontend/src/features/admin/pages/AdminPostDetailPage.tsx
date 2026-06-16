@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
+import ConfirmModal from "@/components/common/ConfirmModal";
 import { adminApi } from "@/features/admin/api/admin.api";
 import type { AdminPostDetail } from "@/features/admin/types/admin.type";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,7 @@ export default function AdminPostDetailPage() {
   const [post, setPost] = useState<AdminPostDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [index, setIndex] = useState(-1);
 
   const imageAttachments = post?.attachments.filter(
@@ -51,8 +53,7 @@ export default function AdminPostDetailPage() {
     fetchPost();
   }, [postId]);
 
-  const handleDelete = async () => {
-    if (!confirm("Bạn có chắc muốn xóa bài viết này?")) return;
+  const handleConfirmDelete = async () => {
     setDeleting(true);
     try {
       await adminApi.deletePost(Number(postId));
@@ -62,6 +63,7 @@ export default function AdminPostDetailPage() {
       toast.error(getErrorMessage(error));
     } finally {
       setDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -92,7 +94,7 @@ export default function AdminPostDetailPage() {
           variant="destructive"
           size="sm"
           disabled={deleting}
-          onClick={handleDelete}
+          onClick={() => setShowDeleteConfirm(true)}
         >
           Xóa bài viết
         </Button>
@@ -246,6 +248,17 @@ export default function AdminPostDetailPage() {
         slides={imageAttachments
           ?.filter((item) => item.fileUrl)
           .map((item) => ({ src: item.fileUrl! }))}
+      />
+
+      <ConfirmModal
+        open={showDeleteConfirm}
+        title="Xóa bài viết?"
+        description="Bạn có chắc muốn xóa bài viết này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        loading={deleting}
+        variant="danger"
+        onCancel={() => setShowDeleteConfirm(false)}
+        onConfirm={handleConfirmDelete}
       />
     </div>
   );

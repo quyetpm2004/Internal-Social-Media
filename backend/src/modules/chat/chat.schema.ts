@@ -1,6 +1,7 @@
 import { MessageContentType } from "@prisma/client";
 import { z } from "zod";
 import { CHAT_DEFAULTS } from "@/modules/chat/chat.types";
+import { pollInputSchema } from "@/modules/poll/poll.schema";
 
 export const listConversationsQuerySchema = z.object({
   filter: z.enum(["ALL", "UNREAD", "GROUPS"]).default("ALL"),
@@ -36,17 +37,43 @@ export const listMessagesQuerySchema = z.object({
     .default(CHAT_DEFAULTS.DEFAULT_MESSAGES_PER_PAGE),
 });
 
-export const sendMessageSchema = z.object({
-  content: z.string().max(CHAT_DEFAULTS.MAX_MESSAGE_LENGTH),
-  contentType: z
-    .enum([
-      MessageContentType.TEXT,
-      MessageContentType.IMAGE,
-      MessageContentType.FILE,
-    ])
-    .default(MessageContentType.TEXT),
-  attachmentIds: z.array(z.coerce.number().int().positive()).optional(),
-});
+export const sendMessageSchema = z
+  .object({
+    content: z.string().max(CHAT_DEFAULTS.MAX_MESSAGE_LENGTH).optional().default(""),
+    contentType: z
+      .enum([
+        MessageContentType.TEXT,
+        MessageContentType.IMAGE,
+        MessageContentType.FILE,
+        MessageContentType.POLL,
+      ])
+      .default(MessageContentType.TEXT),
+    attachmentIds: z.array(z.coerce.number().int().positive()).optional(),
+    poll: pollInputSchema.optional(),
+  })
+  .superRefine((data, ctx) => {
+    const trimmed = data.content.trim();
+    const hasAttachments = (data.attachmentIds?.length ?? 0) > 0;
+
+    if (data.contentType === MessageContentType.POLL) {
+      if (!data.poll) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Thiếu thông tin bình chọn",
+          path: ["poll"],
+        });
+      }
+      return;
+    }
+
+    if (data.contentType === MessageContentType.TEXT && !trimmed && !hasAttachments) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Nội dung tin nhắn không được để trống",
+        path: ["content"],
+      });
+    }
+  });
 
 export const editMessageSchema = z.object({
   content: z

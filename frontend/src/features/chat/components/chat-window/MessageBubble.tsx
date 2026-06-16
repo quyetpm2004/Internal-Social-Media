@@ -14,6 +14,8 @@ import type {
 import { formatMessageTime } from "@/features/chat/utils/format-message-time";
 import { formatFileSize } from "@/features/chat/utils/format-file-size";
 import { getDefaultAvatarUrl } from "@/lib/utils";
+import PollCard from "@/components/poll/PollCard";
+import type { PollSummary } from "@/types/poll.type";
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -27,6 +29,7 @@ interface MessageBubbleProps {
   conversationType?: ConversationType;
   onEdit?: (messageId: number, content: string) => Promise<void> | void;
   onDelete?: (messageId: number) => Promise<void> | void;
+  onPollVote?: (messageId: number, poll: PollSummary) => void;
 }
 
 const renderAttachment = (attachment: MessageAttachment, isOwn: boolean) => {
@@ -356,6 +359,7 @@ const MessageBubble = ({
   conversationType = "DIRECT",
   onEdit,
   onDelete,
+  onPollVote,
 }: MessageBubbleProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -364,7 +368,10 @@ const MessageBubble = ({
   const isDeleted = message.status === "DELETED";
 
   const canEdit =
-    isOwn && !isDeleted && message.contentType === "TEXT" && Boolean(onEdit);
+    isOwn &&
+    !isDeleted &&
+    message.contentType === "TEXT" &&
+    Boolean(onEdit);
   const canDelete = isOwn && !isDeleted && Boolean(onDelete);
   const showActions = canEdit || canDelete;
 
@@ -395,6 +402,19 @@ const MessageBubble = ({
     );
   }
 
+  const renderPoll = () => {
+    if (message.contentType !== "POLL" || !message.poll || isDeleted) return null;
+    return (
+      <div className="w-80">
+        <PollCard
+          poll={message.poll}
+          compact
+          onVote={(updated) => onPollVote?.(message.id, updated)}
+        />
+      </div>
+    );
+  };
+
   if (isOwn) {
     return (
       <div className="flex gap-3 max-w-[80%] self-end flex-row-reverse group">
@@ -420,7 +440,8 @@ const MessageBubble = ({
                 {message.attachments.map((attachment) =>
                   renderAttachment(attachment, true),
                 )}
-                {message.content && (
+                {renderPoll()}
+                {message.content && message.contentType !== "POLL" && (
                   <div className="flex items-center gap-1.5 justify-end">
                     {showActions && !isEditing && (
                       <div className="self-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -506,7 +527,8 @@ const MessageBubble = ({
               {message.attachments.map((attachment) =>
                 renderAttachment(attachment, false),
               )}
-              {message.content && (
+              {renderPoll()}
+              {message.content && message.contentType !== "POLL" && (
                 <div className="bg-surface-container px-3 py-1.5 rounded-xl text-sm leading-relaxed text-on-surface shadow-sm whitespace-pre-wrap wrap-break-word w-fit">
                   {message.content}
                 </div>

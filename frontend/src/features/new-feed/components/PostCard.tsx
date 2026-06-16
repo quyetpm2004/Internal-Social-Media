@@ -27,7 +27,9 @@ import "yet-another-react-lightbox/styles.css";
 import { toast } from "sonner";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import ConfirmModal from "@/components/common/ConfirmModal";
+import PollCard from "@/components/poll/PollCard";
 import { Link } from "react-router-dom";
+import type { PollSummary } from "@/types/poll.type";
 
 const reactionOptions: {
   type: ReactionType;
@@ -92,8 +94,10 @@ const PostCard: React.FC<PostCardProps> = ({
   onPinned,
   allowAnonymousComment = false,
   showComment = false,
+  poll: initialPoll = null,
 }) => {
   const [showComments, setShowComments] = useState(showComment);
+  const [poll, setPoll] = useState<PollSummary | null>(initialPoll);
   const [reactionCount, setReactionCount] = useState(stats.likes);
   const [currentReaction, setCurrentReaction] = useState<ReactionType | null>(
     initialReaction,
@@ -108,12 +112,19 @@ const PostCard: React.FC<PostCardProps> = ({
   const [openConfirmPinPost, setOpenConfirmPinPost] = useState(false);
 
   useEffect(() => {
+    setPoll(initialPoll);
+  }, [initialPoll]);
+
+  useEffect(() => {
     if (!editingPost) {
       setEditContent(content);
       setDisplayContent(content);
       setDisplayFormat(contentFormat);
     }
   }, [content, contentFormat, editingPost]);
+
+  const showPostContent =
+    !poll || displayContent.trim() !== poll.question.trim();
 
   const selectedReactionData = reactionOptions.find(
     (item) => item.type === currentReaction,
@@ -303,11 +314,19 @@ const PostCard: React.FC<PostCardProps> = ({
             </div>
           </div>
         ) : (
-          <RichTextContent
-            content={displayContent}
-            contentFormat={displayFormat}
-            className="mb-4"
-          />
+          showPostContent && (
+            <RichTextContent
+              content={displayContent}
+              contentFormat={displayFormat}
+              className="mb-4"
+            />
+          )
+        )}
+
+        {poll && !editingPost && (
+          <div className="mb-4">
+            <PollCard poll={poll} onVote={setPoll} />
+          </div>
         )}
 
         {imageAttachments.length > 0 && (

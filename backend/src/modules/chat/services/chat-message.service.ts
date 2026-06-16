@@ -17,6 +17,8 @@ import {
   invalidateUserConversations,
   setCachedMessages,
 } from "@/modules/chat/services/chat-cache.service";
+import type { PollInput } from "@/modules/poll/poll.schema";
+import { createPollInTransaction } from "@/modules/poll/poll.service";
 import prisma from "@/shared/utils/prisma";
 
 export const getMessagesService = async ({
@@ -66,7 +68,7 @@ export const getMessagesService = async ({
   const sliced = hasMore ? messages.slice(0, take) : messages;
   const nextCursor = hasMore ? sliced[sliced.length - 1].id : null;
 
-  const items = await Promise.all(sliced.map(mapMessage));
+  const items = await Promise.all(sliced.map((m) => mapMessage(m, userId)));
 
   const result = {
     items: items.reverse(),
@@ -87,18 +89,24 @@ export const sendMessageService = async ({
   content,
   contentType,
   attachmentIds,
+  poll,
 }: {
   conversationId: number;
   userId: number;
   content: string;
   contentType: MessageContentType;
   attachmentIds: number[];
+  poll?: PollInput;
 }) => {
   await assertConversationMember(conversationId, userId);
 
   const trimmed = content.trim();
 
-  if (contentType === MessageContentType.TEXT && !trimmed) {
+  if (contentType === MessageContentType.POLL) {
+    if (!poll) {
+      throw new AppError(400, "Thiếu thông tin bình chọn");
+    }
+  } else if (contentType === MessageContentType.TEXT && !trimmed) {
     throw new AppError(400, "Nội dung tin nhắn không được để trống");
   }
 
@@ -127,12 +135,17 @@ export const sendMessageService = async ({
   const now = new Date();
 
   const message = await prisma.$transaction(async (tx) => {
+    const messageContent =
+      contentType === MessageContentType.POLL
+        ? poll!.question
+        : trimmed;
+
     const created = await tx.message.create({
       data: {
         conversationId,
         senderId: userId,
         contentType,
-        content: trimmed,
+        content: messageContent,
       },
       include: messageInclude,
     });
@@ -141,6 +154,13 @@ export const sendMessageService = async ({
       await tx.messageAttachment.updateMany({
         where: { id: { in: attachmentIds }, uploadedById: userId },
         data: { messageId: created.id, status: MediaStatus.ACTIVE },
+      });
+    }
+
+    if (contentType === MessageContentType.POLL && poll) {
+      await createPollInTransaction(tx, {
+        ...poll,
+        messageId: created.id,
       });
     }
 
@@ -160,7 +180,7 @@ export const sendMessageService = async ({
     });
   });
 
-  const mapped = await mapMessage(message);
+  const mapped = await mapMessage(message, userId);
   await invalidateConversationCaches(conversationId);
   return mapped;
 };
@@ -256,7 +276,7 @@ export const editMessageService = async ({
   });
 
   await invalidateConversationCaches(message.conversationId);
-  return mapMessage(updated);
+  return mapMessage(updated, userId);
 };
 
 export const deleteMessageService = async ({
@@ -327,7 +347,7 @@ export const createSystemMessageService = async ({
     return created;
   });
 
-  const mapped = await mapMessage(message);
+  const mapped = await mapMessage(message, actorUserId);
   await invalidateConversationCaches(conversationId);
   return mapped;
 };

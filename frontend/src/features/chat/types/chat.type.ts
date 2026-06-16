@@ -1,10 +1,12 @@
+import type { PollSummary } from "@/types/poll.type";
+
 export type ConversationType = "DIRECT" | "GROUP";
 
 export type ConversationFilter = "ALL" | "UNREAD" | "GROUPS";
 
 export type ConversationMemberRole = "MEMBER" | "ADMIN";
 
-export type MessageContentType = "TEXT" | "IMAGE" | "FILE" | "SYSTEM";
+export type MessageContentType = "TEXT" | "IMAGE" | "FILE" | "SYSTEM" | "POLL";
 
 export type MessageStatus = "ACTIVE" | "EDITED" | "DELETED";
 
@@ -36,6 +38,7 @@ export interface ChatMessage {
   createdAt: string;
   sender: ChatUser;
   attachments: MessageAttachment[];
+  poll?: PollSummary | null;
 }
 
 export interface Conversation {

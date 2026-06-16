@@ -9,6 +9,7 @@ import {
 } from "react";
 import EmojiPicker, { EmojiStyle, Theme } from "emoji-picker-react";
 import {
+  BarChart3,
   FileText,
   Image as ImageIcon,
   Loader2,
@@ -19,17 +20,20 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import PollForm from "@/components/poll/PollForm";
 import {
   uploadApi,
   type PresignedItem,
   type UploadPurpose,
 } from "@/features/uploads/api/upload.api";
 import type { MessageContentType } from "@/features/chat/types/chat.type";
+import type { PollInput } from "@/types/poll.type";
 
 export interface SendMessagePayload {
   content: string;
   contentType: MessageContentType;
   attachmentIds: number[];
+  poll?: PollInput;
 }
 
 interface MessageInputProps {
@@ -81,6 +85,17 @@ const MessageInput = ({
   const [previews, setPreviews] = useState<PreviewItem[]>([]);
   const [uploading, setUploading] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [poll, setPoll] = useState<PollInput | null>(null);
+
+  const emptyPoll = (): PollInput => ({
+    question: "",
+    options: ["", ""],
+    allowMultiple: false,
+  });
+
+  const isPollValid = (p: PollInput) =>
+    p.question.trim().length > 0 &&
+    p.options.filter((o) => o.trim().length > 0).length >= 2;
 
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
@@ -127,8 +142,9 @@ const MessageInput = ({
 
   const canSubmit = useMemo(() => {
     if (disabled || uploading) return false;
+    if (poll) return isPollValid(poll);
     return value.trim().length > 0 || attachments.length > 0;
-  }, [value, attachments, disabled, uploading]);
+  }, [value, attachments, disabled, uploading, poll]);
 
   const handleSelectFiles = (
     event: ChangeEvent<HTMLInputElement>,
@@ -205,6 +221,7 @@ const MessageInput = ({
   const resetForm = () => {
     setValue("");
     setAttachments([]);
+    setPoll(null);
     onTypingStop?.();
   };
 
@@ -212,6 +229,32 @@ const MessageInput = ({
     event?.preventDefault();
 
     if (!canSubmit) return;
+
+    if (poll && isPollValid(poll)) {
+      try {
+        setUploading(true);
+        await onSend({
+          content: "",
+          contentType: "POLL",
+          attachmentIds: [],
+          poll: {
+            question: poll.question.trim(),
+            options: poll.options.map((o) => o.trim()).filter(Boolean),
+            allowMultiple: poll.allowMultiple,
+          },
+        });
+        resetForm();
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Không gửi được bình chọn. Vui lòng thử lại.";
+        toast.error(message);
+      } finally {
+        setUploading(false);
+      }
+      return;
+    }
 
     const trimmed = value.trim();
     const filesToUpload = [...attachments];
@@ -270,6 +313,16 @@ const MessageInput = ({
 
   return (
     <footer className="p-4 bg-surface-container-lowest">
+      {poll && (
+        <div className="max-w-4xl mx-auto mb-3">
+          <PollForm
+            value={poll}
+            onChange={setPoll}
+            onRemove={() => setPoll(null)}
+          />
+        </div>
+      )}
+
       {previews.length > 0 && (
         <div className="max-w-4xl mx-auto mb-3 flex flex-wrap gap-2">
           {previews.map((preview, index) => (
@@ -370,24 +423,38 @@ const MessageInput = ({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
+            disabled={uploading || Boolean(poll)}
             className="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer disabled:opacity-50"
             aria-label="Đính kèm tệp"
             title="Tệp"
           >
             <FileText size={20} />
           </button>
+          <button
+            type="button"
+            onClick={() => setPoll((prev) => prev ?? emptyPoll())}
+            disabled={uploading || attachments.length > 0}
+            className={`p-2 transition-colors cursor-pointer disabled:opacity-50 ${
+              poll
+                ? "text-primary bg-primary/10"
+                : "text-on-surface-variant hover:text-primary"
+            }`}
+            aria-label="Tạo bình chọn"
+            title="Bình chọn"
+          >
+            <BarChart3 size={20} />
+          </button>
         </div>
 
         <textarea
           ref={textareaRef}
           rows={1}
-          placeholder="Nhập tin nhắn..."
+          placeholder={poll ? "Đang tạo bình chọn..." : "Nhập tin nhắn..."}
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
-          disabled={disabled || uploading}
+          disabled={disabled || uploading || Boolean(poll)}
           className="flex-1 bg-transparent border-none focus:ring-0 focus:outline-none text-sm py-2 px-1 resize-none max-h-32 font-body text-on-surface placeholder:text-on-surface-variant disabled:opacity-60"
         />
 

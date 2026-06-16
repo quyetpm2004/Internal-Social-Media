@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import ConfirmModal from "@/components/common/ConfirmModal";
 import { adminApi } from "@/features/admin/api/admin.api";
 import AdminPagination from "@/features/admin/components/AdminPagination";
 import type { AdminPost, Pagination } from "@/features/admin/types/admin.type";
@@ -31,6 +32,7 @@ export default function AdminPostsPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   const fetchPosts = async (targetPage = page) => {
     setLoading(true);
@@ -55,12 +57,13 @@ export default function AdminPostsPage() {
     fetchPosts(1);
   };
 
-  const handleDelete = async (postId: number) => {
-    if (!confirm("Bạn có chắc muốn xóa bài viết này?")) return;
-    setDeletingId(postId);
+  const handleConfirmDelete = async () => {
+    if (!confirmDeleteId) return;
+    setDeletingId(confirmDeleteId);
     try {
-      await adminApi.deletePost(postId);
+      await adminApi.deletePost(confirmDeleteId);
       toast.success("Đã xóa bài viết");
+      setConfirmDeleteId(null);
       fetchPosts();
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -128,7 +131,7 @@ export default function AdminPostsPage() {
                         size="sm"
                         variant="locked"
                         disabled={deletingId === post.id}
-                        onClick={() => handleDelete(post.id)}
+                        onClick={() => setConfirmDeleteId(post.id)}
                       >
                         Xóa
                       </Button>
@@ -144,6 +147,17 @@ export default function AdminPostsPage() {
           )}
         </>
       )}
+
+      <ConfirmModal
+        open={confirmDeleteId !== null}
+        title="Xóa bài viết?"
+        description="Bạn có chắc muốn xóa bài viết này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        loading={deletingId !== null}
+        variant="danger"
+        onCancel={() => setConfirmDeleteId(null)}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

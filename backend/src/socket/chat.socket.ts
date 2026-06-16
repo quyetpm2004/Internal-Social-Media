@@ -4,6 +4,7 @@ import { conversationRoom, userRoom } from "@/socket/rooms";
 import type {
   AppSocket,
   MembersUpdatedPayload,
+  PollVotePayload,
   SocketChatMessage,
 } from "@/socket/types";
 
@@ -13,6 +14,16 @@ export const loadConversationIds = async (userId: number): Promise<number[]> => 
     select: { conversationId: true },
   });
   return memberships.map((m) => m.conversationId);
+};
+
+export const emitPollVote = (
+  conversationId: number,
+  payload: Omit<PollVotePayload, "conversationId">,
+) => {
+  getIO()?.to(conversationRoom(conversationId)).emit("poll:vote", {
+    conversationId,
+    ...payload,
+  });
 };
 
 export const registerChatHandlers = (socket: AppSocket): void => {

@@ -5,6 +5,7 @@ import type {
   ChatUser,
   ConversationDetail,
 } from "@/features/chat/types/chat.type";
+import type { PollSummary } from "@/types/poll.type";
 import { groupMessagesByDate } from "@/features/chat/utils/format-message-time";
 
 interface MessageThreadProps {
@@ -19,6 +20,7 @@ interface MessageThreadProps {
   onLoadMore?: () => void;
   onEditMessage?: (messageId: number, content: string) => Promise<void> | void;
   onDeleteMessage?: (messageId: number) => Promise<void> | void;
+  onPollVote?: (messageId: number, poll: PollSummary) => void;
 }
 
 const MessageThread = ({
@@ -33,6 +35,7 @@ const MessageThread = ({
   onLoadMore,
   onEditMessage,
   onDeleteMessage,
+  onPollVote,
 }: MessageThreadProps) => {
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -200,6 +203,7 @@ const MessageThread = ({
                   conversationType={conversation.type}
                   onEdit={onEditMessage}
                   onDelete={onDeleteMessage}
+                  onPollVote={onPollVote}
                 />
               </Fragment>
             );

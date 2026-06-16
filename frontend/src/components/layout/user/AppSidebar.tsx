@@ -1,71 +1,113 @@
-import React from "react";
-import NavItem from "@/components/common/NavItem"; // Component NavItem đã tạo ở bước trước
-import {
-  Bookmark,
-  Group,
-  LayoutGrid,
-  MessageCircleCheck,
-  User,
-} from "lucide-react";
+import { NavLink } from "react-router-dom";
+import { Bookmark, Group, LayoutGrid, MessageCircleCheck } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth.store";
-import { useLocation } from "react-router-dom";
-import { getDefaultAvatarUrl } from "@/lib/utils";
+import { cn, getDefaultAvatarUrl } from "@/lib/utils";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+  useSidebar,
+} from "@/components/ui/sidebar";
 
-const AppSidebar: React.FC = () => {
-  const user = useAuthStore((state) => state.user);
-  const location = useLocation();
-  const isActive = (path: string) => location.pathname === path;
-  return (
-    <aside className="hidden md:flex flex-col gap-2 p-4 fixed left-0 top-16 h-[calc(100vh-64px)] w-80 bg-slate-50 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800">
-      <nav className="flex-1 space-y-1">
-        <NavItem
-          icon={
-            <div className="h-5 w-5 rounded-xl overflow-hidden bg-slate-200">
-              <img
-                alt="User profile"
-                className="h-full w-full object-cover"
-                data-alt="professional of a smiling architect in a modern office setting with soft natural light"
-                src={user?.avatarUrl || getDefaultAvatarUrl(user?.fullName)}
-              />
-            </div>
-          }
-          active={isActive(`/profile/${user?.id}`)}
-          label={user?.fullName || "Tài khoản"}
-          path={`/profile/${user?.id}`}
-        />
-        <NavItem
-          icon={<LayoutGrid size={20} />}
-          active={isActive("/news-feed")}
-          label="Trang chủ"
-          path="/news-feed"
-        />
-        <NavItem
-          icon={<Group size={20} />}
-          active={isActive("/groups")}
-          label="Không gian nhóm"
-          path="/groups"
-        />
-        <NavItem
-          icon={<User size={20} />}
-          active={isActive("/people")}
-          label="Bạn bè"
-          path="/people"
-        />
-        <NavItem
-          icon={<Bookmark size={20} />}
-          active={isActive("/stats")}
-          label="Đã lưu"
-          path="/stats"
-        />
-        <NavItem
-          icon={<MessageCircleCheck size={20} />}
-          active={isActive("/messages")}
-          label="Tin nhắn"
-          path="/messages"
-        />
-      </nav>
-    </aside>
+const navItems = [
+  { to: "/news-feed", label: "Trang chủ", icon: LayoutGrid },
+  { to: "/groups", label: "Không gian nhóm", icon: Group },
+  { to: "/stats", label: "Đã lưu", icon: Bookmark },
+  { to: "/messages", label: "Tin nhắn", icon: MessageCircleCheck },
+];
+
+const menuButtonClass = (isActive: boolean, isCollapsed: boolean) =>
+  cn(
+    "gap-3 rounded-lg font-medium text-sm transition-all",
+    isActive
+      ? "bg-white dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 font-semibold hover:bg-white dark:hover:bg-blue-900/20"
+      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-800/50",
+    isCollapsed && "justify-center size-9 p-0",
   );
-};
 
-export default AppSidebar;
+export default function AppSidebar() {
+  const user = useAuthStore((state) => state.user);
+  const { state } = useSidebar();
+  const isCollapsed = state === "collapsed";
+  const profilePath = `/profile/${user?.id}`;
+
+  return (
+    <Sidebar
+      collapsible="icon"
+      className="top-16 h-[calc(100svh-4rem)] border-slate-200 dark:border-slate-800 **:data-[sidebar=sidebar]:bg-slate-50 **:data-[sidebar=sidebar]:dark:bg-slate-950"
+    >
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-1">
+              <SidebarMenuItem>
+                <NavLink to={profilePath} className="w-full flex pb-2">
+                  {({ isActive }) => (
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={user?.fullName || "Tài khoản"}
+                      className={
+                        menuButtonClass(isActive, isCollapsed) + " h-auto"
+                      }
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="h-6 w-6 shrink-0 overflow-hidden rounded-full bg-slate-200">
+                          <img
+                            alt="User profile"
+                            className="h-full w-full object-cover"
+                            src={
+                              user?.avatarUrl ||
+                              getDefaultAvatarUrl(user?.fullName)
+                            }
+                          />
+                        </div>
+                        <span
+                          className={cn("truncate", isCollapsed && "hidden")}
+                        >
+                          {user?.fullName || "Tài khoản"}
+                        </span>
+                      </div>
+                    </SidebarMenuButton>
+                  )}
+                </NavLink>
+              </SidebarMenuItem>
+
+              {navItems.map((item) => (
+                <SidebarMenuItem key={item.to}>
+                  <NavLink to={item.to} className="w-full flex">
+                    {({ isActive }) => (
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive}
+                        tooltip={item.label}
+                        className={
+                          menuButtonClass(isActive, isCollapsed) + " h-auto"
+                        }
+                      >
+                        <div className="flex items-center gap-3">
+                          <item.icon className="size-6! shrink-0" />
+                          <span
+                            className={cn("truncate", isCollapsed && "hidden")}
+                          >
+                            {item.label}
+                          </span>
+                        </div>
+                      </SidebarMenuButton>
+                    )}
+                  </NavLink>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarRail />
+    </Sidebar>
+  );
+}

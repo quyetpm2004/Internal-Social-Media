@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import ConfirmModal from "@/components/common/ConfirmModal";
 import { adminApi } from "@/features/admin/api/admin.api";
 import AdminPagination from "@/features/admin/components/AdminPagination";
 import type { AdminUser, Pagination } from "@/features/admin/types/admin.type";
@@ -30,6 +31,7 @@ export default function AdminUsersPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<number | null>(null);
+  const [confirmUser, setConfirmUser] = useState<AdminUser | null>(null);
 
   const fetchUsers = async (targetPage = page) => {
     setLoading(true);
@@ -54,14 +56,16 @@ export default function AdminUsersPage() {
     fetchUsers(1);
   };
 
-  const toggleStatus = async (user: AdminUser) => {
-    const newStatus = user.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
-    setActionId(user.id);
+  const handleConfirmToggleStatus = async () => {
+    if (!confirmUser) return;
+    const newStatus = confirmUser.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+    setActionId(confirmUser.id);
     try {
-      await adminApi.updateUserStatus(user.id, newStatus);
+      await adminApi.updateUserStatus(confirmUser.id, newStatus);
       toast.success(
         newStatus === "ACTIVE" ? "Đã mở khóa tài khoản" : "Đã khóa tài khoản",
       );
+      setConfirmUser(null);
       fetchUsers();
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -125,7 +129,7 @@ export default function AdminUsersPage() {
                       size="sm"
                       variant={user.status === "ACTIVE" ? "locked" : "unlocked"}
                       disabled={actionId === user.id}
-                      onClick={() => toggleStatus(user)}
+                      onClick={() => setConfirmUser(user)}
                     >
                       {user.status === "ACTIVE" ? "Khóa" : "Mở khóa"}
                     </Button>
@@ -140,6 +144,25 @@ export default function AdminUsersPage() {
           )}
         </>
       )}
+
+      <ConfirmModal
+        open={confirmUser !== null}
+        title={
+          confirmUser?.status === "ACTIVE"
+            ? "Khóa tài khoản?"
+            : "Mở khóa tài khoản?"
+        }
+        description={
+          confirmUser?.status === "ACTIVE"
+            ? `Bạn có chắc muốn khóa tài khoản của ${confirmUser.fullName}? Người dùng sẽ không thể đăng nhập.`
+            : `Bạn có chắc muốn mở khóa tài khoản của ${confirmUser?.fullName}?`
+        }
+        confirmText={confirmUser?.status === "ACTIVE" ? "Khóa" : "Mở khóa"}
+        loading={actionId !== null}
+        variant={confirmUser?.status === "ACTIVE" ? "danger" : "primary"}
+        onCancel={() => setConfirmUser(null)}
+        onConfirm={handleConfirmToggleStatus}
+      />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import type {
 import type { PostContentFormat } from "@/features/new-feed/utils/rich-text";
 import type { ApiResponse } from "@/types/api.type";
 import type { GroupApiResponse } from "@/features/group/types/group.type";
+import type { PollInput } from "@/types/poll.type";
 
 export const PostsApi = {
   getPostInNewFeed(page: number, limit: number, sort: "latest" | "trending") {
@@ -25,6 +26,7 @@ export const PostsApi = {
     groupId?: number;
     attachmentIds: number[];
     isAnonymous?: boolean;
+    poll?: PollInput;
   }) {
     return axiosClient.post<ApiResponse<ApiPost>>("/posts", data);
   },

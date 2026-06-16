@@ -3,6 +3,7 @@ import { Router } from "express";
 import * as adminController from "@/modules/admin/admin.controller";
 import {
   adminGroupListQuerySchema,
+  adminGroupMembersQuerySchema,
   adminPostListQuerySchema,
   adminUserListQuerySchema,
   groupIdParamsSchema,
@@ -57,6 +58,12 @@ router.get(
   "/groups",
   validateQuery(adminGroupListQuerySchema),
   asyncHandler(adminController.listGroups),
+);
+router.get(
+  "/groups/:groupId/members",
+  validateParams(groupIdParamsSchema),
+  validateQuery(adminGroupMembersQuerySchema),
+  asyncHandler(adminController.listGroupMembers),
 );
 router.get(
   "/groups/:groupId",

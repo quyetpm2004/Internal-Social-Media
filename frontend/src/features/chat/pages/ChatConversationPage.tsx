@@ -20,6 +20,7 @@ const ChatConversationPage = () => {
     onSendMessage,
     onEditMessage,
     onDeleteMessage,
+    onPollVote,
     onMuteChanged,
     onConversationUpdated,
     onGroupCreated,
@@ -59,6 +60,7 @@ const ChatConversationPage = () => {
         onSendMessage={onSendMessage}
         onEditMessage={onEditMessage}
         onDeleteMessage={onDeleteMessage}
+        onPollVote={onPollVote}
         onTypingStart={onTypingStart}
         onTypingStop={onTypingStop}
         onToggleDetails={() => setShowDetailPanel((prev) => !prev)}

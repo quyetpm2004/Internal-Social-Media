@@ -5,6 +5,7 @@ import type {
   ChatMessage,
   ConversationDetail,
 } from "@/features/chat/types/chat.type";
+import type { PollSummary } from "@/types/poll.type";
 
 interface ChatWindowProps {
   conversation: ConversationDetail;
@@ -21,6 +22,7 @@ interface ChatWindowProps {
   onSendMessage: (payload: SendMessagePayload) => Promise<void> | void;
   onEditMessage?: (messageId: number, content: string) => Promise<void> | void;
   onDeleteMessage?: (messageId: number) => Promise<void> | void;
+  onPollVote?: (messageId: number, poll: PollSummary) => void;
   onTypingStart?: () => void;
   onTypingStop?: () => void;
   onToggleDetails?: () => void;
@@ -41,6 +43,7 @@ const ChatWindow = ({
   onSendMessage,
   onEditMessage,
   onDeleteMessage,
+  onPollVote,
   onTypingStart,
   onTypingStop,
   onToggleDetails,
@@ -76,6 +79,7 @@ const ChatWindow = ({
         onLoadMore={onLoadMore}
         onEditMessage={onEditMessage}
         onDeleteMessage={onDeleteMessage}
+        onPollVote={onPollVote}
       />
 
       <MessageInput

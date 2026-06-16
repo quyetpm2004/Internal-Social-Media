@@ -12,6 +12,7 @@ import type {
   MessageNewPayload,
   PresencePayload,
   PresenceSnapshotPayload,
+  PollVotePayload,
   ReadUpdatePayload,
   TypingPayload,
 } from "@/features/chat/types/chat-events.type";
@@ -27,6 +28,7 @@ export interface UseChatSocketHandlers {
   onPresenceOffline?: (payload: PresencePayload) => void;
   onPresenceSnapshot?: (payload: PresenceSnapshotPayload) => void;
   onMembersUpdated?: (payload: MembersUpdatedPayload) => void;
+  onPollVote?: (payload: PollVotePayload) => void;
 }
 
 export interface UseChatSocketReturn {
@@ -82,6 +84,8 @@ export const useChatSocket = (
       handlersRef.current.onPresenceSnapshot?.(payload);
     const handleMembersUpdated = (payload: MembersUpdatedPayload) =>
       handlersRef.current.onMembersUpdated?.(payload);
+    const handlePollVote = (payload: PollVotePayload) =>
+      handlersRef.current.onPollVote?.(payload);
 
     socket.on("message:new", handleMessageNew);
     socket.on("members:updated", handleMembersUpdated);
@@ -93,6 +97,7 @@ export const useChatSocket = (
     socket.on("presence:online", handlePresenceOnline);
     socket.on("presence:offline", handlePresenceOffline);
     socket.on("presence:snapshot", handlePresenceSnapshot);
+    socket.on("poll:vote", handlePollVote);
 
     return () => {
       socket.off("message:new", handleMessageNew);
@@ -104,6 +109,7 @@ export const useChatSocket = (
       socket.off("presence:online", handlePresenceOnline);
       socket.off("presence:offline", handlePresenceOffline);
       socket.off("presence:snapshot", handlePresenceSnapshot);
+      socket.off("poll:vote", handlePollVote);
       socket.off("members:updated", handleMembersUpdated);
       disconnectSocket();
     };

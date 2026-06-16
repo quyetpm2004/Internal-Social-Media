@@ -24,6 +24,12 @@ import {
   notifyPostPinned,
   notifyPostReaction,
 } from "@/modules/notification/notification.service";
+import type { PollInput } from "@/modules/poll/poll.schema";
+import {
+  attachPollSummaryToPosts,
+  createPollInTransaction,
+} from "@/modules/poll/poll.service";
+import { getPollInclude } from "@/modules/poll/poll.types";
 
 type GetPostListParams = {
   page?: number;
@@ -31,6 +37,44 @@ type GetPostListParams = {
   sort?: "latest" | "trending";
   groupId?: number;
 };
+
+const buildPostInclude = (userId: number) => ({
+  user: {
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      role: true,
+      profile: {
+        select: {
+          avatarKey: true,
+        },
+      },
+    },
+  },
+  group: {
+    select: {
+      id: true,
+      groupName: true,
+    },
+  },
+  reactions: {
+    where: {
+      userId,
+    },
+    select: {
+      reactionType: true,
+    },
+  },
+  attachments: true,
+  poll: getPollInclude(userId),
+  _count: {
+    select: {
+      comments: true,
+      reactions: true,
+    },
+  },
+});
 
 export const getPostListService = async ({
   page = 1,
@@ -74,41 +118,7 @@ export const getPostListService = async ({
       orderBy: {
         createdAt: "desc",
       },
-      include: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-            profile: {
-              select: {
-                avatarKey: true,
-              },
-            },
-          },
-        },
-        group: {
-          select: {
-            id: true,
-            groupName: true,
-          },
-        },
-        reactions: {
-          where: {
-            userId: userId,
-          },
-          select: {
-            reactionType: true,
-          },
-        },
-        attachments: true,
-        _count: {
-          select: {
-            comments: true,
-            reactions: true,
-          },
-        },
-      },
+      include: buildPostInclude(userId),
     });
   }
 
@@ -131,42 +141,7 @@ export const getPostListService = async ({
     skip,
     take: limit + 1, // lấy dư 1 bản ghi để biết còn dữ liệu không
     orderBy,
-    include: {
-      user: {
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-          role: true,
-          profile: {
-            select: {
-              avatarKey: true,
-            },
-          },
-        },
-      },
-      group: {
-        select: {
-          id: true,
-          groupName: true,
-        },
-      },
-      reactions: {
-        where: {
-          userId: userId,
-        },
-        select: {
-          reactionType: true,
-        },
-      },
-      attachments: true,
-      _count: {
-        select: {
-          comments: true,
-          reactions: true,
-        },
-      },
-    },
+    include: buildPostInclude(userId),
   });
 
   const hasMore = posts.length > limit;
@@ -226,8 +201,8 @@ export const getPostListService = async ({
       limit,
       sort,
       hasMore,
-      pinnedPosts: maskedPinned,
-      posts: maskedPosts,
+      pinnedPosts: await attachPollSummaryToPosts(maskedPinned, userId),
+      posts: await attachPollSummaryToPosts(maskedPosts, userId),
     };
   }
 
@@ -236,8 +211,11 @@ export const getPostListService = async ({
     limit,
     sort,
     hasMore,
-    pinnedPosts: pinnedPostsWithUrlAttachments,
-    posts: normalizePostsWithUrlAttachments,
+    pinnedPosts: await attachPollSummaryToPosts(
+      pinnedPostsWithUrlAttachments,
+      userId,
+    ),
+    posts: await attachPollSummaryToPosts(normalizePostsWithUrlAttachments, userId),
   };
 };
 
@@ -249,6 +227,7 @@ type CreatePostParams = {
   groupId?: number;
   attachmentIds?: number[];
   isAnonymous?: boolean;
+  poll?: PollInput;
 };
 
 export const createPostService = async ({
@@ -259,8 +238,20 @@ export const createPostService = async ({
   groupId,
   attachmentIds = [],
   isAnonymous: wantsAnonymous = false,
+  poll,
 }: CreatePostParams) => {
-  const processed = processPostContent(content, contentFormat);
+  const hasPoll = Boolean(poll);
+  const trimmedContent = content.trim();
+  let processed: { content: string; contentFormat: PostContentFormatType };
+
+  if (!trimmedContent && hasPoll) {
+    processed = {
+      content: poll!.question,
+      contentFormat: PostContentFormat.PLAIN,
+    };
+  } else {
+    processed = processPostContent(content, contentFormat);
+  }
   let groupPostStatus: PostStatus = PostStatus.ACTIVE;
   const isAnonymous = wantsAnonymous === true;
 
@@ -373,6 +364,13 @@ export const createPostService = async ({
       });
     }
 
+    if (poll) {
+      await createPollInTransaction(tx, {
+        ...poll,
+        postId: createdPost.id,
+      });
+    }
+
     /**
      * Return full post
      */
@@ -380,37 +378,16 @@ export const createPostService = async ({
       where: {
         id: createdPost.id,
       },
-      include: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-            profile: {
-              select: {
-                avatarKey: true,
-              },
-            },
-          },
-        },
-        group: {
-          select: {
-            id: true,
-            groupName: true,
-          },
-        },
-        attachments: true,
-        _count: {
-          select: {
-            comments: true,
-            reactions: true,
-          },
-        },
-      },
+      include: buildPostInclude(userId),
     });
   });
 
-  return post;
+  if (!post) {
+    throw new AppError(500, "Không thể tạo bài viết");
+  }
+
+  const [mappedPost] = await attachPollSummaryToPosts([post], userId);
+  return mappedPost;
 };
 
 type ReactPostParams = {
@@ -701,41 +678,7 @@ export const deletePostService = async (userId: number, postId: number) => {
 export const getPostById = async (postId: number, userId: number) => {
   const existingPost = await prisma.post.findUnique({
     where: { id: postId },
-    include: {
-      user: {
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-          profile: {
-            select: {
-              avatarKey: true,
-            },
-          },
-        },
-      },
-      group: {
-        select: {
-          id: true,
-          groupName: true,
-        },
-      },
-      reactions: {
-        where: {
-          userId: userId,
-        },
-        select: {
-          reactionType: true,
-        },
-      },
-      attachments: true,
-      _count: {
-        select: {
-          comments: true,
-          reactions: true,
-        },
-      },
-    },
+    include: buildPostInclude(userId),
   });
   if (!existingPost) {
     throw new AppError(404, "Post không tồn tại");
@@ -751,23 +694,27 @@ export const getPostById = async (postId: number, userId: number) => {
     }),
   );
 
+  const postWithAttachments = {
+    ...existingPost,
+    attachments: attachmentsWithUrl,
+  };
+
   if (existingPost.groupId) {
     const [maskedPost] = await maskGroupPostAuthors(
       existingPost.groupId,
       userId,
-      [{ ...existingPost, userId: existingPost.userId }],
+      [postWithAttachments],
     );
 
-    return {
-      ...maskedPost,
-      attachments: attachmentsWithUrl,
-    };
+    const [mappedPost] = await attachPollSummaryToPosts([maskedPost], userId);
+    return mappedPost;
   }
 
-  return {
-    ...existingPost,
-    attachments: attachmentsWithUrl,
-  };
+  const [mappedPost] = await attachPollSummaryToPosts(
+    [postWithAttachments],
+    userId,
+  );
+  return mappedPost;
 };
 
 export const pinPostByUserId = async (

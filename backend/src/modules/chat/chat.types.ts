@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { pollInclude } from "@/modules/poll/poll.types";
 
 export const CHAT_DEFAULTS = {
   MAX_MESSAGE_LENGTH: 4000,
@@ -36,6 +37,9 @@ export const messageInclude = {
     },
   },
   attachments: true,
+  poll: {
+    include: pollInclude,
+  },
 } satisfies Prisma.MessageInclude;
 
 export type MessageWithIncludes = Prisma.MessageGetPayload<{

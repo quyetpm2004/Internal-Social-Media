@@ -34,6 +34,12 @@ export interface PresenceSnapshotPayload {
   onlineUserIds: number[];
 }
 
+export interface PollVotePayload {
+  conversationId: number;
+  pollId: number;
+  poll: import("@/types/poll.type").PollSummary;
+}
+
 export type MembersUpdatedAction = "added" | "removed" | "left";
 
 export interface MembersUpdatedPayload {

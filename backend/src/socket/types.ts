@@ -94,11 +94,32 @@ export interface NotificationUnreadCountPayload {
   unreadCount: number;
 }
 
+export interface PollVotePayload {
+  conversationId: number;
+  pollId: number;
+  poll: {
+    id: number;
+    question: string;
+    allowMultiple: boolean;
+    endsAt: string | null;
+    status: string;
+    totalVotes: number;
+    options: {
+      id: number;
+      label: string;
+      voteCount: number;
+      voters: { id: number; fullName: string }[];
+    }[];
+    myVotes: number[];
+  };
+}
+
 export interface ServerToClientEvents {
   "message:new": (payload: MessageNewPayload) => void;
   "members:updated": (payload: MembersUpdatedPayload) => void;
   "message:edited": (payload: MessageEditedPayload) => void;
   "message:deleted": (payload: MessageDeletedPayload) => void;
+  "poll:vote": (payload: PollVotePayload) => void;
   "read:update": (payload: ReadUpdatePayload) => void;
   "typing:start": (payload: TypingPayload) => void;
   "typing:stop": (payload: TypingPayload) => void;

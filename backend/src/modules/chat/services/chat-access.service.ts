@@ -17,6 +17,7 @@ import {
   getConversationMemberUserIds,
   invalidateConversationForMembers,
 } from "@/modules/chat/services/chat-cache.service";
+import { mapPollSummary } from "@/modules/poll/poll.service";
 import prisma from "@/shared/utils/prisma";
 
 export const resolveAvatarUrl = async (avatarKey?: string | null) => {
@@ -58,7 +59,10 @@ export const mapAttachment = async (attachment: {
   fileUrl: await resolveAvatarUrl(attachment.fileKey),
 });
 
-export const mapMessage = async (message: MessageWithIncludes) => ({
+export const mapMessage = async (
+  message: MessageWithIncludes,
+  userId = 0,
+) => ({
   id: message.id,
   conversationId: message.conversationId,
   senderId: message.senderId,
@@ -73,6 +77,7 @@ export const mapMessage = async (message: MessageWithIncludes) => ({
     avatarUrl: await resolveAvatarUrl(message.sender.profile?.avatarKey),
   },
   attachments: await Promise.all(message.attachments.map(mapAttachment)),
+  poll: message.poll ? mapPollSummary(message.poll, userId) : null,
 });
 
 export const assertConversationMember = async (
@@ -172,7 +177,9 @@ export const buildConversationDisplay = async (
           ),
         }
       : null,
-    lastMessage: lastMessage ? await mapMessage(lastMessage) : null,
+    lastMessage: lastMessage
+      ? await mapMessage(lastMessage, currentUserId)
+      : null,
     memberCount: members.length,
   };
 };

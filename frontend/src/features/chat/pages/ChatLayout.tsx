@@ -17,10 +17,12 @@ import type {
   MessageNewPayload,
   PresencePayload,
   PresenceSnapshotPayload,
+  PollVotePayload,
   ReadUpdatePayload,
   TypingPayload,
 } from "@/features/chat/types/chat-events.type";
 import type { SendMessagePayload } from "@/features/chat/components/chat-window/MessageInput";
+import type { PollSummary } from "@/types/poll.type";
 
 export interface ChatOutletContext {
   conversation: ConversationDetail | null;
@@ -42,6 +44,7 @@ export interface ChatOutletContext {
   onSendMessage: (payload: SendMessagePayload) => Promise<void>;
   onEditMessage: (messageId: number, content: string) => Promise<void>;
   onDeleteMessage: (messageId: number) => Promise<void>;
+  onPollVote: (messageId: number, poll: PollSummary) => void;
   onMuteChanged: (isMuted: boolean) => void;
   onConversationUpdated: (conversation: ConversationDetail) => void;
   onGroupCreated: (conversationId: number) => void;
@@ -359,6 +362,35 @@ const ChatLayout = () => {
     [currentUserId, navigate, refreshConversations],
   );
 
+  const handlePollVoteUpdate = useCallback(
+    (messageId: number, poll: PollSummary) => {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, poll } : m)),
+      );
+    },
+    [],
+  );
+
+  const handlePollVoteSocket = useCallback(
+    ({ conversationId: convId, poll }: PollVotePayload) => {
+      if (activeConversationIdRef.current !== convId) return;
+
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.poll?.id !== poll.id) return m;
+          return {
+            ...m,
+            poll: {
+              ...poll,
+              myVotes: m.poll?.myVotes ?? poll.myVotes,
+            },
+          };
+        }),
+      );
+    },
+    [],
+  );
+
   const { emitTypingStart, emitTypingStop } = useChatSocket({
     onMessageNew: handleMessageNew,
     onMessageEdited: handleMessageEdited,
@@ -370,6 +402,7 @@ const ChatLayout = () => {
     onPresenceOffline: handlePresenceOffline,
     onPresenceSnapshot: handlePresenceSnapshot,
     onMembersUpdated: handleMembersUpdated,
+    onPollVote: handlePollVoteSocket,
   });
 
   // ----- Effects -----
@@ -554,6 +587,7 @@ const ChatLayout = () => {
           content: payload.content,
           contentType: payload.contentType,
           attachmentIds: payload.attachmentIds,
+          poll: payload.poll,
         });
         const newMessage = res.data;
 
@@ -721,6 +755,7 @@ const ChatLayout = () => {
     onSendMessage: handleSendMessage,
     onEditMessage: handleEditMessage,
     onDeleteMessage: handleDeleteMessage,
+    onPollVote: handlePollVoteUpdate,
     onMuteChanged: handleMuteChanged,
     onConversationUpdated: handleConversationUpdated,
     onGroupCreated: handleGroupCreated,

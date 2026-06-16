@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/sheet";
 import { getDefaultAvatarUrl } from "@/lib/utils";
 import NotificationBell from "@/features/notification/components/NotificationBell";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 type UserMenuPanelProps = {
   onClose: () => void;
@@ -163,9 +164,9 @@ export default function AppHeader() {
   return (
     <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md fixed top-0 w-full z-50 border-b border-gray-200 dark:border-slate-800 shadow-sm">
       <div className="flex items-center justify-between h-16 w-full max-w-full">
-        <div className="flex items-center gap-4 w-80">
-          <span className="text-xl font-extrabold text-blue-700 dark:text-white tracking-tight pr-2 pl-3 hidden md:block">
-            <img src="/logo/logo.png" alt="Logo" className="w-20 h-10" />
+        <div className="flex items-center gap-2 w-80">
+          <span className="text-xl font-extrabold text-blue-700 dark:text-white tracking-tight pl-2 hidden md:block">
+            <img src="/favicon.png" alt="Logo" className="w-10 h-10" />
           </span>
 
           <div className="flex gap-3 items-center px-3 md:hidden">
@@ -186,6 +187,9 @@ export default function AppHeader() {
           </div>
 
           <SearchBar />
+        </div>
+        <div className="hidden md:flex shrink-0 flex-1 px-3">
+          <SidebarTrigger />
         </div>
 
         <div className="flex items-center gap-4 pr-4">

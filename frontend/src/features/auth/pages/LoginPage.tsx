@@ -3,15 +3,7 @@ import { useForm } from "react-hook-form";
 import { useLocation, useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import {
-  Eye,
-  EyeOff,
-  Lock,
-  Mail,
-  LayoutDashboard,
-  HelpCircle,
-  Globe,
-} from "lucide-react";
+import { Eye, EyeOff, Globe, HelpCircle, Lock, Mail } from "lucide-react";
 
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import {
@@ -19,6 +11,7 @@ import {
   type LoginFormValues,
 } from "@/features/auth/schemas/login.schema";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -29,6 +22,7 @@ export default function LoginPage() {
 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const from =
     (location.state as { from?: { pathname?: string } })?.from?.pathname ||
@@ -51,7 +45,7 @@ export default function LoginPage() {
       setLoading(true);
       await login(values);
       toast.success("Đăng nhập thành công");
-      navigate("/news-feed");
+      navigate(from === "/login" ? "/news-feed" : from);
     } catch {
       toast.error("Email hoặc mật khẩu không chính xác!");
     } finally {
@@ -60,118 +54,185 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-6  bg-illustration">
-      <main className="w-full max-w-md">
-        <div className="bg-white rounded-2xl p-8 md:p-10 shadow-sm border border-gray-100 flex flex-col items-center">
-          <div className="mb-10 text-center">
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <div className="w-10 h-10 bg-blue-700 rounded-lg flex items-center justify-center text-white shadow-lg">
-                <LayoutDashboard size={24} />
-              </div>
-              <span className="font-headline font-extrabold text-2xl tracking-tighter text-blue-900">
-                CollabNet
-              </span>
+    <div className="flex min-h-screen w-full">
+      <section className="relative hidden overflow-hidden lg:flex lg:w-[58%]">
+        <img
+          src="/login/login.png"
+          alt="Kiến trúc hiện đại"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-linear-to-t from-slate-950/85 via-slate-900/35 to-slate-900/10" />
+
+        <div className="relative z-10 mt-auto flex w-full flex-col gap-5 p-12 xl:p-16">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center overflow-hidden rounded-xl bg-white/15 backdrop-blur-sm">
+              <img
+                src="/logo/logo.png"
+                alt="Logo"
+                className="size-6 object-contain"
+              />
             </div>
-            <h1 className="text-3xl font-headline font-semibold text-gray-900 tracking-tight">
-              Đăng nhập
-            </h1>
-            <p className="text-[#444653] text-sm mt-2 font-medium">
-              Chào mừng trở lại với mạng lưới nội bộ
-            </p>
+            <span className="text-sm font-semibold tracking-wide text-white/90">
+              Collab Network
+            </span>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-6">
-            <div className="space-y-2">
-              <Label
-                htmlFor="email"
-                className="block text-sm font-semibold font-label text-gray-600 ml-1"
-              >
-                Email công ty
-              </Label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-700 transition-colors">
-                  <Mail size={20} />
-                </div>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="username@company.com"
-                  className="block w-full pl-11 pr-4 py-6 bg-gray-50 border-none rounded-lg focus-visible:ring-2 focus-visible:ring-blue-700/20 transition-all shadow-none"
-                  {...register("email")}
-                />
-              </div>
-              {errors.email && (
-                <p className="text-sm text-red-500 ml-1">
-                  {errors.email.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label
-                htmlFor="password"
-                className="block text-sm font-semibold text-gray-600 ml-1"
-              >
-                Mật khẩu
-              </Label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-700 transition-colors">
-                  <Lock size={20} />
-                </div>
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  className="block w-full pl-11 pr-12 py-6 bg-gray-50 border-none rounded-lg focus-visible:ring-2 focus-visible:ring-blue-700/20 transition-all shadow-none"
-                  {...register("password")}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-blue-700 transition-colors"
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-              {errors.password && (
-                <p className="text-sm text-red-500 ml-1">
-                  {errors.password.message}
-                </p>
-              )}
-            </div>
-
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-700 hover:bg-blue-800 text-lg cursor-pointer text-white font-semibold py-7 rounded-xl shadow-lg shadow-blue-700/10 active:scale-[0.98] transition-all"
-            >
-              {loading ? "Đang đăng nhập..." : "Đăng nhập"}
-            </Button>
-          </form>
-
-          <div className="mt-10 w-full pt-8 border-t border-gray-50 flex flex-col items-center">
-            <p className="text-[#444653] text-xs font-label text-center leading-relaxed">
-              Hệ thống truy cập nội bộ dành riêng cho nhân viên.
-              <br />
-              Yêu cầu tuân thủ Chính sách bảo mật thông tin.
+          <div className="max-w-xl space-y-4">
+            <h2 className="font-headline text-4xl font-bold leading-tight text-white xl:text-5xl">
+              Thiết kế tương lai cho các không gian bền vững.
+            </h2>
+            <p className="max-w-lg text-base leading-relaxed text-white/75">
+              Nền tảng quản lý dự án và hợp tác nội bộ dành riêng cho đội ngũ
+              chuyên gia kiến trúc.
             </p>
-            <div className="mt-6 flex gap-4">
-              <button className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-400">
-                <HelpCircle size={18} />
-              </button>
-              <button className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-400">
-                <Globe size={18} />
-              </button>
-            </div>
           </div>
         </div>
+      </section>
 
-        <footer className="mt-8 text-center">
-          <p className="text-gray-400/60 text-[11px] font-medium tracking-wide uppercase">
-            Architectural Workspace • internal network v1.0.0s
+      <section className="flex min-h-screen flex-1 flex-col bg-white">
+        <div className="flex flex-1 items-center justify-center px-6 py-10 sm:px-10">
+          <main className="w-full max-w-[420px]">
+            <div className="mb-10 lg:mb-12">
+              <div className="mb-8 flex items-center gap-3 lg:hidden">
+                <img
+                  src="/logo/logo.png"
+                  alt="Logo"
+                  className="h-8 w-auto object-contain"
+                />
+                <span className="text-sm font-semibold text-slate-700">
+                  Architectural Workspace
+                </span>
+              </div>
+
+              <h1 className="font-headline text-4xl font-bold tracking-tight text-slate-900">
+                Đăng nhập
+              </h1>
+              <p className="mt-3 text-sm leading-relaxed text-slate-500">
+                Chào mừng trở lại với mạng lưới nội bộ doanh nghiệp.
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+              <div className="space-y-2">
+                <Label
+                  htmlFor="email"
+                  className="text-sm font-semibold text-slate-700"
+                >
+                  Email công ty
+                </Label>
+                <div className="relative group">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400 transition-colors group-focus-within:text-blue-700">
+                    <Mail size={18} />
+                  </div>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="username@company.com"
+                    className="h-12 rounded-xl border-none bg-slate-100 pl-11 shadow-none focus-visible:ring-2 focus-visible:ring-blue-700/20"
+                    {...register("email")}
+                  />
+                </div>
+                {errors.email && (
+                  <p className="text-sm text-red-500">{errors.email.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label
+                  htmlFor="password"
+                  className="text-sm font-semibold text-slate-700"
+                >
+                  Mật khẩu
+                </Label>
+                <div className="relative group">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400 transition-colors group-focus-within:text-blue-700">
+                    <Lock size={18} />
+                  </div>
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    className="h-12 rounded-xl border-none bg-slate-100 pl-11 pr-12 shadow-none focus-visible:ring-2 focus-visible:ring-blue-700/20"
+                    {...register("password")}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-400 transition-colors hover:text-blue-700"
+                    aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="text-sm text-red-500">
+                    {errors.password.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <label className="flex cursor-pointer items-center gap-2.5">
+                  <Checkbox
+                    checked={rememberMe}
+                    onCheckedChange={(checked) =>
+                      setRememberMe(checked === true)
+                    }
+                  />
+                  <span className="text-sm text-slate-600">
+                    Ghi nhớ đăng nhập
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  className="text-sm font-medium text-blue-700 transition-colors hover:text-blue-800"
+                >
+                  Quên mật khẩu?
+                </button>
+              </div>
+
+              <Button
+                type="submit"
+                disabled={loading}
+                className="h-12 w-full rounded-xl bg-blue-800 text-base font-semibold text-white shadow-none hover:bg-blue-900"
+              >
+                {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+              </Button>
+            </form>
+
+            <div className="mt-10 space-y-6">
+              <p className="text-center text-xs leading-relaxed text-slate-500">
+                Hệ thống truy cập nội bộ dành riêng cho nhân viên.
+                <br />
+                Yêu cầu tuân thủ Chính sách bảo mật thông tin.
+              </p>
+
+              <div className="flex items-center justify-center gap-8">
+                <button
+                  type="button"
+                  className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.14em] text-slate-500 transition-colors hover:text-blue-700"
+                >
+                  <HelpCircle size={14} />
+                  TRỢ GIÚP
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.14em] text-slate-500 transition-colors hover:text-blue-700"
+                >
+                  <Globe size={14} />
+                  TIẾNG VIỆT
+                </button>
+              </div>
+            </div>
+          </main>
+        </div>
+
+        <footer className="px-6 pb-6 text-center">
+          <p className="text-[11px] font-medium tracking-[0.12em] text-slate-400 uppercase">
+            © 2024 Architectural Workspace • Internal v4.2.0
           </p>
         </footer>
-      </main>
+      </section>
     </div>
   );
 }

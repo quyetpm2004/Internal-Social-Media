@@ -38,12 +38,13 @@ export async function createPost(req: Request, res: Response) {
 
   const newPost = await createPostService({
     userId: req.user!.id,
-    content: body.content,
+    content: body.content ?? "",
     contentFormat: body.contentFormat,
     visibility: body.visibility,
     groupId: body.groupId,
     attachmentIds: body.attachmentIds ?? [],
     isAnonymous: body.isAnonymous,
+    poll: body.poll,
   });
 
   res.status(201).json({

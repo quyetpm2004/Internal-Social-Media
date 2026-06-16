@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import * as adminService from "@/modules/admin/admin.service";
 import type {
   AdminGroupListQuery,
+  AdminGroupMembersQuery,
   AdminPostListQuery,
   AdminUserListQuery,
   UpdateUserStatusInput,
@@ -53,6 +54,16 @@ export async function getGroupDetail(req: Request, res: Response) {
   const { groupId } = req.validated as { groupId: number };
   const group = await adminService.getGroupDetail(groupId);
   res.status(200).json({ message: "Lấy chi tiết nhóm thành công", data: group });
+}
+
+export async function listGroupMembers(req: Request, res: Response) {
+  const groupId = Number(req.params.groupId);
+  const query = req.validated as AdminGroupMembersQuery;
+  const result = await adminService.listGroupMembers(groupId, query);
+  res.status(200).json({
+    message: "Lấy danh sách thành viên nhóm thành công",
+    data: result,
+  });
 }
 
 export async function deleteGroup(req: Request, res: Response) {

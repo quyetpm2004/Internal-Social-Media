@@ -4,6 +4,7 @@ import prisma from "@/shared/utils/prisma";
 import { getFileUrl } from "@/modules/file/file.service";
 import type {
   AdminGroupListQuery,
+  AdminGroupMembersQuery,
   AdminPostListQuery,
   AdminUserListQuery,
   UpdateUserStatusInput,
@@ -15,15 +16,70 @@ const paginate = (page: number, limit: number) => {
   return { take, skip };
 };
 
+const RECENT_ACTIVITY_LIMIT = 5;
+
+const recentPostSelect = {
+  id: true,
+  content: true,
+  status: true,
+  visibility: true,
+  isPinned: true,
+  isAnonymous: true,
+  createdAt: true,
+  user: { select: { id: true, fullName: true, email: true } },
+  group: { select: { id: true, groupName: true } },
+  _count: { select: { comments: true, reactions: true } },
+} as const;
+
+const recentUserSelect = {
+  id: true,
+  fullName: true,
+  email: true,
+  role: true,
+  status: true,
+  createdAt: true,
+  department: { select: { id: true, name: true } },
+  position: { select: { id: true, name: true } },
+} as const;
+
 export const getDashboardStats = async () => {
-  const [totalUsers, totalPosts, totalGroups, activeUsers] = await Promise.all([
+  const [
+    totalUsers,
+    totalPosts,
+    totalGroups,
+    activeUsers,
+    pendingReviewPosts,
+    inactiveUsers,
+    inactiveGroups,
+    recentPosts,
+    recentUsers,
+  ] = await Promise.all([
     prisma.user.count(),
     prisma.post.count({ where: { status: { not: PostStatus.DELETED } } }),
     prisma.group.count({ where: { status: { not: GroupStatus.ARCHIVED } } }),
     prisma.user.count({ where: { status: Status.ACTIVE } }),
+    prisma.post.count({ where: { status: PostStatus.PENDING_REVIEW } }),
+    prisma.user.count({ where: { status: Status.INACTIVE } }),
+    prisma.group.count({ where: { status: GroupStatus.INACTIVE } }),
+    prisma.post.findMany({
+      where: { status: { not: PostStatus.DELETED } },
+      take: RECENT_ACTIVITY_LIMIT,
+      orderBy: { createdAt: "desc" },
+      select: recentPostSelect,
+    }),
+    prisma.user.findMany({
+      take: RECENT_ACTIVITY_LIMIT,
+      orderBy: { createdAt: "desc" },
+      select: recentUserSelect,
+    }),
   ]);
 
-  return { totalUsers, totalPosts, totalGroups, activeUsers };
+  return {
+    stats: { totalUsers, totalPosts, totalGroups, activeUsers },
+    alerts: { pendingReviewPosts, inactiveUsers, inactiveGroups },
+    recentPosts,
+    recentUsers,
+  };
 };
 
 export const listUsers = async (query: AdminUserListQuery) => {
@@ -270,6 +326,58 @@ export const getGroupDetail = async (groupId: number) => {
   }
 
   return { ...group, coverUrl };
+};
+
+export const listGroupMembers = async (
+  groupId: number,
+  query: AdminGroupMembersQuery,
+) => {
+  const group = await prisma.group.findUnique({ where: { id: groupId } });
+  if (!group) {
+    throw new AppError(404, "Nhóm không tồn tại");
+  }
+
+  const { page, limit } = query;
+  const { take, skip } = paginate(page, limit);
+
+  const [members, total] = await Promise.all([
+    prisma.groupMember.findMany({
+      where: { groupId },
+      skip,
+      take,
+      orderBy: { joinedAt: "asc" },
+      select: {
+        id: true,
+        memberRole: true,
+        joinedAt: true,
+        status: true,
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+      },
+    }),
+    prisma.groupMember.count({ where: { groupId } }),
+  ]);
+
+  return {
+    members: members.map((member) => ({
+      id: member.id,
+      memberRole: member.memberRole,
+      joinedAt: member.joinedAt,
+      status: member.status,
+      user: member.user,
+    })),
+    pagination: {
+      page,
+      limit: take,
+      total,
+      totalPages: Math.ceil(total / take),
+    },
+  };
 };
 
 export const deleteGroup = async (groupId: number) => {

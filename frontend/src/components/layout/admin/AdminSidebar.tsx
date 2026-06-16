@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
+import ConfirmModal from "@/components/common/ConfirmModal";
 import {
   LayoutDashboard,
   Users,
@@ -34,6 +36,8 @@ export default function AdminSidebar() {
   const logout = useAuthStore((state) => state.logout);
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader
@@ -131,7 +135,11 @@ export default function AdminSidebar() {
                         {user?.email}
                       </p>
                     </div>
-                    <button className="ml-auto" onClick={() => logout()}>
+                    <button
+                      type="button"
+                      className="ml-auto"
+                      onClick={() => setShowLogoutConfirm(true)}
+                    >
                       <LogOut className="size-4 text-muted-foreground" />
                     </button>
                   </>
@@ -141,6 +149,18 @@ export default function AdminSidebar() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+      <ConfirmModal
+        open={showLogoutConfirm}
+        title="Đăng xuất?"
+        description="Bạn có chắc muốn đăng xuất khỏi tài khoản admin?"
+        confirmText="Đăng xuất"
+        variant="primary"
+        onCancel={() => setShowLogoutConfirm(false)}
+        onConfirm={() => {
+          logout();
+          setShowLogoutConfirm(false);
+        }}
+      />
     </Sidebar>
   );
 }

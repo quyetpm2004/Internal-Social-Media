@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { ReactionType } from "@/features/new-feed/api/reaction.api";
 import type { PostContentFormat } from "@/features/new-feed/utils/rich-text";
 import type { GroupMemberRole } from "@/features/group/utils/group-member";
+import type { PollSummary } from "@/types/poll.type";
 
 type SortType = "latest" | "trending";
 type PostStatus = "ACTIVE" | "PENDING_REVIEW" | "HIDDEN" | "DELETED";
@@ -33,6 +34,7 @@ interface Post {
   }[];
   stats: Stats;
   currentReaction: ReactionType | null;
+  poll?: PollSummary | null;
 }
 
 interface SidebarItemProps {
@@ -105,6 +107,7 @@ type ApiPost = {
     reactionType: ReactionType;
   }[];
   role?: GroupMemberRole;
+  poll?: PollSummary | null;
 };
 
 type GetPostsResponse = {

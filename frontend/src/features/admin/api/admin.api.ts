@@ -2,17 +2,18 @@ import { axiosClient } from "@/lib/axios";
 import type {
   AdminGroup,
   AdminGroupDetail,
+  AdminGroupMember,
   AdminPost,
   AdminPostDetail,
   AdminUser,
-  DashboardStats,
+  DashboardData,
   Pagination,
 } from "@/features/admin/types/admin.type";
 import type { ApiResponse } from "@/types/api.type";
 
 export const adminApi = {
   getDashboard() {
-    return axiosClient.get<ApiResponse<DashboardStats>>("/admin/dashboard");
+    return axiosClient.get<ApiResponse<DashboardData>>("/admin/dashboard");
   },
 
   getUsers(params?: {
@@ -69,6 +70,12 @@ export const adminApi = {
     return axiosClient.get<ApiResponse<AdminGroupDetail>>(
       `/admin/groups/${groupId}`,
     );
+  },
+
+  getGroupMembers(groupId: number, params?: { page?: number; limit?: number }) {
+    return axiosClient.get<
+      ApiResponse<{ members: AdminGroupMember[]; pagination: Pagination }>
+    >(`/admin/groups/${groupId}/members`, { params });
   },
 
   deleteGroup(groupId: number) {
