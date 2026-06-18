@@ -11,6 +11,7 @@ import {
   postIdParamsSchema,
   postListQuerySchema,
   reactPostSchema,
+  savedPostListQuerySchema,
   updatePostSchema,
 } from "@/modules/post/post.schema";
 import { commentListQuerySchema } from "@/modules/comment/comment.schema";
@@ -30,6 +31,11 @@ router.get(
   "/new-feed",
   validateQuery(postListQuerySchema),
   asyncHandler(postController.getPostList),
+);
+router.get(
+  "/saved",
+  validateQuery(savedPostListQuerySchema),
+  asyncHandler(postController.getSavedPosts),
 );
 router.post(
   "/",
@@ -76,6 +82,11 @@ router.patch(
   validateParams(postIdParamsSchema),
   validateBody(pinPostSchema),
   asyncHandler(postController.pinPost),
+);
+router.post(
+  "/:postId/save",
+  validateParams(postIdParamsSchema),
+  asyncHandler(postController.toggleSavePost),
 );
 
 export default router;

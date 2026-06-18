@@ -1,4 +1,5 @@
 import {
+  EventAttendanceStatus,
   GroupMemberRole,
   GroupMemberStatus,
   GroupPermission,
@@ -30,6 +31,92 @@ import {
   createPollInTransaction,
 } from "@/modules/poll/poll.service";
 import { getPollInclude } from "@/modules/poll/poll.types";
+
+type EventInput = {
+  title: string;
+  description?: string;
+  startAt: Date;
+  endAt?: Date;
+  location?: string;
+};
+
+type EventForSummary = {
+  id: number;
+  title: string;
+  description: string | null;
+  startAt: Date;
+  endAt: Date | null;
+  location: string | null;
+  attendees?: Array<{
+    userId: number;
+    status: EventAttendanceStatus;
+  }>;
+};
+
+const attachEventSummaryToPosts = async <
+  T extends { event?: EventForSummary | null } & Record<
+    string,
+    unknown
+  >,
+>(
+  posts: T[],
+  userId: number,
+) => {
+  return posts.map((post) => ({
+    ...post,
+    event: post.event
+      ? (() => {
+          const { attendees, ...eventBase } = post.event;
+          return {
+            ...eventBase,
+            startAt: eventBase.startAt.toISOString(),
+            endAt: eventBase.endAt ? eventBase.endAt.toISOString() : null,
+          attendeeSummary: {
+            going:
+              attendees?.filter(
+                (attendee) => attendee.status === EventAttendanceStatus.GOING,
+              ).length ?? 0,
+            maybe:
+              attendees?.filter(
+                (attendee) => attendee.status === EventAttendanceStatus.MAYBE,
+              ).length ?? 0,
+            declined:
+              attendees?.filter(
+                (attendee) => attendee.status === EventAttendanceStatus.DECLINED,
+              ).length ?? 0,
+          },
+          myResponse:
+            attendees?.find((attendee) => attendee.userId === userId)
+              ?.status ?? null,
+          };
+        })()
+      : null,
+  }));
+};
+
+const attachPostEnhancements = async <
+  T extends {
+    poll?: unknown;
+    event?: EventForSummary | null;
+    savedBy?: Array<{ id: number }>;
+  } & Record<
+    string,
+    unknown
+  >,
+>(
+  posts: T[],
+  userId: number,
+) => {
+  const withPoll = await attachPollSummaryToPosts(posts as any, userId);
+  const withEvent = (await attachEventSummaryToPosts(
+    withPoll as any,
+    userId,
+  )) as Array<Record<string, any>>;
+  return withEvent.map((post) => ({
+    ...post,
+    isSaved: (post.savedBy?.length ?? 0) > 0,
+  }));
+};
 
 type GetPostListParams = {
   page?: number;
@@ -68,6 +155,20 @@ const buildPostInclude = (userId: number) => ({
   },
   attachments: true,
   poll: getPollInclude(userId),
+  event: {
+    include: {
+      attendees: {
+        select: {
+          userId: true,
+          status: true,
+        },
+      },
+    },
+  },
+  savedBy: {
+    where: { userId },
+    select: { id: true },
+  },
   _count: {
     select: {
       comments: true,
@@ -201,8 +302,8 @@ export const getPostListService = async ({
       limit,
       sort,
       hasMore,
-      pinnedPosts: await attachPollSummaryToPosts(maskedPinned, userId),
-      posts: await attachPollSummaryToPosts(maskedPosts, userId),
+      pinnedPosts: await attachPostEnhancements(maskedPinned, userId),
+      posts: await attachPostEnhancements(maskedPosts, userId),
     };
   }
 
@@ -211,11 +312,11 @@ export const getPostListService = async ({
     limit,
     sort,
     hasMore,
-    pinnedPosts: await attachPollSummaryToPosts(
+    pinnedPosts: await attachPostEnhancements(
       pinnedPostsWithUrlAttachments,
       userId,
     ),
-    posts: await attachPollSummaryToPosts(normalizePostsWithUrlAttachments, userId),
+    posts: await attachPostEnhancements(normalizePostsWithUrlAttachments, userId),
   };
 };
 
@@ -228,6 +329,7 @@ type CreatePostParams = {
   attachmentIds?: number[];
   isAnonymous?: boolean;
   poll?: PollInput;
+  event?: EventInput;
 };
 
 export const createPostService = async ({
@@ -239,14 +341,21 @@ export const createPostService = async ({
   attachmentIds = [],
   isAnonymous: wantsAnonymous = false,
   poll,
+  event,
 }: CreatePostParams) => {
   const hasPoll = Boolean(poll);
+  const hasEvent = Boolean(event);
   const trimmedContent = content.trim();
   let processed: { content: string; contentFormat: PostContentFormatType };
 
   if (!trimmedContent && hasPoll) {
     processed = {
       content: poll!.question,
+      contentFormat: PostContentFormat.PLAIN,
+    };
+  } else if (!trimmedContent && hasEvent) {
+    processed = {
+      content: event!.title,
       contentFormat: PostContentFormat.PLAIN,
     };
   } else {
@@ -371,6 +480,19 @@ export const createPostService = async ({
       });
     }
 
+    if (event) {
+      await tx.event.create({
+        data: {
+          postId: createdPost.id,
+          title: event.title,
+          description: event.description?.trim() || null,
+          startAt: event.startAt,
+          endAt: event.endAt ?? null,
+          location: event.location?.trim() || null,
+        },
+      });
+    }
+
     /**
      * Return full post
      */
@@ -386,7 +508,7 @@ export const createPostService = async ({
     throw new AppError(500, "Không thể tạo bài viết");
   }
 
-  const [mappedPost] = await attachPollSummaryToPosts([post], userId);
+  const [mappedPost] = await attachPostEnhancements([post], userId);
   return mappedPost;
 };
 
@@ -706,15 +828,172 @@ export const getPostById = async (postId: number, userId: number) => {
       [postWithAttachments],
     );
 
-    const [mappedPost] = await attachPollSummaryToPosts([maskedPost], userId);
+    const [mappedPost] = await attachPostEnhancements([maskedPost], userId);
     return mappedPost;
   }
 
-  const [mappedPost] = await attachPollSummaryToPosts(
+  const [mappedPost] = await attachPostEnhancements(
     [postWithAttachments],
     userId,
   );
   return mappedPost;
+};
+
+const assertUserCanAccessPost = async (postId: number, userId: number) => {
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: {
+      id: true,
+      groupId: true,
+      status: true,
+      visibility: true,
+    },
+  });
+
+  if (!post) {
+    throw new AppError(404, "Bài viết không tồn tại");
+  }
+
+  if (post.status !== PostStatus.ACTIVE) {
+    throw new AppError(400, "Bài viết không khả dụng");
+  }
+
+  if (post.groupId) {
+    const member = await prisma.groupMember.findUnique({
+      where: { groupId_userId: { groupId: post.groupId, userId } },
+      select: { status: true },
+    });
+    if (!member || member.status !== GroupMemberStatus.ACTIVE) {
+      throw new AppError(403, "Bạn không có quyền truy cập bài viết này");
+    }
+  }
+
+  return post;
+};
+
+export const toggleSavePostService = async ({
+  postId,
+  userId,
+}: {
+  postId: number;
+  userId: number;
+}) => {
+  await assertUserCanAccessPost(postId, userId);
+
+  const existed = await prisma.savedPost.findUnique({
+    where: {
+      userId_postId: { userId, postId },
+    },
+  });
+
+  if (existed) {
+    await prisma.savedPost.delete({
+      where: {
+        userId_postId: { userId, postId },
+      },
+    });
+    return { isSaved: false };
+  }
+
+  await prisma.savedPost.create({
+    data: {
+      userId,
+      postId,
+    },
+  });
+  return { isSaved: true };
+};
+
+export const getSavedPostListService = async ({
+  userId,
+  page = 1,
+  limit = 10,
+}: {
+  userId: number;
+  page?: number;
+  limit?: number;
+}) => {
+  const skip = (page - 1) * limit;
+
+  const saved = await prisma.savedPost.findMany({
+    where: {
+      userId,
+      post: {
+        status: PostStatus.ACTIVE,
+        OR: [
+          { groupId: null, visibility: PostVisibility.PUBLIC },
+          {
+            group: {
+              members: {
+                some: {
+                  userId,
+                  status: GroupMemberStatus.ACTIVE,
+                },
+              },
+            },
+          },
+        ],
+      },
+    },
+    orderBy: {
+      savedAt: "desc",
+    },
+    skip,
+    take: limit + 1,
+    include: {
+      post: {
+        include: buildPostInclude(userId),
+      },
+    },
+  });
+
+  const hasMore = saved.length > limit;
+  const sliced = hasMore ? saved.slice(0, limit) : saved;
+  const posts = sliced.map((item: any) => item.post);
+
+  const postsWithAttachmentUrls = await Promise.all(
+    posts.map(async (post: any) => {
+      const attachments = await Promise.all(
+        post.attachments.map(async (attachment: any) => ({
+          ...attachment,
+          fileUrl: await getFileUrl(attachment.fileKey, 7 * 24 * 60 * 60),
+        })),
+      );
+      return {
+        ...post,
+        attachments,
+      };
+    }),
+  );
+
+  const groupIds = [
+    ...new Set(
+      postsWithAttachmentUrls
+        .map((p: any) => p.groupId)
+        .filter(Boolean),
+    ),
+  ] as number[];
+  let maskedPosts = postsWithAttachmentUrls;
+  for (const groupId of groupIds) {
+    const groupPosts = maskedPosts.filter((p: any) => p.groupId === groupId);
+    const others = maskedPosts.filter((p: any) => p.groupId !== groupId);
+    const masked = await maskGroupPostAuthors(groupId, userId, groupPosts);
+    maskedPosts = [...others, ...masked];
+  }
+
+  const idOrder = new Map(
+    postsWithAttachmentUrls.map((post: any, idx: number) => [post.id, idx]),
+  );
+  maskedPosts.sort(
+    (a: any, b: any) => (idOrder.get(a.id) ?? 0) - (idOrder.get(b.id) ?? 0),
+  );
+
+  return {
+    page,
+    limit,
+    hasMore,
+    posts: await attachPostEnhancements(maskedPosts, userId),
+  };
 };
 
 export const pinPostByUserId = async (

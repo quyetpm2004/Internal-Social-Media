@@ -17,15 +17,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useTranslation } from "react-i18next";
 
 function getErrorMessage(error: unknown): string {
   if (error && typeof error === "object" && "message" in error) {
     return String((error as { message: string }).message);
   }
-  return "Đã xảy ra lỗi";
+  return "Unexpected error";
 }
 
 export default function AdminGroupsPage() {
+  const { t } = useTranslation();
   const [groups, setGroups] = useState<AdminGroup[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [search, setSearch] = useState("");
@@ -62,7 +64,7 @@ export default function AdminGroupsPage() {
     setDeletingId(confirmDeleteId);
     try {
       await adminApi.deleteGroup(confirmDeleteId);
-      toast.success("Đã xóa nhóm");
+      toast.success(t("pages.admin.groupDeleted"));
       setConfirmDeleteId(null);
       fetchGroups();
     } catch (error) {
@@ -74,11 +76,11 @@ export default function AdminGroupsPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Quản lý nhóm</h1>
+      <h1 className="mb-6 text-2xl font-semibold">{t("pages.admin.groupsTitle")}</h1>
 
       <form onSubmit={handleSearch} className="mb-4 flex gap-2">
         <Input
-          placeholder="Tìm theo tên nhóm..."
+          placeholder={t("pages.admin.searchGroupsPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm"
@@ -87,7 +89,7 @@ export default function AdminGroupsPage() {
           className="cursor-pointer text-white bg-primary hover:bg-primary/90"
           type="submit"
         >
-          Tìm kiếm
+          {t("common.search")}
         </Button>
       </form>
 
@@ -100,12 +102,12 @@ export default function AdminGroupsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Tên nhóm</TableHead>
-                <TableHead>Loại</TableHead>
-                <TableHead>Thành viên</TableHead>
-                <TableHead>Bài viết</TableHead>
-                <TableHead>Trạng thái</TableHead>
-                <TableHead className="text-right">Thao tác</TableHead>
+                <TableHead>{t("common.groupName")}</TableHead>
+                <TableHead>{t("common.type")}</TableHead>
+                <TableHead>{t("common.members")}</TableHead>
+                <TableHead>{t("common.posts")}</TableHead>
+                <TableHead>{t("common.status")}</TableHead>
+                <TableHead className="text-right">{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -123,10 +125,10 @@ export default function AdminGroupsPage() {
                       }
                     >
                       {group.groupType === "PUBLIC"
-                        ? "Công khai"
+                        ? t("common.public")
                         : group.groupType === "DEPARTMENT"
-                          ? "Phòng ban"
-                          : "Riêng tư"}
+                          ? t("common.department")
+                          : t("common.private")}
                     </Badge>
                   </TableCell>
                   <TableCell>{group._count.members}</TableCell>
@@ -137,13 +139,15 @@ export default function AdminGroupsPage() {
                         group.status === "ACTIVE" ? "active" : "inactive"
                       }
                     >
-                      {group.status === "ACTIVE" ? "Hoạt động" : "Đã khóa"}
+                      {group.status === "ACTIVE"
+                        ? t("common.active")
+                        : t("common.locked")}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button size="sm" variant="outline" asChild>
-                        <Link to={`/admin/groups/${group.id}`}>Chi tiết</Link>
+                        <Link to={`/admin/groups/${group.id}`}>{t("common.details")}</Link>
                       </Button>
                       <Button
                         size="sm"
@@ -153,7 +157,7 @@ export default function AdminGroupsPage() {
                         }
                         onClick={() => setConfirmDeleteId(group.id)}
                       >
-                        Xóa
+                        {t("common.delete")}
                       </Button>
                     </div>
                   </TableCell>
@@ -170,9 +174,9 @@ export default function AdminGroupsPage() {
 
       <ConfirmModal
         open={confirmDeleteId !== null}
-        title="Xóa nhóm?"
-        description="Bạn có chắc muốn xóa nhóm này? Hành động này không thể hoàn tác."
-        confirmText="Xóa"
+        title={t("pages.admin.deleteGroupTitle")}
+        description={t("pages.admin.deleteGroupDescription")}
+        confirmText={t("common.delete")}
         loading={deletingId !== null}
         variant="danger"
         onCancel={() => setConfirmDeleteId(null)}

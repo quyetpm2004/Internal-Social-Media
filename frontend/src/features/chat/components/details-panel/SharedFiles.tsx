@@ -1,6 +1,7 @@
 import { Download, FileText, Table2 } from "lucide-react";
 import type { SharedAttachmentItem } from "@/features/chat/types/chat.type";
 import { formatFileSize } from "@/features/chat/utils/format-file-size";
+import { useTranslation } from "react-i18next";
 
 interface SharedFilesProps {
   files: SharedAttachmentItem[];
@@ -29,17 +30,18 @@ const getFileMeta = (mimeType: string) => {
 };
 
 const SharedFiles = ({ files, loading }: SharedFilesProps) => {
+  const { t } = useTranslation();
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h4 className="text-sm font-medium text-on-surface">Files</h4>
+        <h4 className="text-sm font-medium text-on-surface">{t("pages.chat.sharedFiles")}</h4>
       </div>
 
       {loading ? (
-        <p className="text-xs text-on-surface-variant py-4">Đang tải...</p>
+        <p className="text-xs text-on-surface-variant py-4">{t("common.loading")}</p>
       ) : files.length === 0 ? (
         <p className="text-xs text-on-surface-variant py-4">
-          Chưa có file nào được chia sẻ.
+          {t("pages.chat.noSharedFiles")}
         </p>
       ) : (
         <div className="space-y-2">

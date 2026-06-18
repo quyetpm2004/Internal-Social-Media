@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import ItemSearch from "@/features/chat/components/conversation-list/ItemSearch";
 import { chatApi } from "@/features/chat/apis/chat.api";
 import type { ChatSearchUser } from "@/features/chat/types/chat-search.type";
+import { useTranslation } from "react-i18next";
 
 interface AddGroupMembersModalProps {
   open: boolean;
@@ -34,6 +35,7 @@ const AddGroupMembersModal = ({
   existingMemberIds,
   onAdded,
 }: AddGroupMembersModalProps) => {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<ChatSearchUser[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -100,7 +102,7 @@ const AddGroupMembersModal = ({
 
   const handleSubmit = async () => {
     if (selected.length === 0) {
-      toast.error("Vui lòng chọn ít nhất một người");
+      toast.error(t("pages.chat.selectAtLeastOneUser"));
       return;
     }
 
@@ -110,7 +112,7 @@ const AddGroupMembersModal = ({
         conversationId,
         selected.map((u) => u.id),
       );
-      toast.success("Đã thêm thành viên");
+      toast.success(t("pages.chat.memberAdded"));
       onAdded();
       onClose();
     } catch (error) {
@@ -138,7 +140,7 @@ const AddGroupMembersModal = ({
 
       <div className="relative w-full max-w-md rounded-3xl bg-surface shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant bg-surface-container-low shrink-0">
-          <h2 className="text-lg font-bold text-on-surface">Thêm người</h2>
+          <h2 className="text-lg font-bold text-on-surface">{t("pages.chat.addPeople")}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -153,7 +155,7 @@ const AddGroupMembersModal = ({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tìm theo tên hoặc email"
+            placeholder={t("pages.chat.searchByNameOrEmail")}
             className="w-full px-4 py-3 rounded-2xl bg-surface-container-high border-none outline-none focus:ring-2 focus:ring-primary text-sm"
           />
 
@@ -167,11 +169,11 @@ const AddGroupMembersModal = ({
           ))}
 
           {searchLoading && (
-            <p className="text-xs text-on-surface-variant">Đang tìm kiếm...</p>
+            <p className="text-xs text-on-surface-variant">{t("pages.chat.searching")}</p>
           )}
           {!searchLoading && trimmedQuery && searchResults.length === 0 && (
             <p className="text-xs text-on-surface-variant">
-              Không tìm thấy người dùng.
+              {t("pages.chat.noUsersFound")}
             </p>
           )}
           {searchResults.map((user) => (
@@ -190,7 +192,7 @@ const AddGroupMembersModal = ({
             onClick={handleSubmit}
             className="w-full py-3 rounded-2xl bg-primary text-on-primary font-semibold text-sm hover:opacity-90 disabled:opacity-50 transition-opacity"
           >
-            {submitting ? "Đang thêm..." : "Thêm vào nhóm"}
+            {submitting ? t("pages.chat.adding") : t("pages.chat.addToGroup")}
           </button>
         </div>
       </div>

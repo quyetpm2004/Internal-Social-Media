@@ -16,6 +16,7 @@ import {
   PlayCircle,
   Send,
   Smile,
+  ThumbsUp,
   Video as VideoIcon,
   X,
 } from "lucide-react";
@@ -28,6 +29,7 @@ import {
 } from "@/features/uploads/api/upload.api";
 import type { MessageContentType } from "@/features/chat/types/chat.type";
 import type { PollInput } from "@/types/poll.type";
+import { useTranslation } from "react-i18next";
 
 export interface SendMessagePayload {
   content: string;
@@ -41,6 +43,7 @@ interface MessageInputProps {
   disabled?: boolean;
   onTypingStart?: () => void;
   onTypingStop?: () => void;
+  compact?: boolean;
 }
 
 interface PreviewItem {
@@ -79,7 +82,9 @@ const MessageInput = ({
   disabled,
   onTypingStart,
   onTypingStop,
+  compact = false,
 }: MessageInputProps) => {
+  const { t } = useTranslation();
   const [value, setValue] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
   const [previews, setPreviews] = useState<PreviewItem[]>([]);
@@ -200,7 +205,7 @@ const MessageInput = ({
           body: file,
         });
         if (!res.ok) {
-          throw new Error(`Upload thất bại: ${file.name}`);
+          throw new Error(`${t("pages.chat.uploadFailed")}: ${file.name}`);
         }
       }),
     );
@@ -248,7 +253,7 @@ const MessageInput = ({
         const message =
           error instanceof Error
             ? error.message
-            : "Không gửi được bình chọn. Vui lòng thử lại.";
+            : t("pages.chat.pollSendFailed");
         toast.error(message);
       } finally {
         setUploading(false);
@@ -276,7 +281,7 @@ const MessageInput = ({
       const message =
         error instanceof Error
           ? error.message
-          : "Không gửi được tin nhắn. Vui lòng thử lại.";
+          : t("pages.chat.sendFailed");
       toast.error(message);
     } finally {
       setUploading(false);
@@ -310,6 +315,194 @@ const MessageInput = ({
     onTypingStart?.();
     textareaRef.current?.focus();
   };
+
+  const handleQuickLike = async () => {
+    if (disabled || uploading) return;
+    await onSend({
+      content: "👍",
+      contentType: "TEXT",
+      attachmentIds: [],
+    });
+  };
+
+  if (compact) {
+    return (
+      <footer className="p-2">
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          hidden
+          onChange={(e) => handleSelectFiles(e, "image")}
+        />
+        <input
+          ref={videoInputRef}
+          type="file"
+          accept="video/*"
+          multiple
+          hidden
+          onChange={(e) => handleSelectFiles(e, "video")}
+        />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.txt"
+          multiple
+          hidden
+          onChange={(e) => handleSelectFiles(e, "file")}
+        />
+
+        {previews.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-2 max-h-24 overflow-y-auto overscroll-contain">
+            {previews.map((preview, index) => (
+              <div
+                key={`${preview.file.name}-${index}`}
+                className="relative rounded-lg overflow-hidden border border-[#e5e5e5] bg-[#f0f2f5] w-16 h-16 shrink-0"
+              >
+                {preview.kind === "image" ? (
+                  <img
+                    src={preview.url}
+                    alt={preview.file.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : preview.kind === "video" ? (
+                  <div className="relative w-full h-full bg-black flex items-center justify-center">
+                    <video
+                      src={preview.url}
+                      className="w-full h-full object-cover opacity-80"
+                      muted
+                    />
+                    <PlayCircle
+                      size={20}
+                      className="absolute text-white drop-shadow"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center p-1 text-center">
+                    <FileText size={18} className="text-[#0866ff] mb-0.5" />
+                    <span className="text-[8px] font-medium line-clamp-2 text-[#050505]">
+                      {preview.file.name}
+                    </span>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => handleRemoveAttachment(index)}
+                  className="absolute top-0.5 right-0.5 bg-black/50 hover:bg-red-500 text-white rounded-full p-0.5 transition-colors"
+                  aria-label={t("common.delete")}
+                >
+                  <X size={10} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <form
+          onSubmit={handleSubmit}
+          className="flex items-center gap-0.5"
+        >
+          <button
+            type="button"
+            onClick={() => imageInputRef.current?.click()}
+            disabled={uploading}
+            className="p-1.5 rounded-full text-[#0084ff] hover:bg-[#f2f2f2] transition-colors disabled:opacity-50"
+            aria-label={t("pages.chat.attachImage")}
+            title={t("pages.chat.image")}
+          >
+            <ImageIcon size={18} />
+          </button>
+          <button
+            type="button"
+            onClick={() => videoInputRef.current?.click()}
+            disabled={uploading}
+            className="p-1.5 rounded-full text-[#0084ff] hover:bg-[#f2f2f2] transition-colors disabled:opacity-50"
+            aria-label={t("pages.chat.attachVideo")}
+            title={t("pages.chat.video")}
+          >
+            <VideoIcon size={18} />
+          </button>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="p-1.5 rounded-full text-[#0084ff] hover:bg-[#f2f2f2] transition-colors disabled:opacity-50"
+            aria-label={t("pages.chat.attachFile")}
+            title={t("pages.chat.file")}
+          >
+            <FileText size={18} />
+          </button>
+
+          <div className="flex-1 relative flex items-center bg-[#f0f2f5] rounded-full px-3 py-1.5 min-w-0">
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              placeholder={t("pages.chat.messengerInputPlaceholder")}
+              value={value}
+              onChange={handleChange}
+              onKeyDown={handleKeyDown}
+              onBlur={handleBlur}
+              disabled={disabled || uploading}
+              className="flex-1 bg-transparent border-none focus:ring-0 focus:outline-none text-sm py-0.5 resize-none max-h-24 text-[#050505] placeholder:text-[#65676b] disabled:opacity-60"
+            />
+            <button
+              type="button"
+              onClick={() => setShowEmojiPicker((prev) => !prev)}
+              disabled={uploading}
+              className="p-1 text-[#0084ff] hover:opacity-80 transition-opacity disabled:opacity-50"
+              aria-label={t("pages.chat.emoji")}
+            >
+              <Smile size={18} />
+            </button>
+
+            {showEmojiPicker && (
+              <div
+                ref={emojiPanelRef}
+                className="absolute bottom-12 right-0 z-50 shadow-2xl rounded-xl overflow-hidden"
+              >
+                <EmojiPicker
+                  onEmojiClick={handleEmojiClick}
+                  emojiStyle={EmojiStyle.NATIVE}
+                  theme={Theme.LIGHT}
+                  lazyLoadEmojis
+                  searchPlaceholder={t("pages.chat.searchEmoji")}
+                  width={300}
+                  height={340}
+                />
+              </div>
+            )}
+          </div>
+
+          {canSubmit ? (
+            <button
+              type="submit"
+              disabled={!canSubmit}
+              className="p-2 rounded-full text-[#0084ff] hover:bg-[#f2f2f2] transition-colors disabled:opacity-50"
+              aria-label={t("pages.chat.send")}
+            >
+              {uploading ? (
+                <Loader2 size={20} className="animate-spin" />
+              ) : (
+                <Send size={20} />
+              )}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleQuickLike}
+              disabled={disabled || uploading}
+              className="p-2 rounded-full text-[#0084ff] hover:bg-[#f2f2f2] transition-colors disabled:opacity-50"
+              aria-label={t("pages.chat.sendLike")}
+            >
+              <ThumbsUp size={20} />
+            </button>
+          )}
+        </form>
+      </footer>
+    );
+  }
 
   return (
     <footer className="p-4 bg-surface-container-lowest">
@@ -361,7 +554,7 @@ const MessageInput = ({
                 type="button"
                 onClick={() => handleRemoveAttachment(index)}
                 className="absolute top-1 right-1 bg-black/50 hover:bg-red-500 text-white rounded-full p-1 transition-colors"
-                aria-label="Xóa tệp"
+                aria-label={t("common.delete")}
               >
                 <X size={12} />
               </button>
@@ -405,8 +598,8 @@ const MessageInput = ({
             onClick={() => imageInputRef.current?.click()}
             disabled={uploading}
             className="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer disabled:opacity-50"
-            aria-label="Đính kèm ảnh"
-            title="Ảnh"
+            aria-label={t("pages.chat.attachImage")}
+            title={t("pages.chat.image")}
           >
             <ImageIcon size={20} />
           </button>
@@ -415,8 +608,8 @@ const MessageInput = ({
             onClick={() => videoInputRef.current?.click()}
             disabled={uploading}
             className="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer disabled:opacity-50"
-            aria-label="Đính kèm video"
-            title="Video"
+            aria-label={t("pages.chat.attachVideo")}
+            title={t("pages.chat.video")}
           >
             <VideoIcon size={20} />
           </button>
@@ -425,8 +618,8 @@ const MessageInput = ({
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading || Boolean(poll)}
             className="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer disabled:opacity-50"
-            aria-label="Đính kèm tệp"
-            title="Tệp"
+            aria-label={t("pages.chat.attachFile")}
+            title={t("pages.chat.file")}
           >
             <FileText size={20} />
           </button>
@@ -439,8 +632,8 @@ const MessageInput = ({
                 ? "text-primary bg-primary/10"
                 : "text-on-surface-variant hover:text-primary"
             }`}
-            aria-label="Tạo bình chọn"
-            title="Bình chọn"
+            aria-label={t("pages.chat.createPoll")}
+            title={t("pages.chat.poll")}
           >
             <BarChart3 size={20} />
           </button>
@@ -449,7 +642,9 @@ const MessageInput = ({
         <textarea
           ref={textareaRef}
           rows={1}
-          placeholder={poll ? "Đang tạo bình chọn..." : "Nhập tin nhắn..."}
+          placeholder={
+            poll ? t("pages.chat.creatingPoll") : t("pages.chat.typeMessage")
+          }
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
@@ -464,7 +659,7 @@ const MessageInput = ({
             onClick={() => setShowEmojiPicker((prev) => !prev)}
             disabled={uploading}
             className="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer disabled:opacity-50"
-            aria-label="Biểu cảm"
+            aria-label={t("pages.chat.emoji")}
           >
             <Smile size={22} />
           </button>
@@ -473,7 +668,7 @@ const MessageInput = ({
             type="submit"
             disabled={!canSubmit}
             className="bg-primary text-on-primary w-10 h-10 rounded-lg flex items-center justify-center hover:scale-105 active:scale-90 transition-all shadow-md disabled:opacity-50 disabled:hover:scale-100 cursor-pointer"
-            aria-label="Gửi"
+            aria-label={t("pages.chat.send")}
           >
             {uploading ? (
               <Loader2 size={18} className="animate-spin" />
@@ -492,7 +687,7 @@ const MessageInput = ({
                 emojiStyle={EmojiStyle.NATIVE}
                 theme={Theme.AUTO}
                 lazyLoadEmojis
-                searchPlaceholder="Tìm biểu cảm..."
+                searchPlaceholder={t("pages.chat.searchEmoji")}
                 width={320}
                 height={380}
               />

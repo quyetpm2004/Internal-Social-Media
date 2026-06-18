@@ -1,7 +1,9 @@
 import { NavLink, Outlet, useOutletContext, useParams } from "react-router-dom";
 import type { GroupOutletContext } from "@/features/group/types/group-outlet.type";
+import { useTranslation } from "react-i18next";
 
 export const GroupMembersLayout = () => {
+  const { t } = useTranslation();
   const { groupId } = useParams();
   const outletContext = useOutletContext<GroupOutletContext>();
   const { canApproveJoinRequests, groupDetail } = outletContext;
@@ -25,7 +27,7 @@ export const GroupMembersLayout = () => {
               }`
             }
           >
-            Thành viên
+            {t("pages.groups.members")}
           </NavLink>
           <NavLink
             to={`/groups/${groupId}/members/requests`}
@@ -37,7 +39,7 @@ export const GroupMembersLayout = () => {
               }`
             }
           >
-            Yêu cầu tham gia
+            {t("pages.groups.joinRequests")}
             {pendingCount > 0 && (
               <span className="min-w-5 h-5 px-1.5 flex items-center justify-center text-[11px] font-bold bg-primary text-on-primary rounded-full">
                 {pendingCount > 99 ? "99+" : pendingCount}

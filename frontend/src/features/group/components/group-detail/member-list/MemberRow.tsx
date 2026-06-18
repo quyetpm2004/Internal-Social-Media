@@ -8,6 +8,7 @@ import {
 } from "@/features/group/utils/group-member";
 import { NavLink } from "react-router-dom";
 import { getDefaultAvatarUrl } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface MemberRowProps {
   member: Member;
@@ -36,6 +37,7 @@ export const MemberRow = ({
   onEdit,
   onRemove,
 }: MemberRowProps) => {
+  const { t } = useTranslation();
   const canManageThisMember = canManageTargetMember(
     actorRole,
     member.memberRole,
@@ -82,14 +84,14 @@ export const MemberRow = ({
               <button
                 type="button"
                 onClick={() => onEdit(member)}
-                title="Sửa quyền"
+                title={t("pages.groups.editRole")}
                 className="p-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors"
               >
                 <Pencil size={18} />
               </button>
               <button
                 type="button"
-                title="Xóa khỏi nhóm"
+                title={t("pages.chat.removeFromGroup")}
                 onClick={onRemove}
                 className="p-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors"
               >

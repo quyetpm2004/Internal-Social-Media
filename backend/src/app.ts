@@ -16,6 +16,7 @@ import chatRoutes from "@/modules/chat/chat.routes";
 import notificationRoutes from "@/modules/notification/notification.routes";
 import adminRoutes from "@/modules/admin/admin.routes";
 import pollRoutes from "@/modules/poll/poll.routes";
+import eventRoutes from "@/modules/event/event.routes";
 import { errorMiddleware } from "@/shared/middlewares/error.middleware";
 dotenv.config();
 
@@ -50,6 +51,7 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/polls", pollRoutes);
+app.use("/api/events", eventRoutes);
 
 app.use(errorMiddleware);
 

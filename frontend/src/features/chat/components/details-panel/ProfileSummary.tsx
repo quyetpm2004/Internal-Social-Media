@@ -1,6 +1,7 @@
 import { Users, UserPlus } from "lucide-react";
 import type { ConversationDetail } from "@/features/chat/types/chat.type";
 import GroupAvatarMenu from "./GroupAvatarMenu";
+import { useTranslation } from "react-i18next";
 
 interface ProfileSummaryProps {
   conversation: ConversationDetail;
@@ -15,6 +16,7 @@ const ProfileSummary = ({
   onConversationUpdated,
   onCreateGroup,
 }: ProfileSummaryProps) => {
+  const { t } = useTranslation();
   const { type, name, avatarUrl, counterpart, memberCount } = conversation;
 
   const isGroup = type === "GROUP";
@@ -51,7 +53,7 @@ const ProfileSummary = ({
         </h2>
         {isGroup && memberCount > 0 && (
           <p className="text-sm text-on-surface-variant">
-            {memberCount} thành viên
+            {memberCount} {t("pages.groups.members")}
           </p>
         )}
         {!isGroup && counterpart && (
@@ -68,7 +70,7 @@ const ProfileSummary = ({
           className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/15 transition-colors"
         >
           <UserPlus size={18} />
-          Tạo nhóm
+          {t("pages.chat.createGroup")}
         </button>
       )}
     </div>

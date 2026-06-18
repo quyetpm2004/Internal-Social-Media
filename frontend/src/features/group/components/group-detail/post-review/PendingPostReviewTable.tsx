@@ -4,6 +4,7 @@ import { NavLink } from "react-router-dom";
 import type { PendingGroupPost } from "@/features/group/types/group.type";
 import ConfirmModal from "@/components/common/ConfirmModal";
 import { getDefaultAvatarUrl } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 function stripHtml(html: string): string {
   const doc = new DOMParser().parseFromString(html, "text/html");
@@ -36,6 +37,7 @@ export const PendingPostReviewTable = ({
   onApprove,
   onReject,
 }: PendingPostReviewTableProps) => {
+  const { t } = useTranslation();
   const [rejectTarget, setRejectTarget] = useState<PendingGroupPost | null>(
     null,
   );
@@ -47,16 +49,16 @@ export const PendingPostReviewTable = ({
           <thead>
             <tr className="bg-surface-container-low border-b border-outline-variant/30">
               <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                Người đăng
+                {t("common.author")}
               </th>
               <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                Nội dung
+                {t("common.content")}
               </th>
               <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                Ngày gửi
+                {t("pages.groups.submitDate")}
               </th>
               <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant text-right">
-                Hành động
+                {t("common.actions")}
               </th>
             </tr>
           </thead>
@@ -67,7 +69,7 @@ export const PendingPostReviewTable = ({
                   colSpan={4}
                   className="px-6 py-10 text-center text-sm text-on-surface-variant"
                 >
-                  Không có bài viết nào đang chờ duyệt.
+                  {t("pages.groups.noPendingPosts")}
                 </td>
               </tr>
             ) : (
@@ -106,14 +108,14 @@ export const PendingPostReviewTable = ({
                       <p className="line-clamp-2">{preview}</p>
                       {post.attachmentCount > 0 && (
                         <p className="text-xs mt-1 text-on-surface-variant/80">
-                          {post.attachmentCount} tệp đính kèm
+                          {post.attachmentCount} {t("common.attachments")}
                         </p>
                       )}
                       <NavLink
                         to={`/groups/${groupId}/posts/${post.id}`}
                         className="inline-flex items-center gap-1 text-xs text-primary mt-1 hover:underline"
                       >
-                        Xem chi tiết
+                        {t("common.details")}
                         <ExternalLink size={12} />
                       </NavLink>
                     </td>
@@ -135,7 +137,7 @@ export const PendingPostReviewTable = ({
                           className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-green-700 bg-green-50 hover:bg-green-100 rounded-lg disabled:opacity-50 transition-colors"
                         >
                           <Check size={16} />
-                          Duyệt
+                          {t("pages.groups.approve")}
                         </button>
                         <button
                           type="button"
@@ -144,7 +146,7 @@ export const PendingPostReviewTable = ({
                           className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg disabled:opacity-50 transition-colors"
                         >
                           <X size={16} />
-                          Từ chối
+                          {t("pages.groups.reject")}
                         </button>
                       </div>
                     </td>
@@ -165,7 +167,7 @@ export const PendingPostReviewTable = ({
             <ChevronLeft size={16} />
           </button>
           <span className="text-sm font-medium">
-            Trang {currentPage} / {totalPages}
+            {t("pages.groups.page")} {currentPage} / {totalPages}
           </span>
           <button
             type="button"
@@ -181,9 +183,9 @@ export const PendingPostReviewTable = ({
       {rejectTarget && (
         <ConfirmModal
           open={!!rejectTarget}
-          title="Từ chối bài viết?"
-          description={`Bài viết của ${rejectTarget.author.fullName} sẽ không được đăng lên nhóm.`}
-          confirmText="Từ chối"
+          title={t("pages.groups.rejectPostTitle")}
+          description={t("pages.groups.rejectPostDescription", { name: rejectTarget.author.fullName })}
+          confirmText={t("pages.groups.reject")}
           variant="primary"
           onCancel={() => setRejectTarget(null)}
           onConfirm={() => {

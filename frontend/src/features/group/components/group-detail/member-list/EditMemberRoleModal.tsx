@@ -7,6 +7,7 @@ import {
   getAssignableRoles,
   GROUP_MEMBER_ROLE_OPTIONS,
 } from "@/features/group/utils/group-member";
+import { useTranslation } from "react-i18next";
 
 type EditMemberRoleModalProps = {
   open: boolean;
@@ -25,6 +26,7 @@ export const EditMemberRoleModal = ({
   onClose,
   onSubmit,
 }: EditMemberRoleModalProps) => {
+  const { t } = useTranslation();
   const assignableRoles = useMemo(
     () => getAssignableRoles(actorRole),
     [actorRole],
@@ -49,7 +51,7 @@ export const EditMemberRoleModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
@@ -57,7 +59,7 @@ export const EditMemberRoleModal = ({
       <div className="relative w-full max-w-md rounded-3xl bg-surface shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant bg-surface-container-low">
           <h2 className="text-xl font-bold text-on-surface">
-            Sửa quyền thành viên
+            {t("pages.groups.editRole")}
           </h2>
           <button
             type="button"
@@ -70,17 +72,17 @@ export const EditMemberRoleModal = ({
         <form onSubmit={handleSubmit}>
           <div className="p-6 space-y-4">
             <p className="text-sm text-on-surface-variant">
-              Thành viên:{" "}
+              {t("common.members")}:{" "}
               <span className="font-semibold text-on-surface">
                 {member.fullName}
               </span>
             </p>
             <p className="text-sm text-on-surface-variant">
-              Quyền hiện tại: {formatGroupMemberRole(member.memberRole)}
+              {t("pages.groups.currentRole")}: {formatGroupMemberRole(member.memberRole)}
             </p>
             <div className="space-y-1.5">
               <label className="text-sm font-semibold text-on-surface px-1">
-                Vai trò mới
+                {t("pages.groups.newRole")}
               </label>
               <select
                 value={selectedRole}
@@ -103,14 +105,14 @@ export const EditMemberRoleModal = ({
               onClick={onClose}
               className="px-5 py-2.5 rounded-full text-sm font-semibold text-on-surface-variant hover:bg-surface-container-high transition-colors"
             >
-              Hủy
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
               disabled={loading || selectedRole === member.memberRole}
               className="px-5 py-2.5 rounded-full text-sm font-bold bg-primary text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
             >
-              {loading ? "Đang lưu..." : "Lưu thay đổi"}
+              {loading ? t("common.processing") : t("pages.groups.saveChanges")}
             </button>
           </div>
         </form>

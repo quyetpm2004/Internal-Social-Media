@@ -7,8 +7,10 @@ import { mapApiPostToPostCard } from "@/utils/formatTimeAgo";
 import { groupApi } from "@/features/group/apis/group.api";
 import AboutSidebar from "@/features/group/components/group-detail/main-detail/AboutSidebar";
 import type { GroupDetail } from "@/features/group/types/group.type";
+import { useTranslation } from "react-i18next";
 
 const PostDetailInGroupPage = () => {
+  const { t } = useTranslation();
   const { groupId, postId } = useParams<{ groupId: string; postId: string }>();
   const [post, setPost] = useState<Post>();
   const [loading, setLoading] = useState(true);
@@ -27,11 +29,11 @@ const PostDetailInGroupPage = () => {
         const mappedPost = mapApiPostToPostCard(res.data);
         setPost(mappedPost);
       } catch (error: any) {
-        console.error("Lỗi khi lấy bài viết:", error);
+        console.error("Failed to fetch post:", error);
         const message =
           error?.response?.data?.message ||
           error?.message ||
-          "Có lỗi xảy ra. Vui lòng thử lại.";
+          t("common.genericError");
         toast.error(message);
       } finally {
         setLoading(false);
@@ -47,7 +49,7 @@ const PostDetailInGroupPage = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-96">
-        <p>Loading...</p>
+        <p>{t("common.loading")}</p>
       </div>
     );
   }
@@ -55,7 +57,7 @@ const PostDetailInGroupPage = () => {
   if (!post) {
     return (
       <div className="flex justify-center items-center h-96 text-red-500">
-        Không tìm thấy bài viết.
+        {t("pages.posts.notFound")}
       </div>
     );
   }

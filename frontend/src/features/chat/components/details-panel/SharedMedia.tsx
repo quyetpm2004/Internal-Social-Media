@@ -1,6 +1,7 @@
 import type { SharedAttachmentItem } from "@/features/chat/types/chat.type";
 import { useState } from "react";
 import Lightbox from "yet-another-react-lightbox";
+import { useTranslation } from "react-i18next";
 
 interface SharedMediaProps {
   media: SharedAttachmentItem[];
@@ -9,6 +10,7 @@ interface SharedMediaProps {
 }
 
 const SharedMedia = ({ media, totalCount, loading }: SharedMediaProps) => {
+  const { t } = useTranslation();
   const visibleItems = media.slice(0, 6);
   const remaining =
     totalCount > visibleItems.length ? totalCount - visibleItems.length : 0;
@@ -18,15 +20,15 @@ const SharedMedia = ({ media, totalCount, loading }: SharedMediaProps) => {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h4 className="text-sm font-medium text-on-surface">
-          File phương tiện
+          {t("pages.chat.sharedMedia")}
         </h4>
       </div>
 
       {loading ? (
-        <p className="text-xs text-on-surface-variant py-4">Đang tải...</p>
+        <p className="text-xs text-on-surface-variant py-4">{t("common.loading")}</p>
       ) : visibleItems.length === 0 ? (
         <p className="text-xs text-on-surface-variant py-4">
-          Chưa có ảnh hoặc video nào được chia sẻ.
+          {t("pages.chat.noSharedMedia")}
         </p>
       ) : (
         <div className="grid grid-cols-3 gap-2">

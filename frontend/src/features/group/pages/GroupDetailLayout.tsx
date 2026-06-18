@@ -15,8 +15,10 @@ import {
   type GroupMemberRole,
 } from "@/features/group/utils/group-member";
 import { uploadGroupCover } from "@/features/group/utils/uploadGroupCover";
+import { useTranslation } from "react-i18next";
 
 const GroupDetailLayout = () => {
+  const { t } = useTranslation();
   const { groupId } = useParams();
 
   const currentUser = useAuthStore((state) => state.user);
@@ -45,7 +47,7 @@ const GroupDetailLayout = () => {
       const message =
         err?.response?.data?.message ||
         err?.message ||
-        "Có lỗi xảy ra. Vui lòng thử lại.";
+        t("common.genericError");
 
       toast.error(message);
     } finally {
@@ -86,7 +88,7 @@ const GroupDetailLayout = () => {
       setCoverUploading(true);
       await uploadGroupCover(file, groupId);
       await fetchGroupDetail();
-      toast.success("Cập nhật ảnh bìa thành công");
+      toast.success(t("pages.groups.coverUpdated"));
     } catch (error: unknown) {
       const err = error as {
         response?: { data?: { message?: string } };
@@ -95,7 +97,7 @@ const GroupDetailLayout = () => {
       const message =
         err?.response?.data?.message ||
         err?.message ||
-        "Có lỗi xảy ra. Vui lòng thử lại.";
+        t("common.genericError");
       toast.error(message);
     } finally {
       setCoverUploading(false);
@@ -123,7 +125,7 @@ const GroupDetailLayout = () => {
             : prev,
         );
 
-        toast.success(response.message || "Rời nhóm thành công");
+        toast.success(response.message || t("pages.groups.leaveSuccess"));
       } else if (membershipStatus === "PENDING") {
         const response = await groupApi.leaveGroup(groupId);
 
@@ -137,7 +139,7 @@ const GroupDetailLayout = () => {
             : prev,
         );
 
-        toast.success(response.message || "Đã hủy yêu cầu tham gia");
+        toast.success(response.message || t("pages.groups.cancelRequestSuccess"));
       } else {
         const response = await groupApi.joinGroup(groupId);
 
@@ -157,7 +159,7 @@ const GroupDetailLayout = () => {
               : prev,
           );
 
-          toast.success("Đã gửi yêu cầu tham gia nhóm");
+          toast.success(t("pages.groups.requestSent"));
         } else {
           setGroupDetail((prev) =>
             prev
@@ -173,7 +175,7 @@ const GroupDetailLayout = () => {
               : prev,
           );
 
-          toast.success("Tham gia nhóm thành công");
+          toast.success(t("pages.groups.joinSuccess"));
         }
       }
     } catch (error: unknown) {
@@ -185,7 +187,7 @@ const GroupDetailLayout = () => {
       const message =
         err?.response?.data?.message ||
         err?.message ||
-        "Có lỗi xảy ra. Vui lòng thử lại.";
+        t("common.genericError");
 
       toast.error(message);
     }
@@ -198,7 +200,7 @@ const GroupDetailLayout = () => {
   if (!groupId) {
     return (
       <div className="flex items-center justify-center h-64">
-        <span className="text-gray-500">Group ID is missing.</span>
+        <span className="text-gray-500">{t("pages.groups.groupIdMissing")}</span>
       </div>
     );
   }
@@ -207,12 +209,12 @@ const GroupDetailLayout = () => {
     <>
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <span className="text-gray-500">Loading group details...</span>
+          <span className="text-gray-500">{t("pages.groups.loadingDetails")}</span>
         </div>
       ) : (
         <main className="flex-1 py-8 max-w-6xl mx-auto px-4 bg-slate-50 dark:bg-slate-950">
           <GroupHeader
-            name={groupDetail?.groupName || "Tên nhóm"}
+            name={groupDetail?.groupName || t("pages.groups.defaultName")}
             type={groupDetail?.groupType || "PUBLIC"}
             memberCount={groupDetail?._count.members || 0}
             isMember={groupDetail?.isMember || false}
@@ -243,20 +245,20 @@ const GroupDetailLayout = () => {
 
                 <h2 className="text-2xl font-bold mb-3">
                   {isPendingRequest
-                    ? "Yêu cầu đang chờ duyệt"
-                    : "Đây là nhóm kín"}
+                    ? t("pages.groups.requestPendingTitle")
+                    : t("pages.groups.privateGroupTitle")}
                 </h2>
 
                 <p className="text-slate-500 max-w-md mx-auto mb-6">
                   {isPendingRequest
-                    ? "Quản trị viên nhóm sẽ xem xét yêu cầu của bạn. Bạn sẽ được thông báo khi được chấp nhận."
-                    : "Bạn cần tham gia nhóm để xem bài viết, thành viên và các nội dung bên trong."}
+                    ? t("pages.groups.requestPendingDescription")
+                    : t("pages.groups.privateGroupDescription")}
                 </p>
 
                 <div className="flex items-center justify-center gap-2 text-sm text-slate-500">
                   <Users size={16} />
 
-                  <span>{groupDetail?._count.members} thành viên</span>
+                  <span>{t("pages.groups.memberCount", { count: groupDetail?._count.members ?? 0 })}</span>
                 </div>
               </div>
             ) : (

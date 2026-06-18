@@ -1,4 +1,5 @@
 import { ListFilter, Search } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 type GroupFilterProps = {
   filter: string;
@@ -15,6 +16,7 @@ const GroupFilter = ({
   setSearchQuery,
   onSearch,
 }: GroupFilterProps) => {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col sm:flex-row items-center gap-4">
       <div className="flex items-center gap-2 w-full sm:max-w-md">
@@ -54,7 +56,7 @@ const GroupFilter = ({
               focus:ring-surface-tint
               transition-all
             "
-            placeholder="Tìm kiếm nhóm..."
+            placeholder={t("pages.groups.searchGroupsPlaceholder")}
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -76,7 +78,7 @@ const GroupFilter = ({
           }`}
           onClick={() => setFilter("")}
         >
-          Tất cả
+          {t("pages.groups.filterAll")}
         </button>
 
         <button
@@ -87,7 +89,7 @@ const GroupFilter = ({
           }`}
           onClick={() => setFilter("MY")}
         >
-          Nhóm của bạn
+          {t("pages.groups.filterMy")}
         </button>
 
         <button
@@ -98,7 +100,7 @@ const GroupFilter = ({
           }`}
           onClick={() => setFilter("PUBLIC")}
         >
-          Công khai
+          {t("common.public")}
         </button>
 
         <button
@@ -109,7 +111,7 @@ const GroupFilter = ({
           }`}
           onClick={() => setFilter("PRIVATE")}
         >
-          Riêng tư
+          {t("common.private")}
         </button>
 
         <button
@@ -120,7 +122,7 @@ const GroupFilter = ({
           }`}
           onClick={() => setFilter("DEPARTMENT")}
         >
-          Phòng ban
+          {t("common.department")}
         </button>
       </div>
     </div>

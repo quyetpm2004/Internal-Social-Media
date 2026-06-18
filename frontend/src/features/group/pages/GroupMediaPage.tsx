@@ -8,6 +8,7 @@ import { groupApi } from "@/features/group/apis/group.api";
 import { AttachmentSearchBar } from "@/features/group/components/group-detail/attachments/AttachmentSearchBar";
 import GroupPagination from "@/features/group/components/group-list/GroupPagination";
 import type { GroupAttachmentItem } from "@/features/group/types/group.type";
+import { useTranslation } from "react-i18next";
 
 function getErrorMessage(error: unknown): string {
   const err = error as {
@@ -17,11 +18,12 @@ function getErrorMessage(error: unknown): string {
   return (
     err?.response?.data?.message ||
     err?.message ||
-    "Có lỗi xảy ra. Vui lòng thử lại."
+    "Unexpected error"
   );
 }
 
 const GroupMediaPage = () => {
+  const { t } = useTranslation();
   const { groupId } = useParams();
   const [items, setItems] = useState<GroupAttachmentItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,25 +79,25 @@ const GroupMediaPage = () => {
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
       <div className="mb-6">
         <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-          File phương tiện
+          {t("pages.groups.mediaTitle")}
         </h2>
         <p className="text-sm text-slate-500 mt-1">
-          Ảnh và video từ các bài viết trong nhóm
+          {t("pages.groups.mediaDescription")}
         </p>
       </div>
 
       <AttachmentSearchBar
-        placeholder="Tìm theo tên file..."
+        placeholder={t("pages.groups.searchFilesPlaceholder")}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
       />
 
       {loading ? (
-        <div className="py-16 text-center text-slate-500">Đang tải...</div>
+        <div className="py-16 text-center text-slate-500">{t("common.loading")}</div>
       ) : items.length === 0 ? (
         <div className="py-16 text-center">
           <ImageIcon size={40} className="mx-auto text-slate-300 mb-3" />
-          <p className="text-slate-500">Chưa có file phương tiện nào</p>
+          <p className="text-slate-500">{t("pages.groups.noMedia")}</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -127,7 +129,7 @@ const GroupMediaPage = () => {
               {item.attachmentType === "VIDEO" && (
                 <div className="absolute top-2 left-2 px-2 py-1 rounded-md bg-black/60 text-white text-xs flex items-center gap-1 pointer-events-none">
                   <Play size={12} />
-                  Video
+                  {t("pages.groups.video")}
                 </div>
               )}
 

@@ -17,15 +17,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useTranslation } from "react-i18next";
 
 function getErrorMessage(error: unknown): string {
   if (error && typeof error === "object" && "message" in error) {
     return String((error as { message: string }).message);
   }
-  return "Đã xảy ra lỗi";
+  return "Unexpected error";
 }
 
 export default function AdminPostsPage() {
+  const { t } = useTranslation();
   const [posts, setPosts] = useState<AdminPost[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [search, setSearch] = useState("");
@@ -62,7 +64,7 @@ export default function AdminPostsPage() {
     setDeletingId(confirmDeleteId);
     try {
       await adminApi.deletePost(confirmDeleteId);
-      toast.success("Đã xóa bài viết");
+      toast.success(t("pages.admin.postDeleted"));
       setConfirmDeleteId(null);
       fetchPosts();
     } catch (error) {
@@ -74,11 +76,11 @@ export default function AdminPostsPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Quản lý bài viết</h1>
+      <h1 className="mb-6 text-2xl font-semibold">{t("pages.admin.postsTitle")}</h1>
 
       <form onSubmit={handleSearch} className="mb-4 flex gap-2">
         <Input
-          placeholder="Tìm theo nội dung hoặc tác giả..."
+          placeholder={t("pages.admin.searchPostsPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm"
@@ -87,7 +89,7 @@ export default function AdminPostsPage() {
           className="cursor-pointer text-white bg-primary hover:bg-primary/90"
           type="submit"
         >
-          Tìm kiếm
+          {t("common.search")}
         </Button>
       </form>
 
@@ -100,11 +102,11 @@ export default function AdminPostsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nội dung</TableHead>
-                <TableHead>Tác giả</TableHead>
-                <TableHead>Nhóm</TableHead>
-                <TableHead>Trạng thái</TableHead>
-                <TableHead className="text-right">Thao tác</TableHead>
+                <TableHead>{t("common.content")}</TableHead>
+                <TableHead>{t("common.author")}</TableHead>
+                <TableHead>{t("common.group")}</TableHead>
+                <TableHead>{t("common.status")}</TableHead>
+                <TableHead className="text-right">{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -114,18 +116,20 @@ export default function AdminPostsPage() {
                     {post.content.replace(/<[^>]*>/g, "")}
                   </TableCell>
                   <TableCell>{post.user.fullName}</TableCell>
-                  <TableCell>{post.group?.groupName ?? "News Feed"}</TableCell>
+                  <TableCell>{post.group?.groupName ?? t("pages.admin.newsFeed")}</TableCell>
                   <TableCell>
                     <Badge
                       variant={post.status === "ACTIVE" ? "active" : "inactive"}
                     >
-                      {post.status === "ACTIVE" ? "Hoạt động" : "Đã khóa"}
+                      {post.status === "ACTIVE"
+                        ? t("common.active")
+                        : t("common.locked")}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button size="sm" variant="outline" asChild>
-                        <Link to={`/admin/posts/${post.id}`}>Chi tiết</Link>
+                        <Link to={`/admin/posts/${post.id}`}>{t("common.details")}</Link>
                       </Button>
                       <Button
                         size="sm"
@@ -133,7 +137,7 @@ export default function AdminPostsPage() {
                         disabled={deletingId === post.id}
                         onClick={() => setConfirmDeleteId(post.id)}
                       >
-                        Xóa
+                        {t("common.delete")}
                       </Button>
                     </div>
                   </TableCell>
@@ -150,9 +154,9 @@ export default function AdminPostsPage() {
 
       <ConfirmModal
         open={confirmDeleteId !== null}
-        title="Xóa bài viết?"
-        description="Bạn có chắc muốn xóa bài viết này? Hành động này không thể hoàn tác."
-        confirmText="Xóa"
+        title={t("pages.admin.deletePostTitle")}
+        description={t("pages.admin.deletePostDescription")}
+        confirmText={t("common.delete")}
         loading={deletingId !== null}
         variant="danger"
         onCancel={() => setConfirmDeleteId(null)}

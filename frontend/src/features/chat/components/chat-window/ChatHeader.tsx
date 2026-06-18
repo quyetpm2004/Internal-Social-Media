@@ -2,6 +2,7 @@ import { ArrowLeft, Info, Phone, Users, Video } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { Conversation } from "@/features/chat/types/chat.type";
 import { getDefaultAvatarUrl } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface ChatHeaderProps {
   conversation: Conversation;
@@ -14,15 +15,16 @@ const ChatHeader = ({
   isOnline,
   onToggleDetails,
 }: ChatHeaderProps) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { type, name, avatarUrl, memberCount } = conversation;
   const avatarUrlCounterPart = conversation.counterpart?.avatarUrl;
 
   const statusLabel = (() => {
     if (type === "GROUP") {
-      return `${memberCount} thành viên${isOnline ? " · Có người đang online" : ""}`;
+      return `${memberCount} ${t("common.members")}${isOnline ? ` · ${t("pages.chat.someoneOnline")}` : ""}`;
     }
-    return isOnline ? "Đang hoạt động" : "Không hoạt động";
+    return isOnline ? t("common.active") : t("pages.chat.inactive");
   })();
 
   return (
@@ -32,7 +34,7 @@ const ChatHeader = ({
           type="button"
           onClick={() => navigate("/messages")}
           className="p-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-90 cursor-pointer md:hidden"
-          aria-label="Quay lại"
+          aria-label={t("common.back")}
         >
           <ArrowLeft size={20} />
         </button>
@@ -63,7 +65,7 @@ const ChatHeader = ({
           {isOnline && (
             <span
               className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-surface-container-lowest"
-              aria-label="Đang online"
+              aria-label={t("pages.chat.online")}
             />
           )}
         </div>
@@ -85,7 +87,7 @@ const ChatHeader = ({
         <button
           type="button"
           className="p-2.5 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-90 cursor-pointer"
-          aria-label="Gọi thoại"
+          aria-label={t("pages.chat.voiceCall")}
         >
           <Phone size={20} />
         </button>
@@ -93,7 +95,7 @@ const ChatHeader = ({
         <button
           type="button"
           className="p-2.5 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-90 cursor-pointer"
-          aria-label="Gọi video"
+          aria-label={t("pages.chat.videoCall")}
         >
           <Video size={20} />
         </button>
@@ -102,7 +104,7 @@ const ChatHeader = ({
           type="button"
           onClick={onToggleDetails}
           className="p-2.5 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-90 cursor-pointer"
-          aria-label="Thông tin"
+          aria-label={t("common.information")}
         >
           <Info size={20} />
         </button>

@@ -1,4 +1,5 @@
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 import { Role } from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
 import prisma from "@/shared/utils/prisma";
@@ -217,4 +218,134 @@ export async function getMe(userId: number) {
     role: user.role,
     avatarUrl,
   };
+}
+
+export async function changePassword(
+  userId: number,
+  currentPassword: string,
+  newPassword: string,
+) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      password: true,
+    },
+  });
+
+  if (!user) {
+    throw new AppError(404, "Người dùng không tồn tại");
+  }
+
+  const isMatch = await bcrypt.compare(currentPassword, user.password);
+  if (!isMatch) {
+    throw new AppError(400, "Mật khẩu hiện tại không chính xác");
+  }
+
+  const samePassword = await bcrypt.compare(newPassword, user.password);
+  if (samePassword) {
+    throw new AppError(400, "Mật khẩu mới phải khác mật khẩu hiện tại");
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    await tx.refreshToken.deleteMany({
+      where: { userId },
+    });
+  });
+
+  return true;
+}
+
+export async function forgotPassword(email: string) {
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, email: true },
+  });
+
+  // Trả cùng message để tránh lộ thông tin email tồn tại/không tồn tại.
+  if (!user) {
+    return { ok: true };
+  }
+
+  const rawToken = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+  await prisma.passwordResetToken.create({
+    data: {
+      userId: user.id,
+      tokenHash,
+      expiresAt,
+    },
+  });
+
+  // TODO: gửi email thật. Hiện trả token để FE/demo sử dụng.
+  return {
+    ok: true,
+    resetToken: rawToken,
+    expiresAt: expiresAt.toISOString(),
+  };
+}
+
+export async function resetPassword(token: string, newPassword: string) {
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const now = new Date();
+
+  const resetToken = await prisma.passwordResetToken.findFirst({
+    where: {
+      tokenHash,
+      usedAt: null,
+      expiresAt: { gt: now },
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          password: true,
+        },
+      },
+    },
+  });
+
+  if (!resetToken) {
+    throw new AppError(
+      400,
+      "Token đặt lại mật khẩu không hợp lệ hoặc đã hết hạn",
+    );
+  }
+
+  const samePassword = await bcrypt.compare(
+    newPassword,
+    resetToken.user.password,
+  );
+  if (samePassword) {
+    throw new AppError(400, "Mật khẩu mới phải khác mật khẩu hiện tại");
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: resetToken.user.id },
+      data: { password: hashedPassword },
+    });
+
+    await tx.passwordResetToken.update({
+      where: { id: resetToken.id },
+      data: { usedAt: now },
+    });
+
+    await tx.refreshToken.deleteMany({
+      where: { userId: resetToken.user.id },
+    });
+  });
+
+  return true;
 }

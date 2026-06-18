@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Landmark, Users } from "lucide-react";
 import type { SearchGroup } from "@/features/search/types/search.type";
+import { useTranslation } from "react-i18next";
 
 type GroupSearchResultItemProps = {
   group: SearchGroup;
@@ -11,6 +12,7 @@ export default function GroupSearchResultItem({
   group,
   onClick,
 }: GroupSearchResultItemProps) {
+  const { t } = useTranslation();
   return (
     <Link
       to={`/groups/${group.id}`}
@@ -35,10 +37,10 @@ export default function GroupSearchResultItem({
         </p>
         <p className="text-xs text-slate-500 flex items-center gap-1 truncate">
           <Users className="size-3 shrink-0" />
-          {group.memberCount} thành viên
+          {group.memberCount} {t("pages.groups.members")}
           {group.isMember && (
             <span className="text-blue-600 dark:text-blue-400">
-              · Đã tham gia
+              · {t("pages.groups.memberBadge")}
             </span>
           )}
         </p>

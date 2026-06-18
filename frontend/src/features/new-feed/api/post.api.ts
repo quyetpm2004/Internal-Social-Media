@@ -7,6 +7,7 @@ import type { PostContentFormat } from "@/features/new-feed/utils/rich-text";
 import type { ApiResponse } from "@/types/api.type";
 import type { GroupApiResponse } from "@/features/group/types/group.type";
 import type { PollInput } from "@/types/poll.type";
+import type { EventInput } from "@/types/event.type";
 
 export const PostsApi = {
   getPostInNewFeed(page: number, limit: number, sort: "latest" | "trending") {
@@ -19,6 +20,19 @@ export const PostsApi = {
     });
   },
 
+  getSavedPosts(page: number, limit: number) {
+    return axiosClient.get<
+      ApiResponse<{
+        page: number;
+        limit: number;
+        hasMore: boolean;
+        posts: ApiPost[];
+      }>
+    >("/posts/saved", {
+      params: { page, limit },
+    });
+  },
+
   createPost(data: {
     content: string;
     contentFormat?: PostContentFormat;
@@ -27,6 +41,7 @@ export const PostsApi = {
     attachmentIds: number[];
     isAnonymous?: boolean;
     poll?: PollInput;
+    event?: EventInput;
   }) {
     return axiosClient.post<ApiResponse<ApiPost>>("/posts", data);
   },
@@ -56,5 +71,11 @@ export const PostsApi = {
       isPinned,
       groupId,
     });
+  },
+
+  toggleSavePost(postId: number) {
+    return axiosClient.post<ApiResponse<{ isSaved: boolean }>>(
+      `/posts/${postId}/save`,
+    );
   },
 };

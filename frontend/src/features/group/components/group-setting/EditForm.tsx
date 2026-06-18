@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import type { SettingConfig } from "@/features/group/types/group.type";
+import { useTranslation } from "react-i18next";
 
 interface EditFormProps {
   isLoading: boolean;
@@ -14,6 +15,7 @@ const EditForm: React.FC<EditFormProps> = ({
   onCancel,
   onSave,
 }) => {
+  const { t } = useTranslation();
   const [tempValue, setTempValue] = useState(item.value);
   const [description, setDescription] = useState(item.description ?? "");
 
@@ -25,7 +27,7 @@ const EditForm: React.FC<EditFormProps> = ({
         <div className="space-y-3">
           <div className="relative border border-gray-300 rounded-xl px-3 pt-5 pb-2 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
             <label className="absolute top-1.5 left-3 text-[12px] text-gray-500 font-medium">
-              Tên
+              {t("common.groupName")}
             </label>
             <input
               type="text"
@@ -37,12 +39,12 @@ const EditForm: React.FC<EditFormProps> = ({
           </div>
           <div className="relative border border-gray-300 rounded-xl px-3 pt-5 pb-2 min-h-[80px] focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
             <label className="absolute top-1.5 left-3 text-[12px] text-gray-500 font-medium">
-              Mô tả
+              {t("common.description")}
             </label>
             <textarea
               className="w-full outline-none text-[15px] resize-none"
               rows={2}
-              placeholder="Mô tả..."
+              placeholder={t("common.description")}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -75,13 +77,13 @@ const EditForm: React.FC<EditFormProps> = ({
           onClick={onCancel}
           className="text-blue-600 font-semibold px-4 py-2 hover:bg-blue-50 rounded-lg text-[15px]"
         >
-          Hủy
+          {t("common.cancel")}
         </button>
         <button
           onClick={() => onSave(item.id, tempValue, description)}
           className="bg-gray-200 text-gray-800 px-8 py-2 rounded-lg font-semibold hover:bg-gray-300 transition-colors text-[15px]"
         >
-          {isLoading ? "Đang lưu..." : "Lưu"}
+          {isLoading ? t("common.processing") : t("pages.groups.saveChanges")}
         </button>
       </div>
     </div>

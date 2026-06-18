@@ -4,6 +4,7 @@ import type { ReactionType } from "@/features/new-feed/api/reaction.api";
 import type { PostContentFormat } from "@/features/new-feed/utils/rich-text";
 import type { GroupMemberRole } from "@/features/group/utils/group-member";
 import type { PollSummary } from "@/types/poll.type";
+import type { EventSummary } from "@/types/event.type";
 
 type SortType = "latest" | "trending";
 type PostStatus = "ACTIVE" | "PENDING_REVIEW" | "HIDDEN" | "DELETED";
@@ -34,7 +35,9 @@ interface Post {
   }[];
   stats: Stats;
   currentReaction: ReactionType | null;
+  isSaved?: boolean;
   poll?: PollSummary | null;
+  event?: EventSummary | null;
 }
 
 interface SidebarItemProps {
@@ -59,6 +62,7 @@ interface PostCardProps extends Post {
     groupId: number | null,
     isPinned: boolean,
   ) => void | Promise<void>;
+  onSavedChanged?: (postId: number, isSaved: boolean) => void;
   allowAnonymousComment?: boolean;
   showComment?: boolean;
 }
@@ -107,7 +111,9 @@ type ApiPost = {
     reactionType: ReactionType;
   }[];
   role?: GroupMemberRole;
+  isSaved?: boolean;
   poll?: PollSummary | null;
+  event?: EventSummary | null;
 };
 
 type GetPostsResponse = {

@@ -6,8 +6,10 @@ import { toast } from "sonner";
 import type { Post } from "../types/post.type";
 import { mapApiPostToPostCard } from "@/utils/formatTimeAgo";
 import { ArrowLeft } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const PostDetailPage = () => {
+  const { t } = useTranslation();
   const { postId } = useParams<{ postId: string }>();
   const [post, setPost] = useState<Post>();
   const [loading, setLoading] = useState(true);
@@ -22,11 +24,11 @@ const PostDetailPage = () => {
         const mappedPost = mapApiPostToPostCard(res.data);
         setPost(mappedPost);
       } catch (error: any) {
-        console.error("Lỗi khi lấy bài viết:", error);
+        console.error("Failed to fetch post:", error);
         const message =
           error?.response?.data?.message ||
           error?.message ||
-          "Có lỗi xảy ra. Vui lòng thử lại.";
+          t("common.genericError");
         toast.error(message);
       } finally {
         setLoading(false);
@@ -42,7 +44,7 @@ const PostDetailPage = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-96">
-        <p>Loading...</p>
+        <p>{t("common.loading")}</p>
       </div>
     );
   }
@@ -50,7 +52,7 @@ const PostDetailPage = () => {
   if (!post) {
     return (
       <div className="flex justify-center items-center h-96 text-red-500">
-        Không tìm thấy bài viết.
+        {t("pages.posts.notFound")}
       </div>
     );
   }
@@ -63,7 +65,7 @@ const PostDetailPage = () => {
           className="text-sm text-slate-500 hover:text-slate-700 pb-4 dark:hover:text-slate-300 flex items-center gap-2 cursor-pointer"
         >
           <ArrowLeft size={16} />
-          <span className="font-medium">Quay lại</span>
+          <span className="font-medium">{t("common.back")}</span>
         </button>
       </div>
       <PostCard

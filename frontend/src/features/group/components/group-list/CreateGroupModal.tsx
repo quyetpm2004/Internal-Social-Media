@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import type { Department } from "@/features/profile/types/profile.type";
 import { profileApi } from "@/features/profile/api/profile.api";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 type CreateGroupModalProps = {
   open: boolean;
@@ -22,6 +23,7 @@ const CreateGroupModal = ({
   onClose,
   onSubmit,
 }: CreateGroupModalProps) => {
+  const { t } = useTranslation();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [formData, setFormData] = useState<CreateGroupFormData>({
     groupName: "",
@@ -40,7 +42,7 @@ const CreateGroupModal = ({
         const message =
           error?.response?.data?.message ||
           error?.message ||
-          "Có lỗi xảy ra. Vui lòng thử lại.";
+          t("common.genericError");
         toast.error(message);
       }
     };
@@ -77,7 +79,7 @@ const CreateGroupModal = ({
       <div className="relative w-full max-w-2xl rounded-3xl bg-surface shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
         {/* header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant bg-surface-container-low">
-          <h2 className="text-xl font-bold text-on-surface">Tạo nhóm mới</h2>
+          <h2 className="text-xl font-bold text-on-surface">{t("pages.groups.createNewGroup")}</h2>
 
           <button
             onClick={onClose}
@@ -97,13 +99,13 @@ const CreateGroupModal = ({
             {/* group name */}
             <div className="space-y-1.5">
               <label className="text-sm font-semibold text-on-surface px-1">
-                Tên nhóm
+                {t("pages.groups.groupName")}
               </label>
 
               <input
                 type="text"
                 name="groupName"
-                placeholder="Ví dụ: Nhóm Frontend"
+                placeholder={t("pages.groups.groupNameExample")}
                 value={formData.groupName}
                 onChange={handleChange}
                 required
@@ -123,13 +125,13 @@ const CreateGroupModal = ({
             {/* description */}
             <div className="space-y-1.5">
               <label className="text-sm font-semibold text-on-surface px-1">
-                Mô tả
+                {t("common.description")}
               </label>
 
               <textarea
                 rows={4}
                 name="description"
-                placeholder="Nhóm này là gì?"
+                placeholder={t("pages.groups.descriptionPlaceholder")}
                 value={formData.description}
                 onChange={handleChange}
                 className="
@@ -151,7 +153,7 @@ const CreateGroupModal = ({
               {/* privacy */}
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-on-surface px-1">
-                  Quyền riêng tư
+                  {t("pages.groups.privacy")}
                 </label>
 
                 <select
@@ -168,16 +170,16 @@ const CreateGroupModal = ({
                     focus:ring-2 focus:ring-primary
                   "
                 >
-                  <option value="PUBLIC">Công khai</option>
-                  <option value="PRIVATE">Riêng tư</option>
-                  <option value="DEPARTMENT">Phòng ban</option>
+                  <option value="PUBLIC">{t("pages.groups.privacyPublic")}</option>
+                  <option value="PRIVATE">{t("pages.groups.privacyPrivate")}</option>
+                  <option value="DEPARTMENT">{t("pages.groups.privacyDepartment")}</option>
                 </select>
               </div>
 
               {/* department */}
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-on-surface px-1">
-                  Phòng ban
+                  {t("pages.groups.department")}
                 </label>
 
                 <select
@@ -194,7 +196,7 @@ const CreateGroupModal = ({
                     focus:ring-2 focus:ring-primary
                   "
                 >
-                  <option value="">Không có phòng ban</option>
+                  <option value="">{t("pages.groups.noDepartment")}</option>
 
                   {departments.map((department) => (
                     <option key={department.id} value={department.id}>
@@ -221,7 +223,7 @@ const CreateGroupModal = ({
                 transition-colors
               "
             >
-              Hủy
+              {t("common.cancel")}
             </button>
 
             <button
@@ -238,7 +240,7 @@ const CreateGroupModal = ({
                 transition-all
               "
             >
-              Tạo nhóm
+              {t("pages.groups.createGroup")}
             </button>
           </div>
         </form>

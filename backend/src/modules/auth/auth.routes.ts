@@ -1,6 +1,12 @@
 import { Router } from "express";
 import * as authController from "@/modules/auth/auth.controller";
-import { loginSchema, registerSchema } from "@/modules/auth/auth.schema";
+import {
+  changePasswordSchema,
+  forgotPasswordSchema,
+  loginSchema,
+  registerSchema,
+  resetPasswordSchema,
+} from "@/modules/auth/auth.schema";
 import { asyncHandler } from "@/shared/middlewares/async-handler.middleware";
 import { authMiddleware } from "@/shared/middlewares/auth.middleware";
 import { validateBody } from "@/shared/middlewares/validate.middleware";
@@ -20,5 +26,21 @@ router.post(
 router.post("/refresh-token", asyncHandler(authController.refreshToken));
 router.post("/logout", asyncHandler(authController.logout));
 router.get("/me", authMiddleware, asyncHandler(authController.getMe));
+router.post(
+  "/forgot-password",
+  validateBody(forgotPasswordSchema),
+  asyncHandler(authController.forgotPassword),
+);
+router.post(
+  "/reset-password",
+  validateBody(resetPasswordSchema),
+  asyncHandler(authController.resetPassword),
+);
+router.post(
+  "/change-password",
+  authMiddleware,
+  validateBody(changePasswordSchema),
+  asyncHandler(authController.changePassword),
+);
 
 export default router;

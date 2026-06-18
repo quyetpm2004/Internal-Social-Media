@@ -13,8 +13,10 @@ import {
 } from "@/features/notification/utils/notification-message.tsx";
 import { formatTimeAgo } from "@/utils/formatTimeAgo";
 import { getDefaultAvatarUrl } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 export default function NotificationBell() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -130,7 +132,7 @@ export default function NotificationBell() {
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className="relative p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors active:scale-95 duration-200"
-        aria-label="Thông báo"
+        aria-label={t("pages.notifications.title")}
       >
         <Bell size={20} />
         {unreadCount > 0 && (
@@ -144,7 +146,7 @@ export default function NotificationBell() {
         <div className="absolute right-0 top-11 w-[min(100vw-2rem,380px)] rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
             <h3 className="font-semibold text-sm text-slate-900 dark:text-white">
-              Thông báo
+              {t("pages.notifications.title")}
             </h3>
             <button
               type="button"
@@ -157,7 +159,7 @@ export default function NotificationBell() {
               ) : (
                 <CheckCheck size={14} />
               )}
-              Đọc tất cả
+              {t("pages.notifications.readAll")}
             </button>
           </div>
 
@@ -168,12 +170,13 @@ export default function NotificationBell() {
               </div>
             ) : notifications.length === 0 ? (
               <p className="px-4 py-10 text-center text-sm text-slate-500">
-                Chưa có thông báo nào
+                {t("pages.notifications.empty")}
               </p>
             ) : (
               notifications.map((notification) => {
                 const isUnread = !notification.readAt;
-                const actorName = notification.actor?.fullName ?? "Hệ thống";
+                const actorName =
+                  notification.actor?.fullName ?? t("pages.notifications.system");
                 const avatarUrl =
                   notification.actor?.avatarUrl ??
                   getDefaultAvatarUrl(actorName);
@@ -194,7 +197,7 @@ export default function NotificationBell() {
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm text-slate-900 dark:text-white leading-snug">
-                        {getNotificationMessage(notification)}
+                        {getNotificationMessage(notification, t)}
                       </p>
                       {notification.post?.snippet && (
                         <p className="text-xs text-slate-500 mt-1 line-clamp-2">

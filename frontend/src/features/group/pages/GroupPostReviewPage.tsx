@@ -5,6 +5,7 @@ import { groupApi } from "@/features/group/apis/group.api";
 import { PendingPostReviewTable } from "@/features/group/components/group-detail/post-review/PendingPostReviewTable";
 import type { PendingGroupPost } from "@/features/group/types/group.type";
 import type { GroupOutletContext } from "@/features/group/types/group-outlet.type";
+import { useTranslation } from "react-i18next";
 
 function getErrorMessage(error: unknown): string {
   const err = error as {
@@ -14,11 +15,12 @@ function getErrorMessage(error: unknown): string {
   return (
     err?.response?.data?.message ||
     err?.message ||
-    "Có lỗi xảy ra. Vui lòng thử lại."
+    "Unexpected error"
   );
 }
 
 export const GroupPostReviewPage = () => {
+  const { t } = useTranslation();
   const { groupId } = useParams();
   const { canManageMembers, groupDetail, refreshGroupDetail } =
     useOutletContext<GroupOutletContext>();
@@ -55,7 +57,7 @@ export const GroupPostReviewPage = () => {
     setProcessingPostId(postId);
     try {
       await groupApi.approveGroupPost(groupId, postId);
-      toast.success("Đã duyệt bài viết");
+      toast.success(t("pages.groups.postApproved"));
       await fetchPosts();
       await refreshGroupDetail();
     } catch (error: unknown) {
@@ -71,7 +73,7 @@ export const GroupPostReviewPage = () => {
     setProcessingPostId(postId);
     try {
       await groupApi.rejectGroupPost(groupId, postId);
-      toast.success("Đã từ chối bài viết");
+      toast.success(t("pages.groups.postRejected"));
       await fetchPosts();
       await refreshGroupDetail();
     } catch (error: unknown) {
@@ -91,10 +93,11 @@ export const GroupPostReviewPage = () => {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-bold text-on-surface">Duyệt bài viết</h2>
+        <h2 className="text-lg font-bold text-on-surface">
+          {t("pages.groups.postReviewTitle")}
+        </h2>
         <p className="text-sm text-on-surface-variant mt-1">
-          Các bài viết gửi khi nhóm bật phê duyệt bài viết. Chỉ quản trị viên và
-          kiểm duyệt viên có thể duyệt hoặc từ chối.
+          {t("pages.groups.postReviewDescription")}
         </p>
       </div>
 

@@ -14,47 +14,10 @@ import {
   PERMISSION_LABELS,
   settingsToFormValues,
 } from "../utils/group-settings";
-
-const DEFAULT_SETTINGS: SettingConfig[] = [
-  { id: "name", label: "Tên và mô tả", value: "", type: "input-group" },
-  {
-    id: "hide",
-    label: "Ẩn nhóm",
-    value: HIDDEN_LABELS.false,
-    type: "radio",
-    options: [HIDDEN_LABELS.false, HIDDEN_LABELS.true],
-  },
-  {
-    id: "approve",
-    label: "Ai có thể phê duyệt yêu cầu",
-    value: PERMISSION_LABELS.ANY_MEMBER,
-    type: "radio",
-    options: [PERMISSION_LABELS.ADMIN_ONLY, PERMISSION_LABELS.ANY_MEMBER],
-  },
-  {
-    id: "anonymous",
-    label: "Đăng & bình luận ẩn danh",
-    value: BOOL_LABELS.false,
-    type: "radio",
-    options: [BOOL_LABELS.true, BOOL_LABELS.false],
-  },
-  {
-    id: "post",
-    label: "Ai có thể đăng",
-    value: PERMISSION_LABELS.ANY_MEMBER,
-    type: "radio",
-    options: [PERMISSION_LABELS.ADMIN_ONLY, PERMISSION_LABELS.ANY_MEMBER],
-  },
-  {
-    id: "review",
-    label: "Phê duyệt bài viết",
-    value: BOOL_LABELS.false,
-    type: "radio",
-    options: [BOOL_LABELS.true, BOOL_LABELS.false],
-  },
-];
+import { useTranslation } from "react-i18next";
 
 const GroupSettingPage: React.FC = () => {
+  const { t } = useTranslation();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
@@ -64,7 +27,44 @@ const GroupSettingPage: React.FC = () => {
     isMember: boolean;
   }>();
 
-  const [settings, setSettings] = useState<SettingConfig[]>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<SettingConfig[]>([
+    { id: "name", label: t("pages.groups.settingNameDesc"), value: "", type: "input-group" },
+    {
+      id: "hide",
+      label: t("pages.groups.settingHidden"),
+      value: HIDDEN_LABELS.false,
+      type: "radio",
+      options: [HIDDEN_LABELS.false, HIDDEN_LABELS.true],
+    },
+    {
+      id: "approve",
+      label: t("pages.groups.settingApproveWho"),
+      value: PERMISSION_LABELS.ANY_MEMBER,
+      type: "radio",
+      options: [PERMISSION_LABELS.ADMIN_ONLY, PERMISSION_LABELS.ANY_MEMBER],
+    },
+    {
+      id: "anonymous",
+      label: t("pages.groups.settingAnonymous"),
+      value: BOOL_LABELS.false,
+      type: "radio",
+      options: [BOOL_LABELS.true, BOOL_LABELS.false],
+    },
+    {
+      id: "post",
+      label: t("pages.groups.settingPostWho"),
+      value: PERMISSION_LABELS.ANY_MEMBER,
+      type: "radio",
+      options: [PERMISSION_LABELS.ADMIN_ONLY, PERMISSION_LABELS.ANY_MEMBER],
+    },
+    {
+      id: "review",
+      label: t("pages.groups.settingPostReview"),
+      value: BOOL_LABELS.false,
+      type: "radio",
+      options: [BOOL_LABELS.true, BOOL_LABELS.false],
+    },
+  ]);
 
   const applySettingsToForm = useCallback(
     (formValues: ReturnType<typeof settingsToFormValues>) => {
@@ -111,7 +111,7 @@ const GroupSettingPage: React.FC = () => {
       } catch (error: unknown) {
         const err = error as { response?: { data?: { message?: string } }; message?: string };
         toast.error(
-          err?.response?.data?.message || err?.message || "Không thể tải cài đặt nhóm",
+          err?.response?.data?.message || err?.message || t("pages.groups.loadSettingsFailed"),
         );
       } finally {
         setIsFetching(false);
@@ -145,11 +145,11 @@ const GroupSettingPage: React.FC = () => {
       }
 
       setEditingId(null);
-      toast.success("Đã lưu cài đặt");
+      toast.success(t("pages.groups.settingsSaved"));
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } }; message?: string };
       toast.error(
-        err?.response?.data?.message || err?.message || "Có lỗi xảy ra. Vui lòng thử lại.",
+        err?.response?.data?.message || err?.message || t("common.genericError"),
       );
     } finally {
       setIsLoading(false);
@@ -192,7 +192,7 @@ const GroupSettingPage: React.FC = () => {
     return (
       <div>
         <p className="text-gray-500 text-sm mt-2">
-          Chỉ Quản trị viên mới có thể xem và thay đổi thiết lập của nhóm này.
+          {t("pages.groups.settingsAdminOnly")}
         </p>
       </div>
     );
@@ -200,16 +200,16 @@ const GroupSettingPage: React.FC = () => {
 
   if (isFetching) {
     return (
-      <p className="text-gray-500 text-sm mt-2">Đang tải cài đặt nhóm...</p>
+      <p className="text-gray-500 text-sm mt-2">{t("pages.groups.loadingSettings")}</p>
     );
   }
 
   return (
     <div className="min-h-screen flex justify-center items-start">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-7xl items-start">
-        {renderContent("Thiết lập nhóm", ["name", "hide"])}
-        {renderContent("Quản lý thành viên", ["approve"])}
-        {renderContent("Quản lý nội dung thảo luận", [
+        {renderContent(t("pages.groups.settingsGroup"), ["name", "hide"])}
+        {renderContent(t("pages.groups.settingsMembers"), ["approve"])}
+        {renderContent(t("pages.groups.settingsContent"), [
           "anonymous",
           "post",
           "review",

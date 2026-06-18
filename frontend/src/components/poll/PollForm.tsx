@@ -1,5 +1,6 @@
 import { Plus, X } from "lucide-react";
 import type { PollInput } from "@/types/poll.type";
+import { useTranslation } from "react-i18next";
 
 interface PollFormProps {
   value: PollInput;
@@ -8,6 +9,7 @@ interface PollFormProps {
 }
 
 const PollForm = ({ value, onChange, onRemove }: PollFormProps) => {
+  const { t } = useTranslation();
   const updateOption = (index: number, label: string) => {
     const options = [...value.options];
     options[index] = label;
@@ -31,14 +33,14 @@ const PollForm = ({ value, onChange, onRemove }: PollFormProps) => {
     <div className="mt-4 rounded-xl border border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-950/20 p-4 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">
-          Tạo bình chọn
+          {t("pages.chat.createPoll")}
         </p>
         {onRemove && (
           <button
             type="button"
             onClick={onRemove}
             className="p-1 rounded-lg text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-            aria-label="Xóa bình chọn"
+            aria-label={t("common.delete")}
           >
             <X size={16} />
           </button>
@@ -49,7 +51,7 @@ const PollForm = ({ value, onChange, onRemove }: PollFormProps) => {
         type="text"
         value={value.question}
         onChange={(e) => onChange({ ...value, question: e.target.value })}
-        placeholder="Câu hỏi bình chọn..."
+        placeholder={t("pages.poll.questionPlaceholder")}
         className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
       />
 
@@ -60,7 +62,7 @@ const PollForm = ({ value, onChange, onRemove }: PollFormProps) => {
               type="text"
               value={option}
               onChange={(e) => updateOption(index, e.target.value)}
-              placeholder={`Lựa chọn ${index + 1}`}
+              placeholder={t("pages.poll.optionPlaceholder", { index: index + 1 })}
               className="flex-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
             />
             {value.options.length > 2 && (
@@ -68,7 +70,7 @@ const PollForm = ({ value, onChange, onRemove }: PollFormProps) => {
                 type="button"
                 onClick={() => removeOption(index)}
                 className="p-2 text-slate-400 hover:text-red-500 transition-colors"
-                aria-label="Xóa lựa chọn"
+                aria-label={t("common.delete")}
               >
                 <X size={16} />
               </button>
@@ -84,7 +86,7 @@ const PollForm = ({ value, onChange, onRemove }: PollFormProps) => {
           className="flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"
         >
           <Plus size={16} />
-          Thêm lựa chọn
+          {t("pages.poll.addOption")}
         </button>
       )}
 
@@ -98,7 +100,7 @@ const PollForm = ({ value, onChange, onRemove }: PollFormProps) => {
           className="h-4 w-4 rounded border-slate-300 text-blue-600"
         />
         <span className="text-sm text-slate-600 dark:text-slate-400">
-          Cho phép chọn nhiều lựa chọn
+          {t("pages.poll.allowMultiple")}
         </span>
       </label>
     </div>

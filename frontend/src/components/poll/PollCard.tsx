@@ -3,6 +3,7 @@ import { BarChart3, Check, Loader2, X } from "lucide-react";
 import { pollApi } from "@/features/poll/api/poll.api";
 import type { PollSummary } from "@/types/poll.type";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 const getInitials = (fullName: string) => {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
@@ -18,6 +19,7 @@ interface PollCardProps {
 }
 
 const PollCard = ({ poll, onVote, compact = false }: PollCardProps) => {
+  const { t } = useTranslation();
   const [localPoll, setLocalPoll] = useState(poll);
   const [selected, setSelected] = useState<number[]>(poll.myVotes);
   const [voting, setVoting] = useState(false);
@@ -55,7 +57,7 @@ const PollCard = ({ poll, onVote, compact = false }: PollCardProps) => {
 
   const handleVote = async () => {
     if (selected.length === 0) {
-      toast.error("Vui lòng chọn ít nhất một lựa chọn");
+      toast.error(t("pages.poll.selectAtLeastOne"));
       return;
     }
 
@@ -69,7 +71,7 @@ const PollCard = ({ poll, onVote, compact = false }: PollCardProps) => {
     } catch (error: unknown) {
       const message =
         (error as { response?: { data?: { message?: string } } })?.response
-          ?.data?.message || "Không thể bình chọn. Vui lòng thử lại.";
+          ?.data?.message || t("pages.poll.voteFailed");
       toast.error(message);
     } finally {
       setVoting(false);
@@ -173,10 +175,10 @@ const PollCard = ({ poll, onVote, compact = false }: PollCardProps) => {
               {isExpanded && showResults && hasVoted && (
                 <div className="px-3 pb-3">
                   <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">
-                    Người đã bình chọn
+                    {t("pages.poll.voters")}
                   </div>
                   {option.voters.length === 0 ? (
-                    <div className="text-xs text-slate-500">Chưa có ai</div>
+                    <div className="text-xs text-slate-500">{t("pages.poll.noVoters")}</div>
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       {option.voters.map((v) => (
@@ -203,8 +205,8 @@ const PollCard = ({ poll, onVote, compact = false }: PollCardProps) => {
 
       <div className="mt-3 flex items-center justify-between gap-2">
         <span className="text-xs text-slate-500">
-          {totalVotes} lượt bình chọn
-          {localPoll.allowMultiple ? " · Chọn nhiều" : ""}
+          {t("pages.poll.totalVotes", { count: totalVotes })}
+          {localPoll.allowMultiple ? ` · ${t("pages.poll.multipleChoice")}` : ""}
         </span>
 
         {!isClosed && (
@@ -220,7 +222,7 @@ const PollCard = ({ poll, onVote, compact = false }: PollCardProps) => {
                 disabled={voting}
                 className="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-650 text-slate-800 dark:text-slate-100 text-xs font-bold transition-colors disabled:opacity-50"
               >
-                Thay đổi bình chọn
+                {t("pages.poll.changeVote")}
               </button>
             ) : null}
 
@@ -232,7 +234,7 @@ const PollCard = ({ poll, onVote, compact = false }: PollCardProps) => {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold disabled:opacity-50 transition-colors"
               >
                 {voting && <Loader2 size={14} className="animate-spin" />}
-                {hasVoted ? "Cập nhật bình chọn" : "Bình chọn"}
+                {hasVoted ? t("pages.poll.updateVote") : t("pages.poll.vote")}
               </button>
             ) : null}
 
@@ -246,8 +248,8 @@ const PollCard = ({ poll, onVote, compact = false }: PollCardProps) => {
                 }}
                 disabled={voting}
                 className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors disabled:opacity-50"
-                aria-label="Hủy"
-                title="Hủy"
+                aria-label={t("common.cancel")}
+                title={t("common.cancel")}
               >
                 <X size={14} />
               </button>

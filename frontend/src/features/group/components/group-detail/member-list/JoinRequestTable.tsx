@@ -4,6 +4,7 @@ import { NavLink } from "react-router-dom";
 import type { JoinRequest } from "@/features/group/types/group.type";
 import ConfirmModal from "@/components/common/ConfirmModal";
 import { getDefaultAvatarUrl } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface JoinRequestTableProps {
   requests: JoinRequest[];
@@ -24,6 +25,7 @@ export const JoinRequestTable = ({
   onApprove,
   onReject,
 }: JoinRequestTableProps) => {
+  const { t } = useTranslation();
   const [rejectTarget, setRejectTarget] = useState<JoinRequest | null>(null);
 
   return (
@@ -33,16 +35,16 @@ export const JoinRequestTable = ({
           <thead>
             <tr className="bg-surface-container-low border-b border-outline-variant/30">
               <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                Người yêu cầu
+                {t("pages.groups.requester")}
               </th>
               <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                Email
+                {t("common.email")}
               </th>
               <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                Ngày gửi
+                {t("pages.groups.submitDate")}
               </th>
               <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant text-right">
-                Hành động
+                {t("common.actions")}
               </th>
             </tr>
           </thead>
@@ -53,7 +55,7 @@ export const JoinRequestTable = ({
                   colSpan={4}
                   className="px-6 py-10 text-center text-sm text-on-surface-variant"
                 >
-                  Không có yêu cầu tham gia nào đang chờ duyệt.
+                  {t("pages.groups.noPendingRequests")}
                 </td>
               </tr>
             ) : (
@@ -106,7 +108,7 @@ export const JoinRequestTable = ({
                           className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-green-700 bg-green-50 hover:bg-green-100 rounded-lg disabled:opacity-50 transition-colors"
                         >
                           <Check size={16} />
-                          Chấp nhận
+                          {t("pages.groups.approve")}
                         </button>
                         <button
                           type="button"
@@ -115,7 +117,7 @@ export const JoinRequestTable = ({
                           className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg disabled:opacity-50 transition-colors"
                         >
                           <X size={16} />
-                          Từ chối
+                          {t("pages.groups.reject")}
                         </button>
                       </div>
                     </td>
@@ -136,7 +138,7 @@ export const JoinRequestTable = ({
             <ChevronLeft size={16} />
           </button>
           <span className="text-sm font-medium">
-            Trang {currentPage} / {totalPages}
+            {t("pages.groups.page")} {currentPage} / {totalPages}
           </span>
           <button
             type="button"
@@ -152,9 +154,9 @@ export const JoinRequestTable = ({
       {rejectTarget && (
         <ConfirmModal
           open={!!rejectTarget}
-          title="Từ chối yêu cầu?"
-          description={`Bạn có chắc muốn từ chối yêu cầu tham gia của ${rejectTarget.fullName}?`}
-          confirmText="Từ chối"
+          title={t("pages.groups.rejectRequestTitle")}
+          description={t("pages.groups.rejectRequestDescription", { name: rejectTarget.fullName })}
+          confirmText={t("pages.groups.reject")}
           variant="primary"
           onCancel={() => setRejectTarget(null)}
           onConfirm={() => {

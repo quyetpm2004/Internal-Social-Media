@@ -40,7 +40,7 @@ const InfoField: React.FC<InfoFieldProps> = ({
             className="bg-transparent w-full p-4 text-slate-900 dark:text-slate-100 font-medium outline-none border-none focus:ring-0 cursor-pointer"
             disabled={disabled}
           >
-            <option selected>Chọn {label.toLowerCase()}</option>
+            <option selected>{placeholder ?? label}</option>
             {options.map((opt) => (
               <option key={opt.id} value={opt.id} className="dark:bg-slate-800">
                 {opt.name}

@@ -4,6 +4,7 @@ import type { CommentItemType } from "@/features/new-feed/types/comment.type";
 import CommentInput from "@/features/new-feed/components/CommentInput";
 import CommentItem from "@/features/new-feed/components/CommentItem";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 type CommentSectionProps = {
   postId: number;
@@ -14,6 +15,7 @@ const CommentSection = ({
   postId,
   allowAnonymousComment = false,
 }: CommentSectionProps) => {
+  const { t } = useTranslation();
   const [comments, setComments] = useState<CommentItemType[]>([]);
   const [repliesMap, setRepliesMap] = useState<
     Record<number, CommentItemType[]>
@@ -50,11 +52,11 @@ const CommentSection = ({
       setPage(payload.page ?? nextPage);
       setHasMore(hasMoreValue);
     } catch (error: any) {
-      console.error("Lấy comment thất bại:", error);
+      console.error("Load comments failed:", error);
       const message =
         error?.response?.data?.message ||
         error?.message ||
-        "Có lỗi xảy ra. Vui lòng thử lại.";
+        t("common.genericError");
       toast.error(message);
     } finally {
       setLoading(false);
@@ -70,11 +72,11 @@ const CommentSection = ({
 
       setComments((prev) => [newComment, ...prev]);
     } catch (error: any) {
-      console.error("Tạo comment thất bại:", error);
+      console.error("Create comment failed:", error);
       const message =
         error?.response?.data?.message ||
         error?.message ||
-        "Có lỗi xảy ra. Vui lòng thử lại.";
+        t("common.genericError");
       toast.error(message);
     } finally {
       setCreating(false);
@@ -105,11 +107,11 @@ const CommentSection = ({
         [commentId]: hasMoreValue,
       }));
     } catch (error: any) {
-      console.error("Lấy replies thất bại:", error);
+      console.error("Load replies failed:", error);
       const message =
         error?.response?.data?.message ||
         error?.message ||
-        "Có lỗi xảy ra. Vui lòng thử lại.";
+        t("common.genericError");
       toast.error(message);
     }
   };
@@ -181,7 +183,7 @@ const CommentSection = ({
     <div className="space-y-4">
       <CommentInput
         loading={creating}
-        placeholder="Viết bình luận..."
+        placeholder={t("pages.posts.writeComment")}
         allowAnonymous={allowAnonymousComment}
         onSubmit={handleCreateComment}
       />
@@ -209,7 +211,7 @@ const CommentSection = ({
                   onClick={() => loadReplies(comment.id, 1)}
                   className="ml-10 text-xs font-semibold text-slate-500 hover:text-blue-700"
                 >
-                  Xem {replyCount} phản hồi
+                  {t("pages.posts.viewReplies", { count: replyCount })}
                 </button>
               )}
 
@@ -230,7 +232,7 @@ const CommentSection = ({
                   onClick={() => loadReplies(comment.id, replyPage + 1)}
                   className="ml-10 text-xs font-semibold text-slate-500 hover:text-blue-700"
                 >
-                  Xem thêm phản hồi
+                  {t("pages.posts.viewMoreReplies")}
                 </button>
               )}
             </div>
@@ -240,7 +242,7 @@ const CommentSection = ({
 
       {loading && (
         <div className="text-center text-xs text-slate-500">
-          Đang tải bình luận...
+          {t("pages.posts.loadingComments")}
         </div>
       )}
 
@@ -248,7 +250,7 @@ const CommentSection = ({
 
       {!loading && comments.length === 0 && (
         <div className="text-center text-sm text-slate-500">
-          Chưa có bình luận nào
+          {t("pages.posts.noComments")}
         </div>
       )}
     </div>

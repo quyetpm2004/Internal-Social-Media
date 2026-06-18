@@ -22,6 +22,7 @@ import {
   Undo2,
 } from "lucide-react";
 import "@/features/new-feed/styles/rich-text.css";
+import { useTranslation } from "react-i18next";
 
 type RichTextEditorProps = {
   value: string;
@@ -32,22 +33,24 @@ type RichTextEditorProps = {
 };
 
 const TEXT_COLORS = [
-  { label: "Mặc định", value: "" },
-  { label: "Đỏ", value: "#dc2626" },
-  { label: "Cam", value: "#ea580c" },
-  { label: "Vàng", value: "#ca8a04" },
-  { label: "Xanh lá", value: "#16a34a" },
-  { label: "Xanh dương", value: "#2563eb" },
-  { label: "Tím", value: "#9333ea" },
+  { key: "default", value: "" },
+  { key: "red", value: "#dc2626" },
+  { key: "orange", value: "#ea580c" },
+  { key: "yellow", value: "#ca8a04" },
+  { key: "green", value: "#16a34a" },
+  { key: "blue", value: "#2563eb" },
+  { key: "purple", value: "#9333ea" },
 ];
 
 const RichTextEditor = ({
   value,
   onChange,
-  placeholder = "Bạn đang nghĩ gì thế?",
+  placeholder,
   minRows = 3,
   className = "",
 }: RichTextEditorProps) => {
+  const { t } = useTranslation();
+  const effectivePlaceholder = placeholder ?? t("pages.posts.creatorPlaceholder");
   const [colorOpen, setColorOpen] = useState(false);
   const [headingOpen, setHeadingOpen] = useState(false);
   const colorRef = useRef<HTMLDivElement>(null);
@@ -68,7 +71,7 @@ const RichTextEditor = ({
           target: "_blank",
         },
       }),
-      Placeholder.configure({ placeholder }),
+      Placeholder.configure({ placeholder: effectivePlaceholder }),
     ],
     content: value || "",
     editorProps: {
@@ -114,7 +117,7 @@ const RichTextEditor = ({
 
   const setLink = () => {
     const previousUrl = editor.getAttributes("link").href as string | undefined;
-    const url = window.prompt("Nhập URL:", previousUrl || "https://");
+    const url = window.prompt(t("pages.editor.enterUrl"), previousUrl || "https://");
 
     if (url === null) return;
 
@@ -132,7 +135,7 @@ const RichTextEditor = ({
       ? "H2"
       : editor.isActive("heading", { level: 3 })
         ? "H3"
-        : "Đoạn";
+        : t("pages.editor.paragraph");
 
   return (
     <div
@@ -140,14 +143,14 @@ const RichTextEditor = ({
     >
       <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-slate-200/80 dark:border-slate-700/80 bg-slate-100/60 dark:bg-slate-800/40">
         <ToolbarButton
-          title="Hoàn tác"
+          title={t("pages.editor.undo")}
           onClick={() => editor.chain().focus().undo().run()}
           disabled={!editor.can().undo()}
         >
           <Undo2 size={16} />
         </ToolbarButton>
         <ToolbarButton
-          title="Làm lại"
+          title={t("pages.editor.redo")}
           onClick={() => editor.chain().focus().redo().run()}
           disabled={!editor.can().redo()}
         >
@@ -158,7 +161,7 @@ const RichTextEditor = ({
 
         <div ref={headingRef} className="relative">
           <ToolbarButton
-            title="Tiêu đề"
+            title={t("pages.editor.heading")}
             active={editor.isActive("heading")}
             onClick={() => setHeadingOpen((o) => !o)}
             className="min-w-13 text-xs font-semibold"
@@ -168,7 +171,7 @@ const RichTextEditor = ({
           {headingOpen && (
             <div className="absolute left-0 top-full mt-1 z-30 flex flex-col min-w-30 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg">
               <HeadingMenuItem
-                label="Đoạn văn"
+                label={t("pages.editor.paragraph")}
                 icon={<span className="text-xs">P</span>}
                 active={editor.isActive("paragraph")}
                 onClick={() => {
@@ -177,7 +180,7 @@ const RichTextEditor = ({
                 }}
               />
               <HeadingMenuItem
-                label="Tiêu đề 1"
+                label={t("pages.editor.heading1")}
                 icon={<Heading1 size={16} />}
                 active={editor.isActive("heading", { level: 1 })}
                 onClick={() => {
@@ -186,7 +189,7 @@ const RichTextEditor = ({
                 }}
               />
               <HeadingMenuItem
-                label="Tiêu đề 2"
+                label={t("pages.editor.heading2")}
                 icon={<Heading2 size={16} />}
                 active={editor.isActive("heading", { level: 2 })}
                 onClick={() => {
@@ -195,7 +198,7 @@ const RichTextEditor = ({
                 }}
               />
               <HeadingMenuItem
-                label="Tiêu đề 3"
+                label={t("pages.editor.heading3")}
                 icon={<Heading3 size={16} />}
                 active={editor.isActive("heading", { level: 3 })}
                 onClick={() => {
@@ -208,28 +211,28 @@ const RichTextEditor = ({
         </div>
 
         <ToolbarButton
-          title="In đậm"
+          title={t("pages.editor.bold")}
           active={editor.isActive("bold")}
           onClick={() => editor.chain().focus().toggleBold().run()}
         >
           <Bold size={16} />
         </ToolbarButton>
         <ToolbarButton
-          title="In nghiêng"
+          title={t("pages.editor.italic")}
           active={editor.isActive("italic")}
           onClick={() => editor.chain().focus().toggleItalic().run()}
         >
           <Italic size={16} />
         </ToolbarButton>
         <ToolbarButton
-          title="Gạch chân"
+          title={t("pages.editor.underline")}
           active={editor.isActive("underline")}
           onClick={() => editor.chain().focus().toggleUnderline().run()}
         >
           <UnderlineIcon size={16} />
         </ToolbarButton>
         <ToolbarButton
-          title="Gạch ngang"
+          title={t("pages.editor.strikethrough")}
           active={editor.isActive("strike")}
           onClick={() => editor.chain().focus().toggleStrike().run()}
         >
@@ -238,7 +241,7 @@ const RichTextEditor = ({
 
         <div ref={colorRef} className="relative">
           <ToolbarButton
-            title="Màu chữ"
+            title={t("pages.editor.textColor")}
             active={colorOpen}
             onClick={() => setColorOpen((o) => !o)}
           >
@@ -248,9 +251,9 @@ const RichTextEditor = ({
             <div className="absolute left-0 top-full mt-1 z-30 flex flex-wrap gap-1.5 p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg w-[180px]">
               {TEXT_COLORS.map((color) => (
                 <button
-                  key={color.label}
+                  key={color.key}
                   type="button"
-                  title={color.label}
+                  title={t(`pages.editor.colors.${color.key}`)}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     if (!color.value) {
@@ -277,21 +280,21 @@ const RichTextEditor = ({
         <span className="w-px h-5 bg-slate-300 dark:bg-slate-600 mx-0.5" />
 
         <ToolbarButton
-          title="Danh sách bullet"
+          title={t("pages.editor.bulletList")}
           active={editor.isActive("bulletList")}
           onClick={() => editor.chain().focus().toggleBulletList().run()}
         >
           <List size={16} />
         </ToolbarButton>
         <ToolbarButton
-          title="Danh sách số"
+          title={t("pages.editor.orderedList")}
           active={editor.isActive("orderedList")}
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
         >
           <ListOrdered size={16} />
         </ToolbarButton>
         <ToolbarButton
-          title="Liên kết"
+          title={t("pages.editor.link")}
           active={editor.isActive("link")}
           onClick={setLink}
         >

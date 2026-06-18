@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 type CommentInputProps = {
   placeholder?: string;
@@ -9,12 +10,13 @@ type CommentInputProps = {
 };
 
 const CommentInput = ({
-  placeholder = "Viết bình luận...",
+  placeholder,
   loading = false,
   autoFocus = false,
   allowAnonymous = false,
   onSubmit,
 }: CommentInputProps) => {
+  const { t } = useTranslation();
   const [content, setContent] = useState("");
   const [commentAsAnonymous, setCommentAsAnonymous] = useState(false);
 
@@ -42,7 +44,7 @@ const CommentInput = ({
               handleSubmit();
             }
           }}
-          placeholder={placeholder}
+          placeholder={placeholder ?? t("pages.posts.writeComment")}
           className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-full px-4 py-2 text-sm outline-none text-slate-900 dark:text-slate-100"
         />
 
@@ -52,7 +54,7 @@ const CommentInput = ({
           disabled={loading || !content.trim()}
           className="px-4 py-2 rounded-full bg-blue-700 text-white text-sm font-semibold disabled:opacity-50"
         >
-          Gửi
+          {t("common.send")}
         </button>
       </div>
 
@@ -65,7 +67,7 @@ const CommentInput = ({
             className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600"
           />
           <span className="text-xs text-slate-500 dark:text-slate-400">
-            Bình luận ẩn danh
+            {t("pages.posts.anonymousComment")}
           </span>
         </label>
       )}

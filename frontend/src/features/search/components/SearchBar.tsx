@@ -6,8 +6,10 @@ import type { SearchHistoryItem } from "@/features/search/types/search.type";
 import UserSearchResultItem from "@/features/search/components/UserSearchResultItem";
 import GroupSearchResultItem from "@/features/search/components/GroupSearchResultItem";
 import type { SearchGroup, SearchUser } from "@/features/search/types/search.type";
+import { useTranslation } from "react-i18next";
 
 export default function SearchBar() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -151,7 +153,7 @@ export default function SearchBar() {
 
         <input
           className="bg-transparent focus:ring-0 text-sm w-full placeholder-on-surface-variant border-none focus-visible:outline-none py-0.5"
-          placeholder="Tìm kiếm trên Workplace"
+          placeholder={t("pages.search.searchPlaceholder")}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -180,14 +182,14 @@ export default function SearchBar() {
             <div className="p-2">
               <div className="flex items-center justify-between px-3 py-2">
                 <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                  Tìm kiếm gần đây
+                  {t("pages.search.recentSearch")}
                 </span>
                 <button
                   type="button"
                   onClick={handleClearHistory}
                   className="text-xs text-blue-600 hover:underline"
                 >
-                  Xóa tất cả
+                  {t("common.clearAll")}
                 </button>
               </div>
 
@@ -210,7 +212,7 @@ export default function SearchBar() {
                     type="button"
                     onClick={(e) => handleDeleteHistory(e, item.id)}
                     className="opacity-0 group-hover:opacity-100 p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-opacity"
-                    aria-label="Xóa"
+                    aria-label={t("common.delete")}
                   >
                     <X size={14} />
                   </button>
@@ -221,7 +223,7 @@ export default function SearchBar() {
 
           {loading && trimmedQuery && (
             <p className="px-4 py-6 text-sm text-slate-500 text-center">
-              Đang tìm kiếm...
+              {t("pages.search.searching")}
             </p>
           )}
 
@@ -230,7 +232,7 @@ export default function SearchBar() {
               {previewUsers.length > 0 && (
                 <div className="mb-2">
                   <p className="px-3 py-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                    Mọi người
+                    {t("pages.search.people")}
                   </p>
                   {previewUsers.map((user) => (
                     <UserSearchResultItem
@@ -245,7 +247,7 @@ export default function SearchBar() {
               {previewGroups.length > 0 && (
                 <div>
                   <p className="px-3 py-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                    Nhóm
+                    {t("pages.search.groups")}
                   </p>
                   {previewGroups.map((group) => (
                     <GroupSearchResultItem
@@ -262,14 +264,14 @@ export default function SearchBar() {
                 onClick={() => goToSearchPage(query)}
                 className="w-full mt-1 px-3 py-2.5 text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors text-left"
               >
-                Xem tất cả kết quả cho &quot;{trimmedQuery}&quot;
+                {t("pages.search.viewAllResults", { query: trimmedQuery })}
               </button>
             </div>
           )}
 
           {!loading && trimmedQuery && !showPreview && (
             <p className="px-4 py-6 text-sm text-slate-500 text-center">
-              Không tìm thấy kết quả. Nhấn Enter để xem trang tìm kiếm.
+              {t("pages.search.noQuickResult")}
             </p>
           )}
         </div>

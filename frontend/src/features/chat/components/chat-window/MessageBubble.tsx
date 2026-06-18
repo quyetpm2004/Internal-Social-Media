@@ -16,6 +16,8 @@ import { formatFileSize } from "@/features/chat/utils/format-file-size";
 import { getDefaultAvatarUrl } from "@/lib/utils";
 import PollCard from "@/components/poll/PollCard";
 import type { PollSummary } from "@/types/poll.type";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -30,6 +32,7 @@ interface MessageBubbleProps {
   onEdit?: (messageId: number, content: string) => Promise<void> | void;
   onDelete?: (messageId: number) => Promise<void> | void;
   onPollVote?: (messageId: number, poll: PollSummary) => void;
+  compact?: boolean;
 }
 
 const renderAttachment = (attachment: MessageAttachment, isOwn: boolean) => {
@@ -107,14 +110,18 @@ interface ReaderAvatarProps {
   size?: number;
 }
 
-const ReaderAvatar = ({ user, size = 14 }: ReaderAvatarProps) => {
+const ReaderAvatar = ({
+  user,
+  size = 14,
+  title,
+}: ReaderAvatarProps & { title: string }) => {
   const style = { width: size, height: size };
   if (user.avatarUrl) {
     return (
       <img
         src={user.avatarUrl}
         alt={user.fullName}
-        title={`Đã xem bởi ${user.fullName}`}
+        title={title}
         style={style}
         className="rounded-full object-cover ring-1 ring-surface-container-lowest"
       />
@@ -124,7 +131,7 @@ const ReaderAvatar = ({ user, size = 14 }: ReaderAvatarProps) => {
     <img
       src={getDefaultAvatarUrl(user.fullName)}
       alt={user.fullName}
-      title={`Đã xem bởi ${user.fullName}`}
+      title={title}
       style={style}
       className="rounded-full object-cover ring-1 ring-surface-container-lowest"
     />
@@ -136,6 +143,7 @@ interface ReadReceiptProps {
   isLatestOwn: boolean;
   conversationType: ConversationType;
   isDeleted: boolean;
+  t: TFunction;
 }
 
 const ReadReceiptIndicator = ({
@@ -143,6 +151,7 @@ const ReadReceiptIndicator = ({
   isLatestOwn,
   conversationType,
   isDeleted,
+  t,
 }: ReadReceiptProps) => {
   if (isDeleted) return null;
 
@@ -151,7 +160,11 @@ const ReadReceiptIndicator = ({
       const reader = readers[0];
       return (
         <span className="flex items-center gap-1 text-primary font-bold mt-1">
-          <ReaderAvatar user={reader} size={14} />
+          <ReaderAvatar
+            user={reader}
+            size={14}
+            title={t("pages.chat.seenBy", { name: reader.fullName })}
+          />
         </span>
       );
     }
@@ -162,7 +175,12 @@ const ReadReceiptIndicator = ({
       <span className="flex items-center gap-1 mt-1">
         <span className="flex gap-x-0.5">
           {visible.map((user) => (
-            <ReaderAvatar key={user.id} user={user} size={14} />
+            <ReaderAvatar
+              key={user.id}
+              user={user}
+              size={14}
+              title={t("pages.chat.seenBy", { name: user.fullName })}
+            />
           ))}
         </span>
         {extra > 0 && (
@@ -178,10 +196,10 @@ const ReadReceiptIndicator = ({
     return (
       <span
         className="flex items-center gap-0.5 text-on-surface-variant mt-1"
-        title="Đã gửi"
+        title={t("pages.chat.sent")}
       >
         <Check size={12} />
-        <span className="text-[9px] uppercase tracking-wider">Đã gửi</span>
+        <span className="text-[9px] uppercase tracking-wider">{t("pages.chat.sent")}</span>
       </span>
     );
   }
@@ -202,6 +220,7 @@ const ActionsMenu = ({
   onEdit,
   onDelete,
 }: ActionsMenuProps) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -225,7 +244,7 @@ const ActionsMenu = ({
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className="p-1.5 rounded-full bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors"
-        aria-label="Tùy chọn"
+        aria-label={t("common.options")}
       >
         <MoreHorizontal size={14} />
       </button>
@@ -245,7 +264,7 @@ const ActionsMenu = ({
               }}
               className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-on-surface hover:bg-surface-container transition-colors"
             >
-              Chỉnh sửa
+              {t("pages.posts.edit")}
             </button>
           )}
           <button
@@ -256,7 +275,7 @@ const ActionsMenu = ({
             }}
             className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-error hover:bg-error-container/40 transition-colors"
           >
-            Thu hồi
+            {t("pages.chat.recall")}
           </button>
         </div>
       )}
@@ -279,6 +298,7 @@ const InlineEditor = ({
   onSave,
   onCancel,
 }: InlineEditorProps) => {
+  const { t } = useTranslation();
   const [value, setValue] = useState(initialValue);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -319,7 +339,7 @@ const InlineEditor = ({
         disabled={saving}
         rows={3}
         className="w-full bg-transparent border-0 focus:ring-0 focus:outline-none text-sm p-3 resize-none text-on-surface placeholder:text-on-surface-variant"
-        placeholder="Nội dung..."
+        placeholder={t("common.content")}
       />
       <div className="flex justify-end gap-2 px-2 py-2 border-t border-outline-variant/40">
         <button
@@ -328,7 +348,7 @@ const InlineEditor = ({
           disabled={saving}
           className="px-3 py-1 text-xs font-bold rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors disabled:opacity-50"
         >
-          Hủy
+          {t("common.cancel")}
         </button>
         <button
           type="button"
@@ -343,7 +363,7 @@ const InlineEditor = ({
           disabled={saving || !value.trim() || value.trim() === initialValue}
           className="px-3 py-1 text-xs font-bold rounded-lg bg-primary text-on-primary hover:opacity-90 transition-opacity disabled:opacity-50"
         >
-          {saving ? "Đang lưu..." : "Lưu"}
+          {saving ? t("common.processing") : t("pages.groups.saveChanges")}
         </button>
       </div>
     </div>
@@ -360,9 +380,21 @@ const MessageBubble = ({
   onEdit,
   onDelete,
   onPollVote,
+  compact = false,
 }: MessageBubbleProps) => {
+  const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
+
+  const ownBubbleClass = compact
+    ? "bg-[#0084ff] text-white"
+    : "bg-primary text-on-primary";
+  const otherBubbleClass = compact
+    ? "bg-[#f0f2f5] text-[#050505]"
+    : "bg-surface-container text-on-surface";
+  const deletedBubbleClass = compact
+    ? "bg-[#f0f2f5] text-[#65676b]"
+    : "bg-surface-container-high text-on-surface-variant";
 
   const time = formatMessageTime(message.createdAt);
   const isDeleted = message.status === "DELETED";
@@ -388,7 +420,7 @@ const MessageBubble = ({
 
   const handleDelete = async () => {
     if (!onDelete) return;
-    if (!window.confirm("Bạn có chắc muốn thu hồi tin nhắn này?")) return;
+    if (!window.confirm(t("pages.chat.recallConfirm"))) return;
     await onDelete(message.id);
   };
 
@@ -420,12 +452,12 @@ const MessageBubble = ({
       <div className="flex gap-3 max-w-[80%] self-end flex-row-reverse group">
         <div>
           <div className="text-[10px] text-blue-600 font-medium pb-0.5 text-right">
-            {message.status === "EDITED" && <span>Đã chỉnh sửa</span>}
+            {message.status === "EDITED" && <span>{t("pages.chat.edited")}</span>}
           </div>
           <div className="space-y-1">
             {isDeleted ? (
               <div className="bg-surface-container-high text-on-surface-variant px-4 py-2 rounded-tl-xl rounded-br-xl rounded-bl-xl text-xs italic">
-                Bạn đã thu hồi tin nhắn
+                {t("pages.chat.youRecalled")}
               </div>
             ) : isEditing ? (
               <InlineEditor
@@ -458,7 +490,9 @@ const MessageBubble = ({
                         {time}
                       </span>
                     </div>
-                    <div className="bg-primary text-on-primary px-3 py-1.5 rounded-xl w-fit text-sm leading-relaxed shadow-md whitespace-pre-wrap wrap-break-word">
+                    <div
+                      className={`${ownBubbleClass} px-3 py-1.5 rounded-xl w-fit text-sm leading-relaxed shadow-md whitespace-pre-wrap wrap-break-word`}
+                    >
                       {message.content}
                     </div>
                   </div>
@@ -472,6 +506,7 @@ const MessageBubble = ({
               isLatestOwn={Boolean(isLatestOwn)}
               conversationType={conversationType}
               isDeleted={isDeleted}
+              t={t}
             />
           </div>
         </div>
@@ -481,7 +516,7 @@ const MessageBubble = ({
             type="button"
             onClick={() => setIsEditing(false)}
             className="self-center p-1.5 rounded-full bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors"
-            aria-label="Đóng"
+            aria-label={t("common.close")}
           >
             <X size={14} />
           </button>
@@ -495,7 +530,7 @@ const MessageBubble = ({
       <div className="ml-11 -mb-1">
         {message.status === "EDITED" && !isDeleted && (
           <span className="text-[10px] text-blue-600 font-medium">
-            Đã chỉnh sửa
+            {t("pages.chat.edited")}
           </span>
         )}
       </div>
@@ -513,14 +548,20 @@ const MessageBubble = ({
 
         <div className="space-y-2">
           {showSenderName && (
-            <span className="block text-[10px] font-bold text-on-surface-variant ml-1">
+            <span
+              className={`block text-[10px] font-bold ml-1 ${
+                compact ? "text-[#65676b]" : "text-on-surface-variant"
+              }`}
+            >
               {message.sender.fullName}
             </span>
           )}
 
           {isDeleted ? (
-            <div className="bg-surface-container-high text-on-surface-variant px-4 py-2 rounded-tr-xl rounded-br-xl rounded-bl-xl text-xs italic">
-              Tin nhắn đã bị thu hồi
+            <div
+              className={`${deletedBubbleClass} px-4 py-2 rounded-tr-xl rounded-br-xl rounded-bl-xl text-xs italic`}
+            >
+              {t("pages.chat.messageRecalled")}
             </div>
           ) : (
             <>
@@ -529,7 +570,9 @@ const MessageBubble = ({
               )}
               {renderPoll()}
               {message.content && message.contentType !== "POLL" && (
-                <div className="bg-surface-container px-3 py-1.5 rounded-xl text-sm leading-relaxed text-on-surface shadow-sm whitespace-pre-wrap wrap-break-word w-fit">
+                <div
+                  className={`${otherBubbleClass} px-3 py-1.5 rounded-xl text-sm leading-relaxed shadow-sm whitespace-pre-wrap wrap-break-word w-fit`}
+                >
                   {message.content}
                 </div>
               )}

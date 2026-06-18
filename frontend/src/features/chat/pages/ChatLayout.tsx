@@ -23,6 +23,7 @@ import type {
 } from "@/features/chat/types/chat-events.type";
 import type { SendMessagePayload } from "@/features/chat/components/chat-window/MessageInput";
 import type { PollSummary } from "@/types/poll.type";
+import { useTranslation } from "react-i18next";
 
 export interface ChatOutletContext {
   conversation: ConversationDetail | null;
@@ -53,7 +54,7 @@ export interface ChatOutletContext {
   onTypingStop: () => void;
 }
 
-const getErrorMessage = (error: unknown) => {
+const getErrorMessage = (error: unknown, fallback: string) => {
   const err = error as {
     response?: { data?: { message?: string } };
     message?: string;
@@ -61,13 +62,14 @@ const getErrorMessage = (error: unknown) => {
   return (
     err?.response?.data?.message ||
     err?.message ||
-    "Có lỗi xảy ra. Vui lòng thử lại."
+    fallback
   );
 };
 
 const TYPING_TIMEOUT_MS = 4000;
 
 const ChatLayout = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { conversationId: conversationIdParam } = useParams();
   const currentUser = useAuthStore((state) => state.user);
@@ -114,7 +116,7 @@ const ChatLayout = () => {
       const res = await chatApi.listConversations("ALL", 1, 30);
       setConversations(res.data.items);
     } catch (error) {
-      toast.error(getErrorMessage(error));
+      toast.error(getErrorMessage(error, t("common.genericError")));
     } finally {
       setLoadingConversations(false);
     }
@@ -338,7 +340,9 @@ const ChatLayout = () => {
       if (isAffected && (action === "removed" || action === "left")) {
         if (activeConversationIdRef.current === convId) {
           const message =
-            action === "left" ? "Bạn đã rời nhóm" : "Bạn đã bị xóa khỏi nhóm";
+            action === "left"
+              ? t("pages.chat.leftGroup")
+              : t("pages.chat.removedFromGroup");
           toast.info(message);
           setActiveConversation(null);
           setMessages([]);
@@ -353,7 +357,7 @@ const ChatLayout = () => {
           const res = await chatApi.getConversationDetail(convId);
           setActiveConversation(res.data);
         } catch (error) {
-          toast.error(getErrorMessage(error));
+          toast.error(getErrorMessage(error, t("common.genericError")));
         }
       }
 
@@ -472,7 +476,7 @@ const ChatLayout = () => {
       } catch (error: unknown) {
         if (cancelled) return;
 
-        const message = getErrorMessage(error);
+        const message = getErrorMessage(error, t("common.genericError"));
 
         const status = (error as { response?: { status?: number } })?.response
           ?.status;
@@ -511,7 +515,7 @@ const ChatLayout = () => {
         await refreshConversations();
         navigate(`/messages/${conversation.id}`);
       } catch (error) {
-        toast.error(getErrorMessage(error));
+        toast.error(getErrorMessage(error, t("common.genericError")));
         throw error;
       }
     },
@@ -571,7 +575,7 @@ const ChatLayout = () => {
       setHasMoreMessages(res.data.pagination.hasMore);
       setNextCursor(res.data.pagination.nextCursor);
     } catch (error) {
-      toast.error(getErrorMessage(error));
+      toast.error(getErrorMessage(error, t("common.genericError")));
     } finally {
       setLoadingMessages(false);
     }
@@ -603,7 +607,7 @@ const ChatLayout = () => {
 
         upsertConversationOnNewMessage(newMessage, true);
       } catch (error) {
-        const message = getErrorMessage(error);
+        const message = getErrorMessage(error, t("common.genericError"));
         toast.error(message);
         throw error;
       } finally {
@@ -633,7 +637,7 @@ const ChatLayout = () => {
           ),
         );
       } catch (error) {
-        toast.error(getErrorMessage(error));
+        toast.error(getErrorMessage(error, t("common.genericError")));
         throw error;
       }
     },
@@ -663,7 +667,7 @@ const ChatLayout = () => {
         ),
       );
     } catch (error) {
-      toast.error(getErrorMessage(error));
+      toast.error(getErrorMessage(error, t("common.genericError")));
       throw error;
     }
   }, []);

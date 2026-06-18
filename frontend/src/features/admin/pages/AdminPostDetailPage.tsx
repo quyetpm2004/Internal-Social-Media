@@ -10,15 +10,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { Download, FileText } from "lucide-react";
 import Lightbox from "yet-another-react-lightbox";
+import { useTranslation } from "react-i18next";
 
 function getErrorMessage(error: unknown): string {
   if (error && typeof error === "object" && "message" in error) {
     return String((error as { message: string }).message);
   }
-  return "Đã xảy ra lỗi";
+  return "Unexpected error";
 }
 
 export default function AdminPostDetailPage() {
+  const { t } = useTranslation();
   const { postId } = useParams();
   const navigate = useNavigate();
   const [post, setPost] = useState<AdminPostDetail | null>(null);
@@ -57,7 +59,7 @@ export default function AdminPostDetailPage() {
     setDeleting(true);
     try {
       await adminApi.deletePost(Number(postId));
-      toast.success("Đã xóa bài viết");
+      toast.success(t("pages.admin.postDeleted"));
       navigate("/admin/posts");
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -76,7 +78,7 @@ export default function AdminPostDetailPage() {
   }
 
   if (!post) {
-    return <p className="text-muted-foreground">Không tìm thấy bài viết.</p>;
+    return <p className="text-muted-foreground">{t("pages.posts.notFound")}</p>;
   }
 
   return (
@@ -84,10 +86,10 @@ export default function AdminPostDetailPage() {
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" asChild>
-            <Link to="/admin/posts">← Quay lại</Link>
+            <Link to="/admin/posts">{`← ${t("common.back")}`}</Link>
           </Button>
           <h1 className="text-2xl font-semibold">
-            Chi tiết bài viết #{post.id}
+            {t("pages.admin.postDetailTitle", { id: post.id })}
           </h1>
         </div>
         <Button
@@ -96,38 +98,38 @@ export default function AdminPostDetailPage() {
           disabled={deleting}
           onClick={() => setShowDeleteConfirm(true)}
         >
-          Xóa bài viết
+          {t("common.delete")}
         </Button>
       </div>
 
       <div className="grid gap-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Thông tin</CardTitle>
+            <CardTitle className="text-base">{t("common.information")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <p>
-              <span className="text-muted-foreground">Tác giả:</span>{" "}
+              <span className="text-muted-foreground">{t("common.author")}:</span>{" "}
               {post.user.fullName} ({post.user.email})
             </p>
             <p>
-              <span className="text-muted-foreground">Nhóm:</span>{" "}
-              {post.group?.groupName ?? "Không có"}
+              <span className="text-muted-foreground">{t("common.group")}:</span>{" "}
+              {post.group?.groupName ?? t("common.none")}
             </p>
             <p className="flex items-center gap-2">
-              <span className="text-muted-foreground">Trạng thái:</span>
+              <span className="text-muted-foreground">{t("common.status")}:</span>
               <Badge variant={post.status === "ACTIVE" ? "active" : "inactive"}>
-                {post.status === "ACTIVE" ? "Hoạt động" : "Đã khóa"}
+                {post.status === "ACTIVE" ? t("common.active") : t("common.locked")}
               </Badge>
             </p>
             <p>
               <span className="text-muted-foreground">
-                Bình luận / Reaction:
+                {t("common.comments")} / {t("common.reactions")}:
               </span>{" "}
               {post._count.comments} / {post._count.reactions}
             </p>
             <p>
-              <span className="text-muted-foreground">Ngày tạo:</span>{" "}
+              <span className="text-muted-foreground">{t("common.createdAt")}:</span>{" "}
               {new Date(post.createdAt).toLocaleString("vi-VN")}
             </p>
           </CardContent>
@@ -135,7 +137,7 @@ export default function AdminPostDetailPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Nội dung</CardTitle>
+            <CardTitle className="text-base">{t("common.content")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div
@@ -149,7 +151,7 @@ export default function AdminPostDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">
-                Đính kèm ({post.attachments.length})
+                {t("common.attachments")} ({post.attachments.length})
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
@@ -202,7 +204,7 @@ export default function AdminPostDetailPage() {
                     >
                       <video controls className="w-full max-h-[500px] bg-black">
                         <source src={video.fileUrl} />
-                        Trình duyệt không hỗ trợ video.
+                        {t("common.videoNotSupported")}
                       </video>
                     </div>
                   ))}
@@ -227,7 +229,7 @@ export default function AdminPostDetailPage() {
                         />
 
                         <span className="text-sm truncate">
-                          {file.fileName || "Tệp đính kèm"}
+                          {file.fileName || t("common.attachmentFile")}
                         </span>
                       </div>
 
@@ -252,9 +254,9 @@ export default function AdminPostDetailPage() {
 
       <ConfirmModal
         open={showDeleteConfirm}
-        title="Xóa bài viết?"
-        description="Bạn có chắc muốn xóa bài viết này? Hành động này không thể hoàn tác."
-        confirmText="Xóa"
+        title={t("pages.admin.deletePostTitle")}
+        description={t("pages.admin.deletePostDescription")}
+        confirmText={t("common.delete")}
         loading={deleting}
         variant="danger"
         onCancel={() => setShowDeleteConfirm(false)}

@@ -16,15 +16,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useTranslation } from "react-i18next";
 
 function getErrorMessage(error: unknown): string {
   if (error && typeof error === "object" && "message" in error) {
     return String((error as { message: string }).message);
   }
-  return "Đã xảy ra lỗi";
+  return "Unexpected error";
 }
 
 export default function AdminUsersPage() {
+  const { t } = useTranslation();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [search, setSearch] = useState("");
@@ -63,7 +65,9 @@ export default function AdminUsersPage() {
     try {
       await adminApi.updateUserStatus(confirmUser.id, newStatus);
       toast.success(
-        newStatus === "ACTIVE" ? "Đã mở khóa tài khoản" : "Đã khóa tài khoản",
+        newStatus === "ACTIVE"
+          ? t("pages.admin.userUnlocked")
+          : t("pages.admin.userLocked"),
       );
       setConfirmUser(null);
       fetchUsers();
@@ -76,11 +80,11 @@ export default function AdminUsersPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold">Quản lý người dùng</h1>
+      <h1 className="mb-6 text-2xl font-semibold">{t("pages.admin.usersTitle")}</h1>
 
       <form onSubmit={handleSearch} className="mb-4 flex gap-2">
         <Input
-          placeholder="Tìm theo tên hoặc email..."
+          placeholder={t("pages.admin.searchUsersPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm outline-none"
@@ -89,7 +93,7 @@ export default function AdminUsersPage() {
           type="submit"
           className="cursor-pointer text-white bg-primary hover:bg-primary/90"
         >
-          Tìm kiếm
+          {t("common.search")}
         </Button>
       </form>
 
@@ -102,11 +106,11 @@ export default function AdminUsersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Họ tên</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Vai trò</TableHead>
-                <TableHead>Trạng thái</TableHead>
-                <TableHead className="text-right">Thao tác</TableHead>
+                <TableHead>{t("common.fullName")}</TableHead>
+                <TableHead>{t("common.email")}</TableHead>
+                <TableHead>{t("common.role")}</TableHead>
+                <TableHead>{t("common.status")}</TableHead>
+                <TableHead className="text-right">{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -121,7 +125,9 @@ export default function AdminUsersPage() {
                     <Badge
                       variant={user.status === "ACTIVE" ? "active" : "inactive"}
                     >
-                      {user.status === "ACTIVE" ? "Hoạt động" : "Đã khóa"}
+                      {user.status === "ACTIVE"
+                        ? t("common.active")
+                        : t("common.locked")}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -131,7 +137,9 @@ export default function AdminUsersPage() {
                       disabled={actionId === user.id}
                       onClick={() => setConfirmUser(user)}
                     >
-                      {user.status === "ACTIVE" ? "Khóa" : "Mở khóa"}
+                      {user.status === "ACTIVE"
+                        ? t("common.lock")
+                        : t("common.unlock")}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -149,15 +157,17 @@ export default function AdminUsersPage() {
         open={confirmUser !== null}
         title={
           confirmUser?.status === "ACTIVE"
-            ? "Khóa tài khoản?"
-            : "Mở khóa tài khoản?"
+            ? t("pages.admin.lockUserTitle")
+            : t("pages.admin.unlockUserTitle")
         }
         description={
           confirmUser?.status === "ACTIVE"
-            ? `Bạn có chắc muốn khóa tài khoản của ${confirmUser.fullName}? Người dùng sẽ không thể đăng nhập.`
-            : `Bạn có chắc muốn mở khóa tài khoản của ${confirmUser?.fullName}?`
+            ? t("pages.admin.lockUserDescription", { name: confirmUser.fullName })
+            : t("pages.admin.unlockUserDescription", { name: confirmUser?.fullName })
         }
-        confirmText={confirmUser?.status === "ACTIVE" ? "Khóa" : "Mở khóa"}
+        confirmText={
+          confirmUser?.status === "ACTIVE" ? t("common.lock") : t("common.unlock")
+        }
         loading={actionId !== null}
         variant={confirmUser?.status === "ACTIVE" ? "danger" : "primary"}
         onCancel={() => setConfirmUser(null)}

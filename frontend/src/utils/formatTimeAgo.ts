@@ -66,6 +66,8 @@ export const mapApiPostToPostCard = (post: ApiPost): Post => {
       comments: post._count?.comments || 0,
     },
     currentReaction: post.reactions?.[0]?.reactionType || null,
+    isSaved: post.isSaved ?? false,
     poll: post.poll ?? null,
+    event: post.event ?? null,
   };
 };

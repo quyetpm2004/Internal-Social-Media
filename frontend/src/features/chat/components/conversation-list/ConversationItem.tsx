@@ -5,6 +5,7 @@ import type {
 } from "@/features/chat/types/chat.type";
 import { formatConversationListTime } from "@/features/chat/utils/format-message-time";
 import { getDefaultAvatarUrl } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface ConversationItemProps {
   conversation: Conversation;
@@ -18,13 +19,14 @@ const getLastMessagePreview = (
   lastMessage: ChatMessage | null,
   currentUserId: number,
   conversationType: Conversation["type"],
+  t: (key: string, options?: Record<string, unknown>) => string,
 ): { content: string; senderName?: string } => {
   if (!lastMessage) {
-    return { content: "Chưa có tin nhắn" };
+    return { content: t("pages.chat.noMessage") };
   }
 
   if (lastMessage.status === "DELETED") {
-    return { content: "Tin nhắn đã bị thu hồi" };
+    return { content: t("pages.chat.messageDeleted") };
   }
 
   if (lastMessage.contentType === "SYSTEM") {
@@ -34,11 +36,11 @@ const getLastMessagePreview = (
   let content = lastMessage.content;
 
   if (!content) {
-    if (lastMessage.contentType === "IMAGE") content = "Đã gửi một hình ảnh";
+    if (lastMessage.contentType === "IMAGE") content = t("pages.chat.sentImage");
     else if (lastMessage.contentType === "FILE")
-      content = "Đã gửi một tệp đính kèm";
+      content = t("pages.chat.sentAttachment");
     else if (lastMessage.attachments.length > 0)
-      content = "Đã gửi một tệp đính kèm";
+      content = t("pages.chat.sentAttachment");
   }
 
   const isOwnMessage = lastMessage.senderId === currentUserId;
@@ -46,7 +48,7 @@ const getLastMessagePreview = (
     conversationType === "GROUP" && !isOwnMessage
       ? lastMessage.sender.fullName.split(" ").slice(-1)[0]
       : isOwnMessage
-        ? "Bạn"
+        ? t("common.you")
         : undefined;
 
   return { content, senderName };
@@ -59,6 +61,7 @@ const ConversationItem = ({
   isCounterpartOnline,
   onClick,
 }: ConversationItemProps) => {
+  const { t } = useTranslation();
   const { type, name, avatarUrl, lastMessage, lastMessageAt, unreadCount } =
     conversation;
 
@@ -70,6 +73,7 @@ const ConversationItem = ({
     lastMessage,
     currentUserId,
     type,
+    t,
   );
 
   return (
@@ -77,7 +81,9 @@ const ConversationItem = ({
       type="button"
       onClick={onClick}
       aria-label={
-        hasUnread ? `${name} (${unreadCount} tin nhắn chưa đọc)` : name
+        hasUnread
+          ? `${name} (${unreadCount} ${t("pages.chat.unreadMessages")})`
+          : name
       }
       className={`relative w-full text-left px-4 py-4 cursor-pointer transition-all border-l-4 ${
         isActive
@@ -115,7 +121,7 @@ const ConversationItem = ({
           {isCounterpartOnline && (
             <span
               className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-surface-container-low"
-              aria-label="Đang online"
+              aria-label={t("pages.chat.online")}
             />
           )}
         </div>

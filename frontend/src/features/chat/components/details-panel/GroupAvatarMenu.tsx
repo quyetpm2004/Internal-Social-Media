@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { chatApi } from "@/features/chat/apis/chat.api";
 import { uploadConversationAvatar } from "@/features/chat/utils/upload-conversation-avatar";
 import type { ConversationDetail } from "@/features/chat/types/chat.type";
+import { useTranslation } from "react-i18next";
 
 interface GroupAvatarMenuProps {
   conversation: ConversationDetail;
@@ -28,6 +29,7 @@ const GroupAvatarMenu = ({
   isAdmin,
   onUpdated,
 }: GroupAvatarMenuProps) => {
+  const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -47,7 +49,7 @@ const GroupAvatarMenu = ({
       await uploadConversationAvatar(file, conversation.id);
       const res = await chatApi.getConversationDetail(conversation.id);
       onUpdated(res.data);
-      toast.success("Cập nhật ảnh nhóm thành công");
+      toast.success(t("pages.chat.groupAvatarUpdated"));
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -61,7 +63,7 @@ const GroupAvatarMenu = ({
       setUploading(true);
       const res = await chatApi.deleteGroupAvatar(conversation.id);
       onUpdated(res.data);
-      toast.success("Đã xóa ảnh nhóm");
+      toast.success(t("pages.chat.groupAvatarDeleted"));
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -78,7 +80,9 @@ const GroupAvatarMenu = ({
         className={`relative w-32 h-32 rounded-2xl overflow-hidden shadow-xl border-4 border-surface-container-lowest transform rotate-2 bg-secondary-container flex items-center justify-center ${
           isAdmin ? "cursor-pointer hover:opacity-95" : "cursor-default"
         }`}
-        aria-label={isAdmin ? "Chỉnh sửa ảnh nhóm" : "Ảnh nhóm"}
+        aria-label={
+          isAdmin ? t("pages.chat.editGroupAvatar") : t("pages.chat.groupAvatar")
+        }
       >
         {conversation.avatarUrl ? (
           <img
@@ -112,7 +116,7 @@ const GroupAvatarMenu = ({
           <button
             type="button"
             className="fixed inset-0 z-40"
-            aria-label="Đóng menu"
+            aria-label={t("common.close")}
             onClick={() => setMenuOpen(false)}
           />
           <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 min-w-[180px] rounded-xl bg-surface shadow-lg border border-outline-variant/30 py-1 overflow-hidden">
@@ -122,7 +126,7 @@ const GroupAvatarMenu = ({
               className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-high transition-colors"
             >
               <Camera size={16} />
-              Chọn ảnh mới
+              {t("pages.chat.chooseNewImage")}
             </button>
             {conversation.avatarUrl && (
               <button
@@ -131,7 +135,7 @@ const GroupAvatarMenu = ({
                 className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-error hover:bg-surface-container-high transition-colors"
               >
                 <Trash2 size={16} />
-                Xóa ảnh
+                {t("pages.chat.deleteImage")}
               </button>
             )}
           </div>

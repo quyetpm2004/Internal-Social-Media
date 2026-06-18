@@ -7,6 +7,7 @@ import { chatApi } from "@/features/chat/apis/chat.api";
 import type { ConversationMember } from "@/features/chat/types/chat.type";
 import AddGroupMembersModal from "./AddGroupMembersModal";
 import ConfirmModal from "@/components/common/ConfirmModal";
+import { useTranslation } from "react-i18next";
 
 interface GroupMembersListProps {
   conversationId: number;
@@ -35,6 +36,7 @@ const GroupMembersList = ({
   onMembersUpdated,
   onLeftGroup,
 }: GroupMembersListProps) => {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -91,7 +93,7 @@ const GroupMembersList = ({
         aria-expanded={expanded}
       >
         <span className="text-sm font-medium text-on-surface">
-          Thành viên trong đoạn chat
+          {t("pages.chat.membersInConversation")}
         </span>
         <ChevronDown
           size={18}
@@ -127,11 +129,11 @@ const GroupMembersList = ({
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-on-surface truncate">
                       {member.user.fullName}
-                      {isSelf ? " (Bạn)" : ""}
+                      {isSelf ? ` (${t("common.you")})` : ""}
                     </p>
                     {member.role === "ADMIN" && (
                       <p className="text-xs text-on-surface-variant">
-                        Quản trị viên
+                        {t("pages.chat.admin")}
                       </p>
                     )}
                   </div>
@@ -144,8 +146,8 @@ const GroupMembersList = ({
                         setRemovingUserId(member.user.id);
                       }}
                       className="p-1.5 rounded-full text-on-surface-variant hover:text-error hover:bg-error/10 transition-all disabled:opacity-50 shrink-0"
-                      aria-label={`Xóa ${member.user.fullName} khỏi nhóm`}
-                      title="Xóa khỏi nhóm"
+                      aria-label={t("pages.chat.removeMemberAria", { name: member.user.fullName })}
+                      title={t("pages.chat.removeFromGroup")}
                     >
                       <UserMinus size={16} />
                     </button>
@@ -161,7 +163,7 @@ const GroupMembersList = ({
             className="mt-2 w-full flex items-center cursor-pointer justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
           >
             <UserPlus size={18} />
-            Thêm người
+            {t("pages.chat.addPeople")}
           </button>
 
           <button
@@ -171,7 +173,7 @@ const GroupMembersList = ({
             className="mt-2 w-full flex items-center cursor-pointer justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-error hover:bg-error/10 transition-colors disabled:opacity-50"
           >
             <LogOut size={18} />
-            {leaving ? "Đang rời nhóm..." : "Rời nhóm"}
+            {leaving ? t("pages.chat.leavingGroup") : t("pages.chat.leaveGroup")}
           </button>
         </div>
       )}
@@ -187,9 +189,9 @@ const GroupMembersList = ({
 
       <ConfirmModal
         open={showLeaveConfirm}
-        title="Xóa khỏi nhóm"
-        description="Bạn có chắc muốn rời nhóm này? Bạn sẽ không nhận được tin nhắn mới từ nhóm."
-        confirmText="Rời nhóm"
+        title={t("pages.chat.leaveGroup")}
+        description={t("pages.chat.leaveGroupConfirm")}
+        confirmText={t("pages.chat.leaveGroup")}
         variant="primary"
         onCancel={() => setShowLeaveConfirm(false)}
         onConfirm={handleLeaveGroup}
@@ -197,9 +199,9 @@ const GroupMembersList = ({
 
       <ConfirmModal
         open={showRemoveMemberConfirm}
-        title="Xóa khỏi nhóm"
-        description="Bạn có chắc muốn xóa thành viên này khỏi nhóm? Bạn sẽ không nhận được tin nhắn mới từ nhóm."
-        confirmText="Xóa"
+        title={t("pages.chat.removeFromGroup")}
+        description={t("pages.chat.removeMemberConfirm")}
+        confirmText={t("common.delete")}
         variant="primary"
         onCancel={() => setShowRemoveMemberConfirm(false)}
         onConfirm={() => handleRemoveMember(removingUserId!)}

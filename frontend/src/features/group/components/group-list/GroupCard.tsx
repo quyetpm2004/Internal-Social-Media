@@ -2,6 +2,7 @@ import { Clock, Users } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import type { GroupMembershipStatus } from "@/features/group/types/group.type";
 import { DEFAULT_COVER } from "@/constants/app";
+import { useTranslation } from "react-i18next";
 
 type GroupCardProps = {
   groupId: string;
@@ -26,6 +27,7 @@ const GroupCard = ({
   membershipStatus,
   joinGroup,
 }: GroupCardProps) => {
+  const { t } = useTranslation();
   const isPending = membershipStatus === "PENDING";
 
   return (
@@ -56,18 +58,18 @@ const GroupCard = ({
           <div className="flex items-center gap-1 text-on-surface-variant">
             <Users className="text-sm" />
             <span className="text-xs font-semibold">
-              {memberCount.toLocaleString()} thành viên
+              {t("pages.groups.memberCount", { count: memberCount.toLocaleString() })}
             </span>
           </div>
 
           {isMember ? (
             <span className="px-3 py-1.5 bg-green-100 text-green-800 font-bold text-xs rounded-lg">
-              Thành viên
+              {t("pages.groups.memberBadge")}
             </span>
           ) : isPending ? (
             <span className="px-3 py-1.5 bg-amber-100 text-amber-800 font-bold text-xs rounded-lg flex items-center gap-1">
               <Clock size={12} />
-              Đang chờ duyệt
+              {t("pages.groups.pendingBadge")}
             </span>
           ) : (
             <button
@@ -75,7 +77,9 @@ const GroupCard = ({
               onClick={() => joinGroup(groupId)}
               className="px-3 py-1.5 bg-primary text-on-primary font-bold text-xs rounded-lg cursor-pointer"
             >
-              {groupType === "PRIVATE" ? "Yêu cầu tham gia" : "Tham gia"}
+              {groupType === "PRIVATE"
+                ? t("pages.groups.requestJoin")
+                : t("pages.groups.join")}
             </button>
           )}
         </div>

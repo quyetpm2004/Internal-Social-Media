@@ -1,5 +1,6 @@
 import React from "react";
 import { Calendar, Building2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 type AboutSidebarProps = {
   // You can add props here if needed, e.g. group details
@@ -13,10 +14,11 @@ const AboutSidebar: React.FC<AboutSidebarProps> = ({
   establishedDate,
   department,
 }) => {
+  const { t } = useTranslation();
   return (
     <aside className="md:col-span-4 space-y-6">
       <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm">
-        <h3 className="font-bold text-lg mb-4">Mô tả</h3>
+        <h3 className="font-bold text-lg mb-4">{t("common.description")}</h3>
         <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-6">
           {description}
         </p>
@@ -24,13 +26,13 @@ const AboutSidebar: React.FC<AboutSidebarProps> = ({
         <div className="space-y-4">
           <SidebarInfo
             icon={<Calendar size={18} />}
-            label="Thành lập"
+            label={t("pages.groups.established")}
             value={establishedDate || ""}
           />
           {department && (
             <SidebarInfo
               icon={<Building2 size={18} />}
-              label="Phòng ban"
+              label={t("common.department")}
               value={department || ""}
             />
           )}

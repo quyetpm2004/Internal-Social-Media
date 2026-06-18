@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  Bookmark,
   Download,
   EllipsisVertical,
   FileText,
@@ -28,8 +29,11 @@ import { toast } from "sonner";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import ConfirmModal from "@/components/common/ConfirmModal";
 import PollCard from "@/components/poll/PollCard";
+import EventCard from "@/components/event/EventCard";
 import { Link } from "react-router-dom";
 import type { PollSummary } from "@/types/poll.type";
+import type { EventSummary } from "@/types/event.type";
+import { useTranslation } from "react-i18next";
 
 const reactionOptions: {
   type: ReactionType;
@@ -86,18 +90,23 @@ const PostCard: React.FC<PostCardProps> = ({
   isPinned = false,
   stats,
   currentReaction: initialReaction = null,
+  isSaved: initialIsSaved = false,
   onDeleted,
   onUpdated,
   onCopied,
   canPinPost,
   pinGroupId = null,
   onPinned,
+  onSavedChanged,
   allowAnonymousComment = false,
   showComment = false,
   poll: initialPoll = null,
+  event: initialEvent = null,
 }) => {
+  const { t } = useTranslation();
   const [showComments, setShowComments] = useState(showComment);
   const [poll, setPoll] = useState<PollSummary | null>(initialPoll);
+  const [event, setEvent] = useState<EventSummary | null>(initialEvent);
   const [reactionCount, setReactionCount] = useState(stats.likes);
   const [currentReaction, setCurrentReaction] = useState<ReactionType | null>(
     initialReaction,
@@ -110,10 +119,18 @@ const PostCard: React.FC<PostCardProps> = ({
   const [displayFormat, setDisplayFormat] = useState(contentFormat);
   const user = useAuthStore((state) => state.user);
   const [openConfirmPinPost, setOpenConfirmPinPost] = useState(false);
+  const [isSaved, setIsSaved] = useState(Boolean(initialIsSaved));
+  const [savingPost, setSavingPost] = useState(false);
 
   useEffect(() => {
     setPoll(initialPoll);
   }, [initialPoll]);
+  useEffect(() => {
+    setEvent(initialEvent);
+  }, [initialEvent]);
+  useEffect(() => {
+    setIsSaved(Boolean(initialIsSaved));
+  }, [initialIsSaved]);
 
   useEffect(() => {
     if (!editingPost) {
@@ -124,7 +141,8 @@ const PostCard: React.FC<PostCardProps> = ({
   }, [content, contentFormat, editingPost]);
 
   const showPostContent =
-    !poll || displayContent.trim() !== poll.question.trim();
+    (!poll || displayContent.trim() !== poll.question.trim()) &&
+    (!event || displayContent.trim() !== event.title.trim());
 
   const selectedReactionData = reactionOptions.find(
     (item) => item.type === currentReaction,
@@ -157,11 +175,11 @@ const PostCard: React.FC<PostCardProps> = ({
       setCurrentReaction(data.currentReaction);
       setReactionCount(data.reactionCount);
     } catch (error: any) {
-      console.error("Thả cảm xúc thất bại:", error);
+      console.error("React post failed:", error);
       const message =
         error?.response?.data?.message ||
         error?.message ||
-        "Có lỗi xảy ra. Vui lòng thử lại.";
+        t("common.genericError");
       toast.error(message);
     } finally {
       setLoadingReaction(false);
@@ -180,29 +198,49 @@ const PostCard: React.FC<PostCardProps> = ({
       onUpdated?.(postId, sanitizedContent, "HTML");
       setEditingPost(false);
     } catch (error: any) {
-      console.error("Sửa bài viết thất bại:", error);
+      console.error("Update post failed:", error);
       const message =
         error?.response?.data?.message ||
         error?.message ||
-        "Có lỗi xảy ra. Vui lòng thử lại.";
+        t("common.genericError");
       toast.error(message);
     }
   };
 
   const handleDeletePost = async () => {
-    const ok = window.confirm("Bạn có chắc muốn xóa bài viết này không?");
+    const ok = window.confirm(t("pages.posts.deleteConfirm"));
     if (!ok) return;
 
     try {
       await PostsApi.deletePost(postId);
       onDeleted?.(postId);
     } catch (error: any) {
-      console.error("Xóa bài viết thất bại:", error);
+      console.error("Delete post failed:", error);
       const message =
         error?.response?.data?.message ||
         error?.message ||
-        "Có lỗi xảy ra. Vui lòng thử lại.";
+        t("common.genericError");
       toast.error(message);
+    }
+  };
+
+  const handleToggleSavePost = async () => {
+    if (savingPost) return;
+    try {
+      setSavingPost(true);
+      const res = await PostsApi.toggleSavePost(postId);
+      const nextSaved = res.data.isSaved;
+      setIsSaved(nextSaved);
+      onSavedChanged?.(postId, nextSaved);
+      toast.success(nextSaved ? t("pages.posts.saved") : t("pages.posts.unsaved"));
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        t("pages.posts.saveFailed");
+      toast.error(message);
+    } finally {
+      setSavingPost(false);
     }
   };
 
@@ -237,7 +275,7 @@ const PostCard: React.FC<PostCardProps> = ({
                 type="button"
                 onClick={() => setOpenConfirmPinPost(true)}
                 className="p-2 rounded-lg text-slate-500 hover:text-blue-700 hover:bg-slate-50 dark:hover:bg-slate-800"
-                title={isPinned ? "Gỡ ghim" : "Ghim bài viết"}
+                title={isPinned ? t("pages.posts.unpin") : t("pages.posts.pin")}
               >
                 <Pin
                   size={18}
@@ -268,7 +306,7 @@ const PostCard: React.FC<PostCardProps> = ({
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700"
                 >
                   <Pencil size={14} />
-                  Sửa bài viết
+                  {t("pages.posts.edit")}
                 </button>
 
                 <button
@@ -277,7 +315,7 @@ const PostCard: React.FC<PostCardProps> = ({
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                 >
                   <Trash2 size={14} />
-                  Xóa bài viết
+                  {t("pages.posts.delete")}
                 </button>
               </div>
             )}
@@ -301,7 +339,7 @@ const PostCard: React.FC<PostCardProps> = ({
                 }}
                 className="px-3 py-1.5 rounded-lg text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
-                Hủy
+                {t("common.cancel")}
               </button>
 
               <button
@@ -309,7 +347,7 @@ const PostCard: React.FC<PostCardProps> = ({
                 onClick={handleUpdatePost}
                 className="px-3 py-1.5 rounded-lg text-sm bg-blue-700 text-white font-semibold hover:bg-blue-800"
               >
-                Lưu
+                {t("pages.posts.save")}
               </button>
             </div>
           </div>
@@ -326,6 +364,11 @@ const PostCard: React.FC<PostCardProps> = ({
         {poll && !editingPost && (
           <div className="mb-4">
             <PollCard poll={poll} onVote={setPoll} />
+          </div>
+        )}
+        {event && !editingPost && (
+          <div className="mb-4">
+            <EventCard event={event} onUpdated={setEvent} />
           </div>
         )}
 
@@ -376,7 +419,7 @@ const PostCard: React.FC<PostCardProps> = ({
               >
                 <video controls className="w-full max-h-[500px] bg-black">
                   <source src={video.fileUrl} />
-                  Trình duyệt không hỗ trợ video.
+                  {t("common.videoNotSupported")}
                 </video>
               </div>
             ))}
@@ -398,7 +441,7 @@ const PostCard: React.FC<PostCardProps> = ({
                   <FileText size={18} className="text-slate-500 shrink-0" />
 
                   <span className="text-sm truncate">
-                    {file.fileName || "Tệp đính kèm"}
+                    {file.fileName || t("common.attachmentFile")}
                   </span>
                 </div>
 
@@ -472,7 +515,22 @@ const PostCard: React.FC<PostCardProps> = ({
             className="flex items-center gap-2 text-slate-500 hover:text-blue-700 transition-colors ml-auto"
           >
             <Share2 size={18} />
-            <span className="text-xs font-semibold">Sao chép liên kết</span>
+            <span className="text-xs font-semibold">{t("common.copyLink")}</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleToggleSavePost}
+            disabled={savingPost}
+            className={`flex items-center gap-2 transition-colors disabled:opacity-60 ${
+              isSaved
+                ? "text-blue-700"
+                : "text-slate-500 hover:text-blue-700"
+            }`}
+          >
+            <Bookmark size={18} className={isSaved ? "fill-current" : ""} />
+            <span className="text-xs font-semibold">
+              {isSaved ? t("pages.posts.savedState") : t("pages.posts.save")}
+            </span>
           </button>
         </div>
         {showComments && (
@@ -494,13 +552,13 @@ const PostCard: React.FC<PostCardProps> = ({
       {canPinPost && onPinned && (
         <ConfirmModal
           open={openConfirmPinPost}
-          title={isPinned ? "Gỡ bài ghim" : "Ghim bài"}
+          title={isPinned ? t("pages.posts.unpinTitle") : t("pages.posts.pinTitle")}
           description={
             isPinned
-              ? "Bạn có chắc chắn muốn gỡ ghim bài viết này không?"
-              : "Bạn có chắc chắn muốn ghim bài viết này không?"
+              ? t("pages.posts.unpinConfirm")
+              : t("pages.posts.pinConfirm")
           }
-          confirmText="Xác nhận"
+          confirmText={t("common.confirm")}
           variant="primary"
           onCancel={() => setOpenConfirmPinPost(false)}
           onConfirm={async () => {

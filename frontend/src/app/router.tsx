@@ -6,6 +6,7 @@ import LoginPage from "@/features/auth/pages/LoginPage";
 import ProfilePage from "@/features/profile/pages/ProfilePage";
 import NotFoundPage from "@/features/not-found/pages/NotFoundPage";
 import NewFeedPage from "@/features/new-feed/pages/NewFeedPage";
+import SavedPostsPage from "@/features/new-feed/pages/SavedPostsPage";
 import GroupListPage from "@/features/group/pages/GroupListPage";
 import GroupDetailLayout from "@/features/group/pages/GroupDetailLayout";
 import GroupFeedPage from "@/features/group/pages/GroupFeedPage";
@@ -63,6 +64,10 @@ export const router = createBrowserRouter([
           {
             path: "/news-feed/:postId",
             element: <PostDetailPage />,
+          },
+          {
+            path: "/stats",
+            element: <SavedPostsPage />,
           },
           {
             path: "/search",

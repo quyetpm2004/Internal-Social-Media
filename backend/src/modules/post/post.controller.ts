@@ -4,15 +4,18 @@ import type {
   PinPostInput,
   PostListQuery,
   ReactPostInput,
+  SavedPostListQuery,
   UpdatePostInput,
 } from "@/modules/post/post.schema";
 import {
   createPostService,
   deletePostService,
+  getSavedPostListService,
   getPostById,
   getPostListService,
   pinPostByUserId,
   reactPostService,
+  toggleSavePostService,
   updatePostService,
 } from "@/modules/post/post.service";
 
@@ -45,6 +48,7 @@ export async function createPost(req: Request, res: Response) {
     attachmentIds: body.attachmentIds ?? [],
     isAnonymous: body.isAnonymous,
     poll: body.poll,
+    event: body.event,
   });
 
   res.status(201).json({
@@ -120,6 +124,35 @@ export async function pinPost(req: Request, res: Response) {
 
   res.status(201).json({
     message: "Pin/UnPin bài viết thành công",
+    data: result,
+  });
+}
+
+export async function toggleSavePost(req: Request, res: Response) {
+  const postId = Number(req.params.postId);
+  const result = await toggleSavePostService({
+    postId,
+    userId: req.user!.id,
+  });
+
+  res.status(200).json({
+    message: result.isSaved
+      ? "Đã lưu bài viết thành công"
+      : "Đã bỏ lưu bài viết",
+    data: result,
+  });
+}
+
+export async function getSavedPosts(req: Request, res: Response) {
+  const { page, limit } = req.validated as SavedPostListQuery;
+  const result = await getSavedPostListService({
+    userId: req.user!.id,
+    page,
+    limit,
+  });
+
+  res.status(200).json({
+    message: "Lấy danh sách bài viết đã lưu thành công",
     data: result,
   });
 }

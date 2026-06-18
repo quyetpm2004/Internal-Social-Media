@@ -5,6 +5,7 @@ import ItemSearch from "@/features/chat/components/conversation-list/ItemSearch"
 import { chatApi } from "@/features/chat/apis/chat.api";
 import type { ChatSearchUser } from "@/features/chat/types/chat-search.type";
 import type { ChatUser } from "@/features/chat/types/chat.type";
+import { useTranslation } from "react-i18next";
 
 interface CreateChatGroupModalProps {
   open: boolean;
@@ -33,6 +34,7 @@ const CreateChatGroupModal = ({
   currentUserId,
   onSubmit,
 }: CreateChatGroupModalProps) => {
+  const { t } = useTranslation();
   const [groupName, setGroupName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<ChatSearchUser[]>([]);
@@ -97,7 +99,7 @@ const CreateChatGroupModal = ({
     e.preventDefault();
     const name = groupName.trim();
     if (!name) {
-      toast.error("Vui lòng nhập tên nhóm");
+      toast.error(t("pages.chat.enterGroupName"));
       return;
     }
 
@@ -133,7 +135,7 @@ const CreateChatGroupModal = ({
 
       <div className="relative w-full max-w-md rounded-3xl bg-surface shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant bg-surface-container-low shrink-0">
-          <h2 className="text-lg font-bold text-on-surface">Tạo nhóm chat</h2>
+          <h2 className="text-lg font-bold text-on-surface">{t("pages.chat.createGroup")}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -147,13 +149,13 @@ const CreateChatGroupModal = ({
           <div className="p-6 space-y-4 overflow-y-auto flex-1">
             <div className="space-y-1.5">
               <label className="text-sm font-semibold text-on-surface px-1">
-                Tên nhóm
+                {t("pages.chat.groupName")}
               </label>
               <input
                 type="text"
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value)}
-                placeholder="Ví dụ: Dự án ABC"
+                placeholder={t("pages.chat.groupNameExample")}
                 required
                 className="w-full px-4 py-3 rounded-2xl bg-surface-container-high border-none outline-none focus:ring-2 focus:ring-primary text-sm"
               />
@@ -161,7 +163,7 @@ const CreateChatGroupModal = ({
 
             <div className="space-y-2">
               <p className="text-sm font-semibold text-on-surface px-1">
-                Thành viên
+                {t("pages.chat.members")}
               </p>
               <ItemSearch user={mapUser(initialMember)} />
               {extraMembers.map((user) => (
@@ -176,25 +178,25 @@ const CreateChatGroupModal = ({
 
             <div className="space-y-1.5">
               <label className="text-sm font-semibold text-on-surface px-1">
-                Thêm thành viên
+                {t("pages.chat.addMembers")}
               </label>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm theo tên hoặc email"
+                placeholder={t("pages.chat.searchByNameOrEmail")}
                 className="w-full px-4 py-3 rounded-2xl bg-surface-container-high border-none outline-none focus:ring-2 focus:ring-primary text-sm"
               />
             </div>
 
             {searchLoading && (
               <p className="text-xs text-on-surface-variant px-1">
-                Đang tìm kiếm...
+                {t("pages.chat.searching")}
               </p>
             )}
             {!searchLoading && trimmedQuery && searchResults.length === 0 && (
               <p className="text-xs text-on-surface-variant px-1">
-                Không tìm thấy người dùng.
+                {t("pages.chat.noUsersFound")}
               </p>
             )}
             {searchResults.map((user) => (
@@ -212,7 +214,7 @@ const CreateChatGroupModal = ({
               disabled={submitting}
               className="w-full py-3 rounded-2xl bg-primary text-on-primary font-semibold text-sm hover:opacity-90 disabled:opacity-50 transition-opacity"
             >
-              {submitting ? "Đang tạo..." : "Tạo nhóm"}
+              {submitting ? t("pages.chat.creating") : t("pages.chat.createGroup")}
             </button>
           </div>
         </form>

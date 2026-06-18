@@ -1,7 +1,14 @@
 import { NavLink } from "react-router-dom";
-import { Bookmark, Group, LayoutGrid, MessageCircleCheck } from "lucide-react";
+import {
+  Bookmark,
+  Group,
+  Languages,
+  LayoutGrid,
+  MessageCircleCheck,
+} from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { cn, getDefaultAvatarUrl } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 import {
   Sidebar,
   SidebarContent,
@@ -13,13 +20,6 @@ import {
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
-
-const navItems = [
-  { to: "/news-feed", label: "Trang chủ", icon: LayoutGrid },
-  { to: "/groups", label: "Không gian nhóm", icon: Group },
-  { to: "/stats", label: "Đã lưu", icon: Bookmark },
-  { to: "/messages", label: "Tin nhắn", icon: MessageCircleCheck },
-];
 
 const menuButtonClass = (isActive: boolean, isCollapsed: boolean) =>
   cn(
@@ -33,8 +33,15 @@ const menuButtonClass = (isActive: boolean, isCollapsed: boolean) =>
 export default function AppSidebar() {
   const user = useAuthStore((state) => state.user);
   const { state } = useSidebar();
+  const { t, i18n } = useTranslation();
   const isCollapsed = state === "collapsed";
   const profilePath = `/profile/${user?.id}`;
+  const navItems = [
+    { to: "/news-feed", label: t("nav.home"), icon: LayoutGrid },
+    { to: "/groups", label: t("nav.groups"), icon: Group },
+    { to: "/stats", label: t("nav.saved"), icon: Bookmark },
+    { to: "/messages", label: t("nav.messages"), icon: MessageCircleCheck },
+  ];
 
   return (
     <Sidebar
@@ -51,7 +58,7 @@ export default function AppSidebar() {
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
-                      tooltip={user?.fullName || "Tài khoản"}
+                      tooltip={user?.fullName || t("nav.account")}
                       className={
                         menuButtonClass(isActive, isCollapsed) + " h-auto"
                       }
@@ -70,7 +77,7 @@ export default function AppSidebar() {
                         <span
                           className={cn("truncate", isCollapsed && "hidden")}
                         >
-                          {user?.fullName || "Tài khoản"}
+                          {user?.fullName || t("nav.account")}
                         </span>
                       </div>
                     </SidebarMenuButton>
@@ -103,6 +110,30 @@ export default function AppSidebar() {
                   </NavLink>
                 </SidebarMenuItem>
               ))}
+              <SidebarMenuItem>
+                <button
+                  type="button"
+                  onClick={() =>
+                    i18n.changeLanguage(i18n.language.startsWith("vi") ? "en" : "vi")
+                  }
+                  className={cn(
+                    "w-full flex items-center",
+                    isCollapsed && "justify-center",
+                  )}
+                >
+                  <SidebarMenuButton
+                    tooltip={t("nav.languageToggle")}
+                    className={menuButtonClass(false, isCollapsed) + " h-auto w-full"}
+                  >
+                    <Languages className="size-6! shrink-0" />
+                    <span className={cn("truncate", isCollapsed && "hidden")}>
+                      {i18n.language.startsWith("vi")
+                        ? t("languageName.vi")
+                        : t("languageName.en")}
+                    </span>
+                  </SidebarMenuButton>
+                </button>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

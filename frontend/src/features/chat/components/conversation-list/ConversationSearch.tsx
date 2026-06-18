@@ -1,4 +1,5 @@
 import { Search } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface ConversationSearchProps {
   searchQuery: string;
@@ -11,6 +12,7 @@ const ConversationSearch = ({
   setSearchQuery,
   onFocus,
 }: ConversationSearchProps) => {
+  const { t } = useTranslation();
   return (
     <div className="relative flex-1">
       <button
@@ -42,7 +44,7 @@ const ConversationSearch = ({
               focus:ring-surface-tint
               transition-all
             "
-        placeholder="Tìm kiếm đoạn chat"
+        placeholder={t("pages.chat.searchPlaceholder")}
         type="text"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}

@@ -4,7 +4,6 @@ import {
   ChevronDown,
   Group,
   LogOut,
-  MessageCircleCheck,
   Search,
   Settings,
   TextAlignJustify,
@@ -23,7 +22,11 @@ import {
 } from "@/components/ui/sheet";
 import { getDefaultAvatarUrl } from "@/lib/utils";
 import NotificationBell from "@/features/notification/components/NotificationBell";
+import MessengerBell, {
+  MessengerBellMobile,
+} from "@/features/chat/components/messenger/MessengerBell";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { useTranslation } from "react-i18next";
 
 type UserMenuPanelProps = {
   onClose: () => void;
@@ -39,6 +42,7 @@ function UserMenuPanel({
   onLogout,
 }: UserMenuPanelProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const menuItemClass =
     "w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors";
@@ -54,7 +58,7 @@ function UserMenuPanel({
         className={menuItemClass}
       >
         <Group size={18} />
-        Không gian nhóm
+        {t("nav.groups")}
       </button>
 
       <button
@@ -66,7 +70,7 @@ function UserMenuPanel({
         className={menuItemClass}
       >
         <Bookmark size={18} />
-        Đã lưu
+        {t("nav.saved")}
       </button>
 
       <div className="border-t border-slate-200 dark:border-slate-700">
@@ -77,7 +81,7 @@ function UserMenuPanel({
         >
           <span className="flex items-center gap-3">
             <Settings size={18} />
-            Cài đặt
+            {t("nav.settings")}
           </span>
           <ChevronDown
             size={16}
@@ -96,7 +100,7 @@ function UserMenuPanel({
             }}
             className="w-full pl-11 pr-4 py-2.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left"
           >
-            Quên mật khẩu
+            {t("nav.forgotPassword")}
           </button>
         )}
       </div>
@@ -107,7 +111,7 @@ function UserMenuPanel({
         className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors border-t border-slate-200 dark:border-slate-700"
       >
         <LogOut size={18} />
-        Đăng xuất
+        {t("common.logout")}
       </button>
     </>
   );
@@ -115,6 +119,7 @@ function UserMenuPanel({
 
 export default function AppHeader() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
@@ -203,22 +208,8 @@ export default function AppHeader() {
           </button>
           <NotificationBell />
 
-          <button
-            type="button"
-            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors active:scale-95 duration-200"
-            aria-label="Tin nhắn"
-          >
-            <MessageCircleCheck size={20} />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate("/messages")}
-            className="p-2 hover:bg-slate-100 md:hidden dark:hover:bg-slate-800 rounded-full transition-colors active:scale-95 duration-200"
-            aria-label="Tin nhắn"
-          >
-            <MessageCircleCheck size={20} />
-          </button>
+          <MessengerBell />
+          <MessengerBellMobile />
 
           <div className="relative hidden md:flex" ref={dropdownRef}>
             <button
@@ -257,7 +248,7 @@ export default function AppHeader() {
                   className="w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   <User size={18} />
-                  Hồ sơ cá nhân
+                  {t("nav.profile")}
                 </button>
 
                 <button
@@ -268,7 +259,7 @@ export default function AppHeader() {
                   className="w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   <UserKey size={18} />
-                  Thay đổi mật khẩu
+                  {t("nav.changePassword")}
                 </button>
 
                 <button
@@ -276,7 +267,7 @@ export default function AppHeader() {
                   className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
                 >
                   <LogOut size={18} />
-                  Đăng xuất
+                  {t("common.logout")}
                 </button>
               </div>
             )}

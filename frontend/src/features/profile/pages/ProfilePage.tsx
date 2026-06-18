@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { profileApi } from "@/features/profile/api/profile.api";
 import ProfileHeader from "@/features/profile/components/ProfileHeader";
@@ -13,10 +13,14 @@ import { uploadApi } from "@/features/uploads/api/upload.api";
 import { useParams } from "react-router-dom";
 import NotFoundPage from "@/features/not-found/pages/NotFoundPage";
 import { useAuthStore } from "@/features/auth/store/auth.store";
+import { authApi } from "@/features/auth/api/auth.api";
+import { useTranslation } from "react-i18next";
 
 export default function ProfilePage() {
   const { userId } = useParams();
   const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
+  const { t } = useTranslation();
 
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -39,21 +43,43 @@ export default function ProfilePage() {
 
   const [departments, setDepartments] = useState<Department[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
+  const [securityLoading, setSecurityLoading] = useState(false);
+  const [openChangePasswordModal, setOpenChangePasswordModal] = useState(false);
+  const [changePasswordForm, setChangePasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmNewPassword: "",
+  });
 
-  if (!userId) {
-    return <NotFoundPage />;
-  }
+  const getErrorMessage = (error: unknown, fallback: string) => {
+    if (typeof error === "object" && error !== null) {
+      const maybeResponse = error as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+      return (
+        maybeResponse.response?.data?.message ||
+        maybeResponse.message ||
+        fallback
+      );
+    }
+    return fallback;
+  };
 
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
+    if (!userId) {
+      return;
+    }
+
     try {
       const res = await profileApi.getProfile(userId);
       setProfile(res.data);
     } catch {
-      toast.error("Không tải được hồ sơ");
+      toast.error(t("profile.loadFailed"));
     } finally {
       setLoadingProfile(false);
     }
-  };
+  }, [t, userId]);
 
   useEffect(() => {
     const fetchDepartments = async () => {
@@ -61,7 +87,7 @@ export default function ProfilePage() {
         const res = await profileApi.getDepartments();
         setDepartments(res.data);
       } catch {
-        toast.error("Không tải được phòng ban");
+        toast.error(t("profile.departmentLoadFailed"));
       } finally {
         setLoadingProfile(false);
       }
@@ -72,7 +98,7 @@ export default function ProfilePage() {
         const res = await profileApi.getPositions();
         setPositions(res.data);
       } catch {
-        toast.error("Không tải được chức vụ");
+        toast.error(t("profile.positionLoadFailed"));
       } finally {
         setLoadingProfile(false);
       }
@@ -81,13 +107,23 @@ export default function ProfilePage() {
     fetchProfile();
     fetchDepartments();
     fetchPositions();
-  }, []);
+  }, [fetchProfile, t]);
 
   const onSubmit = async () => {
     try {
       setUpdating(true);
 
-      const { avatarUrl, id, role, ...profilePayload } = profile;
+      const profilePayload = {
+        fullName: profile.fullName,
+        email: profile.email,
+        departmentId: profile.departmentId,
+        positionId: profile.positionId,
+        phone: profile.phone,
+        address: profile.address,
+        bio: profile.bio,
+        birthdate: profile.birthdate,
+        gender: profile.gender,
+      };
 
       const res = await profileApi.updateProfile(profilePayload);
 
@@ -98,9 +134,9 @@ export default function ProfilePage() {
       }));
 
       setIsEditing(false);
-      toast.success("Cập nhật hồ sơ thành công");
+      toast.success(t("profile.updateSuccess"));
     } catch {
-      toast.error("Cập nhật hồ sơ thất bại");
+      toast.error(t("profile.updateFailed"));
     } finally {
       setUpdating(false);
     }
@@ -147,14 +183,10 @@ export default function ProfilePage() {
 
       fetchProfile();
 
-      toast.success("Cập nhật ảnh đại diện thành công");
-    } catch (error: any) {
+      toast.success(t("profile.avatarUpdateSuccess"));
+    } catch (error: unknown) {
       console.error("Error uploading avatar:", error);
-      const message =
-        error?.response?.data?.message ||
-        error?.message ||
-        "Có lỗi xảy ra. Vui lòng thử lại.";
-      toast.error(message);
+      toast.error(getErrorMessage(error, t("profile.genericError")));
     } finally {
       setAvatarUploading(false);
     }
@@ -171,21 +203,47 @@ export default function ProfilePage() {
         avatarUrl: "",
       }));
 
-      toast.success("Đã xóa ảnh đại diện");
-    } catch (error: any) {
-      toast.error("Xóa ảnh đại diện thất bại");
-      const message =
-        error?.response?.data?.message ||
-        error?.message ||
-        "Có lỗi xảy ra. Vui lòng thử lại.";
-      toast.error(message);
+      toast.success(t("profile.avatarDeleteSuccess"));
+    } catch (error: unknown) {
+      toast.error(t("profile.avatarDeleteFailed"));
+      toast.error(getErrorMessage(error, t("profile.genericError")));
     } finally {
       setAvatarUploading(false);
     }
   };
 
+  const handleChangePasswordInput = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const { name, value } = e.target;
+    setChangePasswordForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const submitChangePassword = async () => {
+    try {
+      setSecurityLoading(true);
+      await authApi.changePassword(changePasswordForm);
+      setChangePasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmNewPassword: "",
+      });
+      setOpenChangePasswordModal(false);
+      toast.success(t("profile.changePasswordSuccess"));
+      await logout();
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, t("profile.changePasswordFailed")));
+    } finally {
+      setSecurityLoading(false);
+    }
+  };
+
   if (loadingProfile) {
-    return <div>Đang tải hồ sơ...</div>;
+    return <div>{t("profile.loading")}</div>;
+  }
+
+  if (!userId) {
+    return <NotFoundPage />;
   }
 
   // Update avatar state
@@ -199,12 +257,12 @@ export default function ProfilePage() {
         role={
           profile?.positionId
             ? positions.find((p) => p.id === profile.positionId)?.name
-            : "Nhân viên"
+            : t("profile.defaultRole")
         }
         department={
           profile?.departmentId
             ? departments.find((d) => d.id === profile.departmentId)?.name
-            : "Chưa có phòng ban"
+            : t("profile.noDepartment")
         }
         isEditing={isEditing}
         updating={updating}
@@ -214,6 +272,7 @@ export default function ProfilePage() {
         onSubmit={onSubmit}
         onAvatarChange={handleAvatarChange}
         onAvatarDelete={handleDeleteAvatar}
+        onOpenChangePasswordModal={() => setOpenChangePasswordModal(true)}
       />
 
       <form>
@@ -224,21 +283,21 @@ export default function ProfilePage() {
               <div className="flex items-center justify-between mb-8">
                 <h2 className="text-xl font-bold flex items-center gap-3">
                   <UserPen size={20} />
-                  Thông tin cơ bản
+                  {t("profile.basicInfo")}
                 </h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {isEditing ? (
                   <>
                     <InfoField
-                      label="Họ và tên"
+                      label={t("profile.fullName")}
                       value={profile?.fullName}
-                      placeholder="Nhập họ và tên"
+                      placeholder={t("profile.inputFullName")}
                       onChange={handleInputChange}
                       name="fullName"
                     />
                     <InfoField
-                      label="Giới tính"
+                      label={t("profile.gender")}
                       name="gender"
                       value={profile?.gender}
                       options={[
@@ -249,14 +308,14 @@ export default function ProfilePage() {
                       onChange={handleInputChange}
                     />
                     <InfoField
-                      label="Ngày sinh"
+                      label={t("profile.birthdate")}
                       name="birthdate"
                       value={profile?.birthdate}
                       date={true}
                       onChange={handleInputChange}
                     />
                     <InfoField
-                      label="Phòng ban"
+                      label={t("profile.department")}
                       name="departmentId"
                       value={profile?.departmentId}
                       options={departments.map((d) => ({
@@ -266,7 +325,7 @@ export default function ProfilePage() {
                       onChange={handleInputChange}
                     />
                     <InfoField
-                      label="Chức vụ"
+                      label={t("profile.position")}
                       name="positionId"
                       value={profile?.positionId}
                       options={positions.map((p) => ({
@@ -276,7 +335,7 @@ export default function ProfilePage() {
                       onChange={handleInputChange}
                     />
                     <InfoField
-                      label="Quyền hệ thống"
+                      label={t("profile.role")}
                       name="role"
                       value={profile?.role}
                       disabled
@@ -285,35 +344,35 @@ export default function ProfilePage() {
                 ) : (
                   <>
                     <InfoField
-                      label="Họ và tên"
+                      label={t("profile.fullName")}
                       value={profile?.fullName}
                       readonly={true}
                     />
                     <InfoField
-                      label="Giới tính"
+                      label={t("profile.gender")}
                       value={profile?.gender}
                       readonly={true}
                     />
                     <InfoField
-                      label="Ngày sinh"
+                      label={t("profile.birthdate")}
                       value={profile?.birthdate}
                       date={true}
                       readonly={true}
                     />
                     <InfoField
-                      label="Phòng ban"
+                      label={t("profile.department")}
                       value={profile?.departmentId}
                       options={departments}
                       disabled={true}
                     />
                     <InfoField
-                      label="Chức vụ"
+                      label={t("profile.position")}
                       value={profile?.positionId}
                       options={positions}
                       disabled={true}
                     />
                     <InfoField
-                      label="Quyền hệ thống"
+                      label={t("profile.role")}
                       value={profile?.role}
                       disabled={true}
                     />
@@ -326,7 +385,7 @@ export default function ProfilePage() {
             <section className="bg-white dark:bg-slate-900 p-8 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
               <h2 className="text-xl font-bold flex items-center gap-3 mb-8">
                 <BookUser size={20} />
-                Thông tin liên hệ
+                {t("profile.contactInfo")}
               </h2>
               <div className="space-y-6">
                 <div>
@@ -334,26 +393,26 @@ export default function ProfilePage() {
                     <>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <InfoField
-                          label="Email"
+                          label={t("profile.email")}
                           name="email"
                           value={profile?.email}
-                          placeholder="Nhập email"
+                          placeholder={t("profile.inputEmail")}
                           onChange={handleInputChange}
                         />
                         <InfoField
-                          label="Số điện thoại"
+                          label={t("profile.phone")}
                           name="phone"
                           value={profile?.phone}
-                          placeholder="Nhập số điện thoại"
+                          placeholder={t("profile.inputPhone")}
                           onChange={handleInputChange}
                         />
                       </div>
                       <div className="grid grid-cols-1 mt-6">
                         <InfoField
-                          label="Địa chỉ"
+                          label={t("profile.address")}
                           name="address"
                           value={profile?.address}
-                          placeholder="Nhập địa chỉ"
+                          placeholder={t("profile.inputAddress")}
                           onChange={handleInputChange}
                         />
                       </div>
@@ -362,19 +421,19 @@ export default function ProfilePage() {
                     <>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <InfoField
-                          label="Email"
+                          label={t("profile.email")}
                           value={profile?.email}
                           readonly={true}
                         />
                         <InfoField
-                          label="Số điện thoại"
+                          label={t("profile.phone")}
                           value={profile?.phone}
                           readonly={true}
                         />
                       </div>
                       <div className="grid grid-cols-1 mt-6">
                         <InfoField
-                          label="Địa chỉ"
+                          label={t("profile.address")}
                           value={profile?.address}
                           readonly={true}
                         />
@@ -391,7 +450,7 @@ export default function ProfilePage() {
             <section className="bg-white dark:bg-slate-900 p-8 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 h-full">
               <h2 className="text-xl font-bold flex items-center gap-3 mb-6">
                 <Shell size={20} />
-                Bio
+                {t("profile.bio")}
               </h2>
               {isEditing ? (
                 <textarea
@@ -401,7 +460,7 @@ export default function ProfilePage() {
                   rows={10}
                   className=" w-full rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200 dark:border-slate-700 shadow-sm outline-none resize-none transition focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm
                   "
-                  placeholder="Giới thiệu bản thân..."
+                  placeholder={t("profile.bioPlaceholder")}
                 />
               ) : (
                 <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-sm whitespace-pre-line">
@@ -412,6 +471,55 @@ export default function ProfilePage() {
           </div>
         </div>
       </form>
+
+      {openChangePasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg p-6 space-y-3">
+            <h3 className="text-lg font-bold">{t("profile.changePasswordTitle")}</h3>
+            <input
+              type="password"
+              name="currentPassword"
+              value={changePasswordForm.currentPassword}
+              onChange={handleChangePasswordInput}
+              placeholder={t("profile.currentPassword")}
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-900"
+            />
+            <input
+              type="password"
+              name="newPassword"
+              value={changePasswordForm.newPassword}
+              onChange={handleChangePasswordInput}
+              placeholder={t("profile.newPassword")}
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-900"
+            />
+            <input
+              type="password"
+              name="confirmNewPassword"
+              value={changePasswordForm.confirmNewPassword}
+              onChange={handleChangePasswordInput}
+              placeholder={t("profile.confirmNewPassword")}
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-900"
+            />
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setOpenChangePasswordModal(false)}
+                className="flex-1 rounded-lg border border-slate-200 dark:border-slate-700 py-2 text-sm font-semibold"
+              >
+                {t("profile.cancel")}
+              </button>
+              <button
+                type="button"
+                disabled={securityLoading}
+                onClick={submitChangePassword}
+                className="flex-1 rounded-lg bg-blue-700 hover:bg-blue-800 disabled:bg-slate-300 text-white py-2 text-sm font-semibold transition-colors"
+              >
+                {t("profile.confirm")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

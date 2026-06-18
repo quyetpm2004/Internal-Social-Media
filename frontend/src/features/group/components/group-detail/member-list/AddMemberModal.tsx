@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 type AddMemberModalProps = {
   open: boolean;
@@ -14,6 +15,7 @@ export const AddMemberModal = ({
   onClose,
   onSubmit,
 }: AddMemberModalProps) => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
 
   if (!open) return null;
@@ -31,7 +33,7 @@ export const AddMemberModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={handleClose}
@@ -39,7 +41,7 @@ export const AddMemberModal = ({
 
       <div className="relative w-full max-w-md rounded-3xl bg-surface shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant bg-surface-container-low">
-          <h2 className="text-xl font-bold text-on-surface">Thêm thành viên</h2>
+          <h2 className="text-xl font-bold text-on-surface">{t("pages.groups.addMember")}</h2>
           <button
             type="button"
             onClick={handleClose}
@@ -53,7 +55,7 @@ export const AddMemberModal = ({
           <div className="p-6 space-y-4">
             <div className="space-y-1.5">
               <label className="text-sm font-semibold text-on-surface px-1">
-                Email thành viên
+                {t("pages.groups.memberEmail")}
               </label>
               <input
                 type="email"
@@ -72,14 +74,14 @@ export const AddMemberModal = ({
               onClick={handleClose}
               className="px-5 py-2.5 rounded-full text-sm font-semibold text-on-surface-variant hover:bg-surface-container-high transition-colors"
             >
-              Hủy
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
               disabled={loading || !email.trim()}
               className="px-5 py-2.5 rounded-full text-sm font-bold bg-primary text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
             >
-              {loading ? "Đang thêm..." : "Thêm thành viên"}
+              {loading ? t("pages.chat.adding") : t("pages.groups.addMember")}
             </button>
           </div>
         </form>

@@ -10,15 +10,16 @@ import type {
   SearchUser,
 } from "@/features/search/types/search.type";
 import { cn } from "@/lib/utils";
-
-const TABS: { id: SearchTab; label: string; icon: typeof Search }[] = [
-  { id: "all", label: "Tất cả", icon: Search },
-  { id: "people", label: "Mọi người", icon: Users },
-  { id: "groups", label: "Nhóm", icon: Landmark },
-];
+import { useTranslation } from "react-i18next";
 
 export default function SearchPage() {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const TABS: { id: SearchTab; label: string; icon: typeof Search }[] = [
+    { id: "all", label: t("pages.search.tabAll"), icon: Search },
+    { id: "people", label: t("pages.search.people"), icon: Users },
+    { id: "groups", label: t("pages.search.groups"), icon: Landmark },
+  ];
 
   const initialQuery = searchParams.get("q") ?? "";
   const initialTab = (searchParams.get("tab") as SearchTab) || "all";
@@ -118,14 +119,14 @@ export default function SearchPage() {
         {trimmedQuery && (
           <>
             <h1 className="font-headline text-display-sm md:text-headline-lg font-extrabold tracking-tight text-on-surface mb-2">
-              Kết quả tìm kiếm cho &quot;{query}&quot;
+              {t("pages.search.resultFor", { query })}
             </h1>
             <p className="text-sm text-on-surface-variant">
-              Đã tìm thấy{" "}
+              {t("pages.search.found")}{" "}
               <span className="font-bold text-primary">
                 {(counts?.users ?? 0) + (counts?.groups ?? 0)}
               </span>{" "}
-              kết quả phù hợp với tiêu chí của bạn.
+              {t("pages.search.matchingResults")}
             </p>
           </>
         )}
@@ -153,7 +154,7 @@ export default function SearchPage() {
           </div>
 
           {loading && users.length === 0 && groups.length === 0 ? (
-            <p className="text-center text-slate-500 py-12">Đang tìm kiếm...</p>
+            <p className="text-center text-slate-500 py-12">{t("pages.search.searching")}</p>
           ) : (
             <>
               {(activeTab === "all" || activeTab === "people") &&
@@ -161,14 +162,14 @@ export default function SearchPage() {
                   <section className="mb-8">
                     <div className="flex items-center justify-between mb-3">
                       <div className="text-base font-semibold text-slate-900 dark:text-white">
-                        Mọi người
+                        {t("pages.search.people")}
                       </div>
                       {activeTab === "all" && totalPeople > users.length && (
                         <Link
                           to={`/search?q=${encodeURIComponent(trimmedQuery)}&tab=people`}
                           className="text-sm text-blue-600 hover:underline"
                         >
-                          Xem tất cả ({totalPeople})
+                          {t("common.viewAll")} ({totalPeople})
                         </Link>
                       )}
                     </div>
@@ -185,14 +186,14 @@ export default function SearchPage() {
                   <section className="mb-8">
                     <div className="flex items-center justify-between mb-3">
                       <div className="text-base font-semibold text-slate-900 dark:text-white">
-                        Nhóm
+                        {t("pages.search.groups")}
                       </div>
                       {activeTab === "all" && totalGroups > groups.length && (
                         <Link
                           to={`/search?q=${encodeURIComponent(trimmedQuery)}&tab=groups`}
                           className="text-sm text-blue-600 hover:underline"
                         >
-                          Xem tất cả ({totalGroups})
+                          {t("common.viewAll")} ({totalGroups})
                         </Link>
                       )}
                     </div>
@@ -211,7 +212,7 @@ export default function SearchPage() {
                     className="mx-auto text-slate-300 dark:text-slate-600 mb-4"
                   />
                   <p className="text-slate-600 dark:text-slate-400">
-                    Không tìm thấy kết quả cho &quot;{trimmedQuery}&quot;
+                    {t("pages.search.noResultFor", { query: trimmedQuery })}
                   </p>
                 </div>
               )}
@@ -224,7 +225,7 @@ export default function SearchPage() {
                     disabled={loading}
                     className="px-6 py-2 text-sm font-medium text-blue-600 bg-blue-50 dark:bg-blue-500/10 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors disabled:opacity-50"
                   >
-                    {loading ? "Đang tải..." : "Xem thêm"}
+                    {loading ? t("common.loading") : t("common.viewMore")}
                   </button>
                 </div>
               )}
@@ -235,7 +236,7 @@ export default function SearchPage() {
 
       {!trimmedQuery && (
         <div className="text-center text-sm py-16 text-slate-500">
-          Nhập từ khóa để tìm kiếm mọi người và nhóm
+          {t("pages.search.emptyHint")}
         </div>
       )}
     </div>

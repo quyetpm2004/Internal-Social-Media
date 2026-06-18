@@ -8,6 +8,7 @@ import {
   canManageTargetMember,
   type GroupMemberRole,
 } from "@/features/group/utils/group-member";
+import { useTranslation } from "react-i18next";
 
 interface MemberTableProps {
   members: Member[];
@@ -34,6 +35,7 @@ export const MemberTable = ({
   totalPages,
   onPageChange,
 }: MemberTableProps) => {
+  const { t } = useTranslation();
   const showActionsColumn =
     canManage &&
     canManageGroupMembers(actorRole) &&
@@ -62,20 +64,20 @@ export const MemberTable = ({
           <thead>
             <tr className="bg-surface-container-low border-b border-outline-variant/30">
               <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                Thành viên
+                {t("common.members")}
               </th>
               <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                Email
+                {t("common.email")}
               </th>
               <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                Vai trò
+                {t("common.role")}
               </th>
               <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                Ngày tham gia
+                {t("common.joinedAt")}
               </th>
               {showActionsColumn && (
                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant text-right">
-                  Hành động
+                  {t("common.actions")}
                 </th>
               )}
             </tr>
@@ -88,7 +90,7 @@ export const MemberTable = ({
                   colSpan={showActionsColumn ? 5 : 4}
                   className="px-6 py-10 text-center text-sm text-on-surface-variant"
                 >
-                  Không có thành viên nào.
+                  {t("pages.groups.noMembers")}
                 </td>
               </tr>
             ) : (
@@ -115,7 +117,7 @@ export const MemberTable = ({
               className="flex items-center gap-2 text-sm text-primary font-bold hover:underline transition-all"
             >
               <Plus size={16} />
-              <span>Thêm thành viên</span>
+              <span>{t("pages.groups.addMember")}</span>
             </button>
           ) : (
             <div />
@@ -132,7 +134,7 @@ export const MemberTable = ({
             </button>
 
             <span className="text-sm font-medium">
-              Trang {currentPage} / {totalPages}
+              {t("pages.groups.page")} {currentPage} / {totalPages}
             </span>
 
             <button
@@ -150,9 +152,9 @@ export const MemberTable = ({
       {openConfirm && selectedMember && (
         <ConfirmModal
           open={openConfirm}
-          title="Xóa khỏi nhóm"
-          description={`Bạn có chắc chắn muốn xóa ${selectedMember.fullName} khỏi nhóm?`}
-          confirmText="Xóa"
+          title={t("pages.chat.removeFromGroup")}
+          description={t("pages.groups.removeMemberConfirm", { name: selectedMember.fullName })}
+          confirmText={t("common.delete")}
           variant="primary"
           onCancel={() => {
             setOpenConfirm(false);

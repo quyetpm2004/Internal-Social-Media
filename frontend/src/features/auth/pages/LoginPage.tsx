@@ -3,7 +3,8 @@ import { useForm } from "react-hook-form";
 import { useLocation, useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Eye, EyeOff, Globe, HelpCircle, Lock, Mail } from "lucide-react";
+import { Eye, EyeOff, HelpCircle, Lock, Mail } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import {
@@ -11,7 +12,6 @@ import {
   type LoginFormValues,
 } from "@/features/auth/schemas/login.schema";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -19,10 +19,10 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuthStore();
+  const { t } = useTranslation();
 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
 
   const from =
     (location.state as { from?: { pathname?: string } })?.from?.pathname ||
@@ -44,10 +44,10 @@ export default function LoginPage() {
     try {
       setLoading(true);
       await login(values);
-      toast.success("Đăng nhập thành công");
+      toast.success(t("auth.loginSuccess"));
       navigate(from === "/login" ? "/news-feed" : from);
     } catch {
-      toast.error("Email hoặc mật khẩu không chính xác!");
+      toast.error(t("auth.loginFailed"));
     } finally {
       setLoading(false);
     }
@@ -79,11 +79,10 @@ export default function LoginPage() {
 
           <div className="max-w-xl space-y-4">
             <h2 className="font-headline text-4xl font-bold leading-tight text-white xl:text-5xl">
-              Thiết kế tương lai cho các không gian bền vững.
+              {t("auth.leftTitle")}
             </h2>
             <p className="max-w-lg text-base leading-relaxed text-white/75">
-              Nền tảng quản lý dự án và hợp tác nội bộ dành riêng cho đội ngũ
-              chuyên gia kiến trúc.
+              {t("auth.leftDescription")}
             </p>
           </div>
         </div>
@@ -105,10 +104,10 @@ export default function LoginPage() {
               </div>
 
               <h1 className="font-headline text-4xl font-bold tracking-tight text-slate-900">
-                Đăng nhập
+                {t("auth.loginTitle")}
               </h1>
               <p className="mt-3 text-sm leading-relaxed text-slate-500">
-                Chào mừng trở lại với mạng lưới nội bộ doanh nghiệp.
+                {t("auth.welcomeBack")}
               </p>
             </div>
 
@@ -118,7 +117,7 @@ export default function LoginPage() {
                   htmlFor="email"
                   className="text-sm font-semibold text-slate-700"
                 >
-                  Email công ty
+                  {t("auth.companyEmail")}
                 </Label>
                 <div className="relative group">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400 transition-colors group-focus-within:text-blue-700">
@@ -142,7 +141,7 @@ export default function LoginPage() {
                   htmlFor="password"
                   className="text-sm font-semibold text-slate-700"
                 >
-                  Mật khẩu
+                  {t("auth.password")}
                 </Label>
                 <div className="relative group">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400 transition-colors group-focus-within:text-blue-700">
@@ -159,7 +158,11 @@ export default function LoginPage() {
                     type="button"
                     onClick={() => setShowPassword((prev) => !prev)}
                     className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-400 transition-colors hover:text-blue-700"
-                    aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                    aria-label={
+                      showPassword
+                        ? t("auth.hidePassword")
+                        : t("auth.showPassword")
+                    }
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -171,23 +174,12 @@ export default function LoginPage() {
                 )}
               </div>
 
-              <div className="flex items-center justify-between pt-1">
-                <label className="flex cursor-pointer items-center gap-2.5">
-                  <Checkbox
-                    checked={rememberMe}
-                    onCheckedChange={(checked) =>
-                      setRememberMe(checked === true)
-                    }
-                  />
-                  <span className="text-sm text-slate-600">
-                    Ghi nhớ đăng nhập
-                  </span>
-                </label>
+              <div className="flex items-center justify-end pt-1">
                 <button
                   type="button"
                   className="text-sm font-medium text-blue-700 transition-colors hover:text-blue-800"
                 >
-                  Quên mật khẩu?
+                  {t("auth.forgotPassword")}
                 </button>
               </div>
 
@@ -196,15 +188,15 @@ export default function LoginPage() {
                 disabled={loading}
                 className="h-12 w-full rounded-xl bg-blue-800 text-base font-semibold text-white shadow-none hover:bg-blue-900"
               >
-                {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+                {loading ? t("auth.loginSubmitting") : t("auth.loginButton")}
               </Button>
             </form>
 
             <div className="mt-10 space-y-6">
               <p className="text-center text-xs leading-relaxed text-slate-500">
-                Hệ thống truy cập nội bộ dành riêng cho nhân viên.
+                {t("auth.systemNoticeLine1")}
                 <br />
-                Yêu cầu tuân thủ Chính sách bảo mật thông tin.
+                {t("auth.systemNoticeLine2")}
               </p>
 
               <div className="flex items-center justify-center gap-8">
@@ -213,14 +205,7 @@ export default function LoginPage() {
                   className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.14em] text-slate-500 transition-colors hover:text-blue-700"
                 >
                   <HelpCircle size={14} />
-                  TRỢ GIÚP
-                </button>
-                <button
-                  type="button"
-                  className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.14em] text-slate-500 transition-colors hover:text-blue-700"
-                >
-                  <Globe size={14} />
-                  TIẾNG VIỆT
+                  {t("auth.help")}
                 </button>
               </div>
             </div>
@@ -229,7 +214,7 @@ export default function LoginPage() {
 
         <footer className="px-6 pb-6 text-center">
           <p className="text-[11px] font-medium tracking-[0.12em] text-slate-400 uppercase">
-            © 2024 Architectural Workspace • Internal v4.2.0
+            © 2026 Collab Network • Internal v1.0.0
           </p>
         </footer>
       </section>

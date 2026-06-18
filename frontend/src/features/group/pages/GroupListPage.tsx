@@ -11,8 +11,10 @@ import { groupApi } from "@/features/group/apis/group.api";
 import type { Group } from "@/features/group/types/group.type";
 import type { CreateGroupFormData } from "@/features/group/components/group-list/CreateGroupModal";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 const GroupListPage = () => {
+  const { t } = useTranslation();
   const [onCreateGroupOpen, setOnCreateGroupOpen] = useState(false);
 
   const [groups, setGroups] = useState<Group[]>([]);
@@ -46,7 +48,7 @@ const GroupListPage = () => {
       const message =
         error?.response?.data?.message ||
         error?.message ||
-        "Có lỗi xảy ra. Vui lòng thử lại.";
+        t("common.genericError");
       toast.error(message);
     } finally {
       setLoading(false);
@@ -86,7 +88,7 @@ const GroupListPage = () => {
       const message =
         error?.response?.data?.message ||
         error?.message ||
-        "Có lỗi xảy ra. Vui lòng thử lại.";
+        t("common.genericError");
       toast.error(message);
     }
   };
@@ -101,7 +103,7 @@ const GroupListPage = () => {
       const message =
         error?.response?.data?.message ||
         error?.message ||
-        "Có lỗi xảy ra. Vui lòng thử lại.";
+        t("common.genericError");
       toast.error(message);
     }
   };
@@ -123,7 +125,7 @@ const GroupListPage = () => {
 
         {loading ? (
           <div className="flex justify-center py-20">
-            <p className="text-on-surface-variant">Loading groups...</p>
+            <p className="text-on-surface-variant">{t("pages.groups.loadingGroups")}</p>
           </div>
         ) : (
           <>
@@ -156,14 +158,14 @@ const GroupListPage = () => {
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <h3 className="text-lg font-semibold mb-2">
                   {filter === "MY"
-                    ? "Bạn chưa tham gia nhóm nào"
-                    : "Không tìm thấy nhóm"}
+                    ? t("pages.groups.emptyMyGroups")
+                    : t("pages.groups.emptySearch")}
                 </h3>
 
                 <p className="text-sm text-on-surface-variant">
                   {filter === "MY"
-                    ? "Tham gia nhóm công khai hoặc được mời vào nhóm riêng tư."
-                    : "Thử đổi từ khóa tìm kiếm hoặc bộ lọc khác."}
+                    ? t("pages.groups.emptyMyGroupsDescription")
+                    : t("pages.groups.emptySearchDescription")}
                 </p>
               </div>
             )}

@@ -10,10 +10,12 @@ import { toast } from "sonner";
 import type { GroupDetail } from "@/features/group/types/group.type";
 import type { GroupOutletContext } from "../types/group-outlet.type";
 import { PostsApi } from "@/features/new-feed/api/post.api";
+import { useTranslation } from "react-i18next";
 
 const LIMIT = 10;
 
 const GroupFeedPage: React.FC = () => {
+  const { t } = useTranslation();
   const [posts, setPosts] = useState<Post[]>([]);
   const [pinnedPosts, setPinnedPosts] = useState<Post[]>([]);
   const [page, setPage] = useState(1);
@@ -42,7 +44,7 @@ const GroupFeedPage: React.FC = () => {
   if (!groupId) {
     return (
       <div className="p-4 text-center text-sm text-slate-500 bg-white rounded-xl">
-        Nhóm không tồn tại.
+        {t("pages.groups.notFound")}
       </div>
     );
   }
@@ -88,11 +90,11 @@ const GroupFeedPage: React.FC = () => {
 
         setHasMore(Boolean(responseData.hasMore));
       } catch (error: any) {
-        console.error("Lỗi khi lấy bài viết group:", error);
+        console.error("Failed to fetch group posts:", error);
         const message =
           error?.response?.data?.message ||
           error?.message ||
-          "Có lỗi xảy ra. Vui lòng thử lại.";
+          t("common.genericError");
         toast.error(message);
       } finally {
         isFetchingRef.current = false;
@@ -133,7 +135,7 @@ const GroupFeedPage: React.FC = () => {
     if (!groupId) return;
     const postLink = `${import.meta.env.VITE_BASE_URL_FRONTEND}/groups/${groupId}/posts/${postId}`;
     navigator.clipboard.writeText(postLink);
-    toast.success("Đã sao chép liên kết bài viết");
+    toast.success(t("pages.posts.copyLinkSuccess"));
   };
 
   const handlePinPost = async (
@@ -146,16 +148,16 @@ const GroupFeedPage: React.FC = () => {
 
       if (willPin) {
         fetchPosts(1);
-        toast.success("Ghim bài viết thành công");
+        toast.success(t("pages.posts.pinSuccess"));
       } else {
         fetchPosts(1);
-        toast.success("Đã gỡ ghim bài viết");
+        toast.success(t("pages.posts.unpinSuccess"));
       }
     } catch (error: any) {
       const message =
         error?.response?.data?.message ||
         error?.message ||
-        "Có lỗi xảy ra. Vui lòng thử lại.";
+        t("common.genericError");
       toast.error(message);
     }
   };
@@ -175,7 +177,7 @@ const GroupFeedPage: React.FC = () => {
         {/* 2. Trạng thái Loading ban đầu */}
         {initialLoading && (
           <div className="p-4 text-center text-sm text-slate-500 bg-white rounded-xl">
-            Đang tải bài viết...
+            {t("pages.groups.loadingPosts")}
           </div>
         )}
 
@@ -248,19 +250,19 @@ const GroupFeedPage: React.FC = () => {
         {/* 5. Trạng thái trống hoặc hết dữ liệu */}
         {!initialLoading && posts.length === 0 && pinnedPosts.length === 0 && (
           <div className="bg-white rounded-xl p-8 text-center text-slate-500 border border-dashed">
-            Chưa có thảo luận nào trong nhóm này.
+            {t("pages.groups.emptyDiscussion")}
           </div>
         )}
 
         {loading && !initialLoading && (
           <div className="text-center text-xs text-slate-400 py-4">
-            Đang tải thêm...
+            {t("pages.groups.loadingMore")}
           </div>
         )}
 
         {!hasMore && posts.length > 0 && (
           <div className="text-center text-xs text-slate-400 py-4">
-            Bạn đã xem hết tất cả bài viết.
+            {t("pages.groups.noMorePosts")}
           </div>
         )}
 

@@ -22,12 +22,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 function getErrorMessage(error: unknown): string {
   if (error && typeof error === "object" && "message" in error) {
     return String((error as { message: string }).message);
   }
-  return "Đã xảy ra lỗi";
+  return "Unexpected error";
 }
 
 function stripHtml(content: string) {
@@ -42,31 +43,32 @@ const dashboardDividerClass = "border-gray-200/70";
 const statCards = [
   {
     key: "totalUsers" as const,
-    label: "Tổng người dùng",
+    labelKey: "pages.admin.totalUsers",
     icon: Users,
     to: "/admin/users",
   },
   {
     key: "activeUsers" as const,
-    label: "Đang hoạt động",
+    labelKey: "pages.admin.activeUsers",
     icon: UserCheck,
     to: "/admin/users",
   },
   {
     key: "totalPosts" as const,
-    label: "Tổng bài viết",
+    labelKey: "pages.admin.totalPosts",
     icon: FileText,
     to: "/admin/posts",
   },
   {
     key: "totalGroups" as const,
-    label: "Tổng nhóm",
+    labelKey: "pages.admin.totalGroups",
     icon: UsersRound,
     to: "/admin/groups",
   },
 ];
 
 export default function AdminDashboardPage() {
+  const { t } = useTranslation();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -94,23 +96,23 @@ export default function AdminDashboardPage() {
 
   if (!data) {
     return (
-      <p className="text-muted-foreground">Không thể tải dữ liệu dashboard.</p>
+      <p className="text-muted-foreground">{t("pages.admin.dashboardLoadFailed")}</p>
     );
   }
 
   const alertItems = [
     {
-      label: "Bài viết chờ duyệt",
+      label: t("pages.admin.pendingPosts"),
       count: data.alerts.pendingReviewPosts,
       to: "/admin/posts",
     },
     {
-      label: "Tài khoản bị khóa",
+      label: t("pages.admin.lockedUsers"),
       count: data.alerts.inactiveUsers,
       to: "/admin/users",
     },
     {
-      label: "Nhóm bị khóa",
+      label: t("pages.admin.lockedGroups"),
       count: data.alerts.inactiveGroups,
       to: "/admin/groups",
     },
@@ -121,15 +123,15 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">{t("admin.dashboard")}</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Tổng quan hệ thống và hoạt động gần đây
+          {t("pages.admin.dashboardOverview")}
         </p>
       </div>
 
       <div className={dashboardCardClass}>
         <div className="grid divide-y divide-gray-200/70 sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
-          {statCards.map(({ key, label, icon: Icon, to }) => (
+          {statCards.map(({ key, labelKey, icon: Icon, to }) => (
             <Link
               key={key}
               to={to}
@@ -137,7 +139,7 @@ export default function AdminDashboardPage() {
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-sm text-gray-500">{label}</p>
+                  <p className="text-sm text-gray-500">{t(labelKey)}</p>
                   <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">
                     {data.stats[key].toLocaleString("vi-VN")}
                   </p>
@@ -159,7 +161,7 @@ export default function AdminDashboardPage() {
           )}
         >
           <AlertTriangle className="size-4 text-amber-500" />
-          <h2 className="text-base font-medium text-gray-900">Cần xử lý</h2>
+          <h2 className="text-base font-medium text-gray-900">{t("pages.admin.needAction")}</h2>
         </div>
         <div className="px-5 py-4">
           {hasAlerts ? (
@@ -183,7 +185,7 @@ export default function AdminDashboardPage() {
             </div>
           ) : (
             <p className="text-sm text-gray-500">
-              Không có việc cần xử lý lúc này.
+              {t("pages.admin.noActionNeeded")}
             </p>
           )}
         </div>
@@ -198,7 +200,7 @@ export default function AdminDashboardPage() {
             )}
           >
             <h2 className="text-base font-medium text-gray-900">
-              Bài viết gần đây
+              {t("pages.admin.recentPosts")}
             </h2>
             <Button
               variant="outline"
@@ -206,20 +208,20 @@ export default function AdminDashboardPage() {
               className={cn("border-gray-200/80 bg-white text-gray-700", dashboardDividerClass)}
               asChild
             >
-              <Link to="/admin/posts">Xem tất cả</Link>
+              <Link to="/admin/posts">{t("common.viewAll")}</Link>
             </Button>
           </div>
           {data.recentPosts.length === 0 ? (
             <p className="px-5 py-6 text-sm text-gray-500">
-              Chưa có bài viết nào.
+              {t("pages.admin.noPosts")}
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow className={cn("border-b hover:bg-transparent", dashboardDividerClass)}>
-                  <TableHead className="px-5 text-gray-500">Nội dung</TableHead>
-                  <TableHead className="text-gray-500">Tác giả</TableHead>
-                  <TableHead className="pr-5 text-gray-500">Trạng thái</TableHead>
+                  <TableHead className="px-5 text-gray-500">{t("common.content")}</TableHead>
+                  <TableHead className="text-gray-500">{t("common.author")}</TableHead>
+                  <TableHead className="pr-5 text-gray-500">{t("common.status")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -234,7 +236,7 @@ export default function AdminDashboardPage() {
                         className="block truncate text-gray-900 hover:underline"
                         title={stripHtml(post.content)}
                       >
-                        {stripHtml(post.content) || "Không có nội dung"}
+                        {stripHtml(post.content) || t("common.noContent")}
                       </Link>
                     </TableCell>
                     <TableCell className="max-w-[120px] truncate text-gray-600">
@@ -247,10 +249,10 @@ export default function AdminDashboardPage() {
                         }
                       >
                         {post.status === "ACTIVE"
-                          ? "Hoạt động"
+                          ? t("common.active")
                           : post.status === "PENDING_REVIEW"
-                            ? "Chờ duyệt"
-                            : "Đã khóa"}
+                            ? t("common.pendingReview")
+                            : t("common.locked")}
                       </Badge>
                     </TableCell>
                   </TableRow>
@@ -268,7 +270,7 @@ export default function AdminDashboardPage() {
             )}
           >
             <h2 className="text-base font-medium text-gray-900">
-              Người dùng mới
+              {t("pages.admin.recentUsers")}
             </h2>
             <Button
               variant="outline"
@@ -276,20 +278,20 @@ export default function AdminDashboardPage() {
               className={cn("border-gray-200/80 bg-white text-gray-700", dashboardDividerClass)}
               asChild
             >
-              <Link to="/admin/users">Xem tất cả</Link>
+              <Link to="/admin/users">{t("common.viewAll")}</Link>
             </Button>
           </div>
           {data.recentUsers.length === 0 ? (
             <p className="px-5 py-6 text-sm text-gray-500">
-              Chưa có người dùng nào.
+              {t("pages.admin.noUsers")}
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow className={cn("border-b hover:bg-transparent", dashboardDividerClass)}>
-                  <TableHead className="px-5 text-gray-500">Họ tên</TableHead>
-                  <TableHead className="text-gray-500">Email</TableHead>
-                  <TableHead className="pr-5 text-gray-500">Trạng thái</TableHead>
+                  <TableHead className="px-5 text-gray-500">{t("common.fullName")}</TableHead>
+                  <TableHead className="text-gray-500">{t("common.email")}</TableHead>
+                  <TableHead className="pr-5 text-gray-500">{t("common.status")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -310,7 +312,7 @@ export default function AdminDashboardPage() {
                           user.status === "ACTIVE" ? "active" : "inactive"
                         }
                       >
-                        {user.status === "ACTIVE" ? "Hoạt động" : "Đã khóa"}
+                        {user.status === "ACTIVE" ? t("common.active") : t("common.locked")}
                       </Badge>
                     </TableCell>
                   </TableRow>

@@ -1,4 +1,5 @@
 import { ToggleLeft, ToggleRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface PrivacySettingsProps {
   muteNotifications: boolean;
@@ -13,10 +14,11 @@ const PrivacySettings = ({
   onToggleMute,
   onBlockContact,
 }: PrivacySettingsProps) => {
+  const { t } = useTranslation();
   return (
     <div className="space-y-4">
       <h4 className="text-sm font-medium text-on-surface">
-        Quyền riêng tư &amp; cài đặt
+        {t("pages.chat.privacySettings")}
       </h4>
 
       <div className="space-y-1">
@@ -26,7 +28,7 @@ const PrivacySettings = ({
           disabled={submitting}
           className="w-full text-left px-3 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-high rounded-lg flex items-center justify-between group transition-all cursor-pointer disabled:opacity-60"
         >
-          <span>Tắt thông báo</span>
+          <span>{t("pages.chat.muteNotifications")}</span>
           {muteNotifications ? (
             <ToggleRight size={24} className="text-primary" />
           ) : (
@@ -39,7 +41,7 @@ const PrivacySettings = ({
           onClick={onBlockContact}
           className="w-full text-left px-3 py-2 text-sm font-medium text-error hover:bg-error-container/20 rounded-lg transition-all cursor-pointer"
         >
-          Chặn liên lạc
+          {t("pages.chat.blockContact")}
         </button>
       </div>
     </div>

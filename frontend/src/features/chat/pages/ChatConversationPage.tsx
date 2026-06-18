@@ -3,8 +3,10 @@ import ChatWindow from "@/features/chat/components/chat-window/ChatWindow";
 import DetailsPanel from "@/features/chat/components/details-panel/DetailsPanel";
 import type { ChatOutletContext } from "@/features/chat/pages/ChatLayout";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 const ChatConversationPage = () => {
+  const { t } = useTranslation();
   const {
     conversation,
     messages,
@@ -36,8 +38,8 @@ const ChatConversationPage = () => {
       <section className="flex-1 flex items-center justify-center bg-surface-container-lowest">
         <p className="text-sm text-on-surface-variant">
           {loadingMessages
-            ? "Đang tải cuộc trò chuyện..."
-            : "Không tìm thấy cuộc trò chuyện."}
+            ? t("pages.chat.loadingConversation")
+            : t("pages.chat.conversationNotFound")}
         </p>
       </section>
     );

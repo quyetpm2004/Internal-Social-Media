@@ -13,6 +13,7 @@ import type {
   MemberRoleFilter,
 } from "@/features/group/utils/group-member";
 import { useAuthStore } from "@/features/auth/store/auth.store";
+import { useTranslation } from "react-i18next";
 
 function getErrorMessage(error: unknown): string {
   const err = error as {
@@ -22,11 +23,12 @@ function getErrorMessage(error: unknown): string {
   return (
     err?.response?.data?.message ||
     err?.message ||
-    "Có lỗi xảy ra. Vui lòng thử lại."
+    "Unexpected error"
   );
 }
 
 export const GroupMembersPage = () => {
+  const { t } = useTranslation();
   const { groupId } = useParams();
   const { canManageMembers, currentMemberRole } =
     useOutletContext<GroupOutletContext>();
@@ -80,7 +82,7 @@ export const GroupMembersPage = () => {
     setAddingMember(true);
     try {
       await groupApi.addMember(groupId, { email });
-      toast.success("Thêm thành viên thành công");
+      toast.success(t("pages.groups.memberAdded"));
       setAddModalOpen(false);
       fetchMembers();
     } catch (error: unknown) {
@@ -100,7 +102,7 @@ export const GroupMembersPage = () => {
         String(editMember.id),
         memberRole,
       );
-      toast.success("Cập nhật quyền thành công");
+      toast.success(t("pages.groups.memberRoleUpdated"));
       setEditMember(null);
       fetchMembers();
     } catch (error: unknown) {
@@ -114,7 +116,7 @@ export const GroupMembersPage = () => {
     if (!groupId) return;
     try {
       await groupApi.removeMember(groupId, memberId);
-      toast.success("Đã xóa thành viên khỏi nhóm");
+      toast.success(t("pages.groups.memberRemoved"));
       fetchMembers();
     } catch (error: unknown) {
       toast.error(getErrorMessage(error));

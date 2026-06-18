@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 type ConfirmModalProps = {
   open: boolean;
@@ -17,14 +18,15 @@ const ConfirmModal = ({
   open,
   title,
   description,
-  confirmText = "Xác nhận",
-  cancelText = "Hủy",
+  confirmText,
+  cancelText,
   loading = false,
   children,
   onConfirm,
   onCancel,
   variant = "danger",
 }: ConfirmModalProps) => {
+  const { t } = useTranslation();
   if (!open) return null;
 
   const confirmButtonClass =
@@ -54,7 +56,7 @@ const ConfirmModal = ({
             onClick={onCancel}
             className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-semibold text-sm hover:bg-slate-200 disabled:opacity-60"
           >
-            {cancelText}
+            {cancelText ?? t("common.cancel")}
           </button>
 
           <button
@@ -63,7 +65,7 @@ const ConfirmModal = ({
             onClick={onConfirm}
             className={`px-4 py-2 rounded-xl text-white font-semibold text-sm disabled:opacity-60 ${confirmButtonClass}`}
           >
-            {loading ? "Đang xử lý..." : confirmText}
+            {loading ? t("common.processing") : confirmText ?? t("common.confirm")}
           </button>
         </div>
       </div>

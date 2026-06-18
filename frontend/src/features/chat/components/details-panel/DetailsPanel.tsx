@@ -11,6 +11,7 @@ import type {
   ConversationDetail,
   SharedAttachmentItem,
 } from "@/features/chat/types/chat.type";
+import { useTranslation } from "react-i18next";
 
 interface DetailsPanelProps {
   conversation: ConversationDetail;
@@ -45,6 +46,7 @@ const DetailsPanel = ({
   className,
   showDetailPanel,
 }: DetailsPanelProps) => {
+  const { t } = useTranslation();
   const [files, setFiles] = useState<SharedAttachmentItem[]>([]);
   const [media, setMedia] = useState<SharedAttachmentItem[]>([]);
   const [mediaTotal, setMediaTotal] = useState(0);
@@ -112,7 +114,7 @@ const DetailsPanel = ({
   }) => {
     const res = await chatApi.createGroupConversation(data);
     onGroupCreated(res.data.id);
-    toast.success("Tạo nhóm chat thành công");
+    toast.success(t("pages.chat.groupCreateSuccess"));
   };
 
   if (!showDetailPanel) {

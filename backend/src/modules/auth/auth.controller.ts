@@ -3,7 +3,13 @@ import {
   clearRefreshTokenCookie,
   setRefreshTokenCookie,
 } from "@/modules/auth/auth.cookie";
-import type { LoginInput, RegisterInput } from "@/modules/auth/auth.schema";
+import type {
+  ChangePasswordInput,
+  ForgotPasswordInput,
+  LoginInput,
+  RegisterInput,
+  ResetPasswordInput,
+} from "@/modules/auth/auth.schema";
 import * as authService from "@/modules/auth/auth.service";
 import { markUserOffline } from "@/socket";
 import { verifyAccessToken } from "@/shared/utils/jwt";
@@ -82,5 +88,40 @@ export async function getMe(req: Request, res: Response) {
   res.status(200).json({
     message: "Lấy thông tin người dùng thành công",
     data: user,
+  });
+}
+
+export async function changePassword(req: Request, res: Response) {
+  const body = req.validated as ChangePasswordInput;
+  await authService.changePassword(
+    req.user!.id,
+    body.currentPassword,
+    body.newPassword,
+  );
+
+  // clearRefreshTokenCookie(res);
+
+  res.status(200).json({
+    message: "Đổi mật khẩu thành công",
+  });
+}
+
+export async function forgotPassword(req: Request, res: Response) {
+  const body = req.validated as ForgotPasswordInput;
+  const result = await authService.forgotPassword(body.email);
+
+  res.status(200).json({
+    message:
+      "Nếu email tồn tại trong hệ thống, hướng dẫn đặt lại mật khẩu đã được tạo",
+    data: result,
+  });
+}
+
+export async function resetPassword(req: Request, res: Response) {
+  const body = req.validated as ResetPasswordInput;
+  await authService.resetPassword(body.token, body.newPassword);
+
+  res.status(200).json({
+    message: "Đặt lại mật khẩu thành công",
   });
 }

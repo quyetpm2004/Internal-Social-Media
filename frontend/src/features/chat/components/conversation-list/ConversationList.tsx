@@ -13,6 +13,7 @@ import type {
   ChatSearchHistoryItem,
   ChatSearchUser,
 } from "@/features/chat/types/chat-search.type";
+import { useTranslation } from "react-i18next";
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -35,6 +36,7 @@ const ConversationList = ({
   onOpenUserChat,
   className,
 }: ConversationListProps) => {
+  const { t } = useTranslation();
   const onlineSet = useMemo(
     () => new Set(onlineUserIds ?? []),
     [onlineUserIds],
@@ -155,7 +157,7 @@ const ConversationList = ({
     >
       <div className="p-4 space-y-4">
         <h2 className="font-headline font-extrabold text-xl tracking-tight text-on-surface">
-          Đoạn chat
+          {t("pages.chat.conversationsTitle")}
         </h2>
         <div className="flex items-center gap-2">
           {isSearchFocused && (
@@ -163,7 +165,7 @@ const ConversationList = ({
               type="button"
               className="cursor-pointer px-1 shrink-0"
               onClick={exitSearch}
-              aria-label="Quay lại"
+              aria-label={t("common.back")}
             >
               <ArrowLeft size={18} />
             </button>
@@ -183,11 +185,11 @@ const ConversationList = ({
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <p className="px-4 py-6 text-xs text-on-surface-variant">
-              Đang tải cuộc trò chuyện...
+              {t("pages.chat.loadingConversation")}
             </p>
           ) : filteredConversations.length === 0 ? (
             <p className="px-4 py-6 text-xs text-on-surface-variant">
-              Không có cuộc trò chuyện nào.
+              {t("pages.chat.noConversations")}
             </p>
           ) : (
             filteredConversations.map((conversation) => (
@@ -213,11 +215,11 @@ const ConversationList = ({
           {!trimmedQuery ? (
             <>
               <p className="px-4 pb-2 text-sm font-medium text-on-surface-variant">
-                Nội dung tìm kiếm gần đây
+                {t("pages.chat.recentSearches")}
               </p>
               {histories.length === 0 ? (
                 <p className="px-4 py-4 text-xs text-on-surface-variant">
-                  Chưa có lịch sử tìm kiếm.
+                  {t("pages.chat.noSearchHistory")}
                 </p>
               ) : (
                 histories.map((item) => (
@@ -235,11 +237,11 @@ const ConversationList = ({
             <>
               {searchLoading ? (
                 <p className="px-4 py-6 text-xs text-on-surface-variant">
-                  Đang tìm kiếm...
+                  {t("pages.chat.searching")}
                 </p>
               ) : searchResults.length === 0 ? (
                 <p className="px-4 py-6 text-xs text-on-surface-variant">
-                  Không tìm thấy người dùng nào.
+                  {t("pages.chat.noUsersFound")}
                 </p>
               ) : (
                 searchResults.map((user) => (

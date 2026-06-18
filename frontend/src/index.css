@@ -79,3 +79,20 @@ body {
 h1, h2, h3 { 
   font-family: 'Manrope', sans-serif; 
 }
+
+.messenger-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.messenger-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #bcc0c4;
+  border-radius: 8px;
+}
+
+.messenger-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.messenger-thread-scroll {
+  overscroll-behavior: contain;
+}

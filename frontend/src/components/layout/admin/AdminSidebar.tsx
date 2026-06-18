@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 import ConfirmModal from "@/components/common/ConfirmModal";
 import {
   LayoutDashboard,
+  Languages,
   Users,
   FileText,
   UsersRound,
@@ -23,20 +24,21 @@ import {
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { useAuthStore } from "@/features/auth/store/auth.store";
-
-const navItems = [
-  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/admin/users", label: "Người dùng", icon: Users },
-  { to: "/admin/posts", label: "Bài viết", icon: FileText },
-  { to: "/admin/groups", label: "Nhóm", icon: UsersRound },
-];
+import { useTranslation } from "react-i18next";
 
 export default function AdminSidebar() {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
+  const { t, i18n } = useTranslation();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const navItems = [
+    { to: "/admin", label: t("admin.dashboard"), icon: LayoutDashboard, end: true },
+    { to: "/admin/users", label: t("admin.users"), icon: Users },
+    { to: "/admin/posts", label: t("admin.posts"), icon: FileText },
+    { to: "/admin/groups", label: t("admin.groups"), icon: UsersRound },
+  ];
 
   return (
     <Sidebar collapsible="icon">
@@ -56,7 +58,7 @@ export default function AdminSidebar() {
               src="/logo/logo.png"
               alt="logo"
             />
-            <span className="text-sm font-semibold">Admin Panel</span>
+            <span className="text-sm font-semibold">{t("admin.panel")}</span>
           </div>
         )}
       </SidebarHeader>
@@ -101,6 +103,30 @@ export default function AdminSidebar() {
                   </NavLink>
                 </SidebarMenuItem>
               ))}
+              <SidebarMenuItem>
+                <button
+                  type="button"
+                  onClick={() =>
+                    i18n.changeLanguage(i18n.language.startsWith("vi") ? "en" : "vi")
+                  }
+                  className="w-full justify-center flex"
+                >
+                  <SidebarMenuButton
+                    tooltip={t("nav.languageToggle")}
+                    className={cn(
+                      "w-full gap-2 text-sidebar-foreground",
+                      isCollapsed && "justify-center p-0 size-9",
+                    )}
+                  >
+                    <Languages className="size-4" />
+                    <span className={cn("transition-all", isCollapsed && "hidden")}>
+                      {i18n.language.startsWith("vi")
+                        ? t("languageName.vi")
+                        : t("languageName.en")}
+                    </span>
+                  </SidebarMenuButton>
+                </button>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -151,9 +177,9 @@ export default function AdminSidebar() {
       </SidebarFooter>
       <ConfirmModal
         open={showLogoutConfirm}
-        title="Đăng xuất?"
-        description="Bạn có chắc muốn đăng xuất khỏi tài khoản admin?"
-        confirmText="Đăng xuất"
+        title={t("admin.logoutTitle")}
+        description={t("admin.logoutDescription")}
+        confirmText={t("common.logout")}
         variant="primary"
         onCancel={() => setShowLogoutConfirm(false)}
         onConfirm={() => {

@@ -4,6 +4,7 @@ import {
   MEMBER_ROLE_FILTER_OPTIONS,
   type MemberRoleFilter,
 } from "@/features/group/utils/group-member";
+import { useTranslation } from "react-i18next";
 
 interface FilterSectionProps {
   searchTerm: string;
@@ -18,6 +19,7 @@ export const FilterSection = ({
   activeRole,
   onRoleChange,
 }: FilterSectionProps) => {
+  const { t } = useTranslation();
   const [inputValue, setInputValue] = useState(searchTerm);
 
   const handleRoleClick = (role: MemberRoleFilter) => {
@@ -63,7 +65,7 @@ export const FilterSection = ({
               focus:ring-surface-tint
               transition-all
             "
-            placeholder="Tìm kiếm thành viên..."
+            placeholder={t("pages.groups.searchMembersPlaceholder")}
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}

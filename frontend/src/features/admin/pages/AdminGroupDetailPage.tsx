@@ -22,24 +22,29 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useTranslation } from "react-i18next";
 
 function getErrorMessage(error: unknown): string {
   if (error && typeof error === "object" && "message" in error) {
     return String((error as { message: string }).message);
   }
-  return "Đã xảy ra lỗi";
+  return "Unexpected error";
 }
 
-function formatMemberStatus(status: AdminGroupMember["status"]): string {
+function formatMemberStatus(
+  status: AdminGroupMember["status"],
+  t: (key: string) => string,
+): string {
   const labels: Record<AdminGroupMember["status"], string> = {
-    ACTIVE: "Đang tham gia",
-    PENDING: "Chờ duyệt",
-    BLOCKED: "Đã chặn",
+    ACTIVE: t("pages.admin.memberStatusActive"),
+    PENDING: t("pages.admin.memberStatusPending"),
+    BLOCKED: t("pages.admin.memberStatusBlocked"),
   };
   return labels[status] ?? status;
 }
 
 export default function AdminGroupDetailPage() {
+  const { t } = useTranslation();
   const { groupId } = useParams();
   const navigate = useNavigate();
   const [group, setGroup] = useState<AdminGroupDetail | null>(null);
@@ -89,7 +94,7 @@ export default function AdminGroupDetailPage() {
     setDeleting(true);
     try {
       await adminApi.deleteGroup(Number(groupId));
-      toast.success("Đã xóa nhóm");
+      toast.success(t("pages.admin.groupDeleted"));
       navigate("/admin/groups");
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -108,7 +113,7 @@ export default function AdminGroupDetailPage() {
   }
 
   if (!group) {
-    return <p className="text-muted-foreground">Không tìm thấy nhóm.</p>;
+    return <p className="text-muted-foreground">{t("pages.groups.notFound")}</p>;
   }
 
   return (
@@ -116,10 +121,10 @@ export default function AdminGroupDetailPage() {
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" asChild>
-            <Link to="/admin/groups">← Quay lại</Link>
+            <Link to="/admin/groups">{`← ${t("common.back")}`}</Link>
           </Button>
           <h1 className="text-2xl font-semibold">
-            Chi tiết nhóm #{group.groupName}
+            {t("pages.admin.groupDetailTitle", { name: group.groupName })}
           </h1>
         </div>
         {group.status !== "ARCHIVED" && (
@@ -129,7 +134,7 @@ export default function AdminGroupDetailPage() {
             disabled={deleting}
             onClick={() => setShowDeleteConfirm(true)}
           >
-            Xóa nhóm
+            {t("common.delete")}
           </Button>
         )}
       </div>
@@ -148,11 +153,11 @@ export default function AdminGroupDetailPage() {
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <p>
-            <span className="text-muted-foreground">Mô tả:</span>{" "}
-            {group.description || "Không có"}
+            <span className="text-muted-foreground">{t("common.description")}:</span>{" "}
+            {group.description || t("common.none")}
           </p>
           <p className="flex items-center gap-2">
-            <span className="text-muted-foreground">Loại:</span>
+            <span className="text-muted-foreground">{t("common.type")}:</span>
             <Badge
               variant={
                 group.groupType === "PUBLIC"
@@ -163,34 +168,34 @@ export default function AdminGroupDetailPage() {
               }
             >
               {group.groupType === "PUBLIC"
-                ? "Công khai"
+                ? t("common.public")
                 : group.groupType === "PRIVATE"
-                  ? "Riêng tư"
-                  : "Phòng ban"}
+                  ? t("common.private")
+                  : t("common.department")}
             </Badge>
           </p>
           <p className="flex items-center gap-2">
-            <span className="text-muted-foreground">Trạng thái:</span>
+            <span className="text-muted-foreground">{t("common.status")}:</span>
             <Badge variant={group.status === "ACTIVE" ? "active" : "inactive"}>
-              {group.status === "ACTIVE" ? "Hoạt động" : "Đã khóa"}
+              {group.status === "ACTIVE" ? t("common.active") : t("common.locked")}
             </Badge>
           </p>
           <p>
-            <span className="text-muted-foreground">Người tạo:</span>{" "}
+            <span className="text-muted-foreground">{t("common.creator")}:</span>{" "}
             {group.creator.fullName} ({group.creator.email})
           </p>
           <p>
-            <span className="text-muted-foreground">Phòng ban:</span>{" "}
-            {group.department?.name ?? "Không có"}
+            <span className="text-muted-foreground">{t("common.department")}:</span>{" "}
+            {group.department?.name ?? t("common.none")}
           </p>
           <p>
             <span className="text-muted-foreground">
-              Thành viên / Bài viết:
+              {t("common.members")} / {t("common.posts")}:
             </span>{" "}
             {group._count.members} / {group._count.posts}
           </p>
           <p>
-            <span className="text-muted-foreground">Ngày tạo:</span>{" "}
+            <span className="text-muted-foreground">{t("common.createdAt")}:</span>{" "}
             {new Date(group.createdAt).toLocaleString("vi-VN")}
           </p>
         </CardContent>
@@ -198,7 +203,7 @@ export default function AdminGroupDetailPage() {
 
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle>Thành viên nhóm</CardTitle>
+          <CardTitle>{t("pages.admin.groupMembersTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           {membersLoading ? (
@@ -207,18 +212,18 @@ export default function AdminGroupDetailPage() {
             </div>
           ) : members.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Nhóm chưa có thành viên nào.
+              {t("pages.admin.noGroupMembers")}
             </p>
           ) : (
             <>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Họ tên</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Vai trò</TableHead>
-                    <TableHead>Trạng thái</TableHead>
-                    <TableHead>Ngày tham gia</TableHead>
+                    <TableHead>{t("common.fullName")}</TableHead>
+                    <TableHead>{t("common.email")}</TableHead>
+                    <TableHead>{t("common.role")}</TableHead>
+                    <TableHead>{t("common.status")}</TableHead>
+                    <TableHead>{t("common.joinedAt")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -237,7 +242,7 @@ export default function AdminGroupDetailPage() {
                             member.status === "ACTIVE" ? "active" : "inactive"
                           }
                         >
-                          {formatMemberStatus(member.status)}
+                          {formatMemberStatus(member.status, t)}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -260,9 +265,9 @@ export default function AdminGroupDetailPage() {
 
       <ConfirmModal
         open={showDeleteConfirm}
-        title="Xóa nhóm?"
-        description="Bạn có chắc muốn xóa nhóm này? Hành động này không thể hoàn tác."
-        confirmText="Xóa"
+        title={t("pages.admin.deleteGroupTitle")}
+        description={t("pages.admin.deleteGroupDescription")}
+        confirmText={t("common.delete")}
         loading={deleting}
         variant="danger"
         onCancel={() => setShowDeleteConfirm(false)}

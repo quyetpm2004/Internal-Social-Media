@@ -1,23 +1,25 @@
 import type { ConversationFilter } from "@/features/chat/types/chat.type";
+import { useTranslation } from "react-i18next";
 
 interface ConversationFiltersProps {
   active: ConversationFilter;
   onChange: (filter: ConversationFilter) => void;
 }
 
-const FILTERS: { value: ConversationFilter; label: string }[] = [
-  { value: "ALL", label: "Tất cả" },
-  { value: "UNREAD", label: "Chưa đọc" },
-  { value: "GROUPS", label: "Nhóm" },
-];
-
 const ConversationFilters = ({
   active,
   onChange,
 }: ConversationFiltersProps) => {
+  const { t } = useTranslation();
+  const filters: { value: ConversationFilter; label: string }[] = [
+    { value: "ALL", label: t("pages.chat.filterAll") },
+    { value: "UNREAD", label: t("pages.chat.filterUnread") },
+    { value: "GROUPS", label: t("pages.chat.filterGroups") },
+  ];
+
   return (
     <div className="flex gap-2">
-      {FILTERS.map((filter) => {
+      {filters.map((filter) => {
         const isActive = active === filter.value;
 
         return (

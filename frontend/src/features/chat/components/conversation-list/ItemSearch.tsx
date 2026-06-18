@@ -1,5 +1,6 @@
 import { getDefaultAvatarUrl } from "@/lib/utils";
 import { X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 type ItemSearchProps = {
   user: {
@@ -18,6 +19,7 @@ export default function ItemSearch({
   showDeleteButton = false,
   onDelete,
 }: ItemSearchProps) {
+  const { t } = useTranslation();
   return (
     <div
       role={onClick ? "button" : undefined}
@@ -34,7 +36,7 @@ export default function ItemSearch({
       <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 border border-slate-100 dark:border-slate-700">
         <img
           src={user?.avatarUrl || getDefaultAvatarUrl(user.fullName)}
-          alt="Avatar"
+          alt={t("common.avatar")}
           className="w-full h-full object-cover"
         />
       </div>
@@ -54,7 +56,7 @@ export default function ItemSearch({
               onDelete?.(e);
             }}
             className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-opacity"
-            aria-label="Xóa khỏi lịch sử"
+            aria-label={t("common.delete")}
           >
             <X size={14} />
           </button>

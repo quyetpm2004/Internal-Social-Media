@@ -20,6 +20,7 @@ import {
 } from "@/features/group/utils/group-member";
 import { DEFAULT_COVER } from "@/constants/app";
 import Lightbox from "yet-another-react-lightbox";
+import { useTranslation } from "react-i18next";
 
 type GroupHeaderProps = {
   name: string;
@@ -38,12 +39,12 @@ type GroupHeaderProps = {
   currentMemberRole: GroupMemberRole | null;
 };
 const tabs = [
-  { label: "Thảo luận", path: "" },
-  { label: "Thành viên", path: "members" },
-  { label: "File phương tiện", path: "media" },
-  { label: "File", path: "files" },
-  { label: "Cài đặt nhóm", path: "setting" },
-  { label: "Duyệt bài viết", path: "review" },
+  { key: "discussion", path: "" },
+  { key: "members", path: "members" },
+  { key: "media", path: "media" },
+  { key: "files", path: "files" },
+  { key: "setting", path: "setting" },
+  { key: "review", path: "review" },
 ];
 
 const GroupHeader: React.FC<GroupHeaderProps> = ({
@@ -62,6 +63,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
   onJoinLeave,
   currentMemberRole,
 }) => {
+  const { t } = useTranslation();
   const { groupId } = useParams();
   const [showLeaveJoinConfirm, setShowLeaveJoinConfirm] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -78,43 +80,42 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
-      toast.success("Đã copy link nhóm");
+      toast.success(t("pages.groups.copyLinkSuccess"));
     } catch (error: unknown) {
       console.error("Copy failed:", error);
-      toast.error("Copy link thất bại");
+      toast.error(t("pages.posts.copyLinkFailed"));
     }
   };
 
   const getConfirmContent = () => {
     if (isMember) {
       return {
-        title: "Rời nhóm?",
-        description: "Bạn có chắc chắn muốn rời khỏi nhóm này không?",
-        confirmText: "Rời nhóm",
+        title: t("pages.groups.leaveGroupTitle"),
+        description: t("pages.groups.leaveGroupDescription"),
+        confirmText: t("pages.chat.leaveGroup"),
       };
     }
 
     if (isPending) {
       return {
-        title: "Hủy yêu cầu tham gia?",
-        description: "Bạn có chắc muốn hủy yêu cầu tham gia nhóm này không?",
-        confirmText: "Hủy yêu cầu",
+        title: t("pages.groups.cancelRequestTitle"),
+        description: t("pages.groups.cancelRequestDescription"),
+        confirmText: t("pages.groups.cancelRequest"),
       };
     }
 
     if (type === "PRIVATE") {
       return {
-        title: "Gửi yêu cầu tham gia?",
-        description:
-          "Đây là nhóm riêng tư. Yêu cầu của bạn sẽ được quản trị viên xem xét.",
-        confirmText: "Gửi yêu cầu",
+        title: t("pages.groups.requestJoinTitle"),
+        description: t("pages.groups.requestJoinDescription"),
+        confirmText: t("pages.groups.requestJoin"),
       };
     }
 
     return {
-      title: "Tham gia nhóm?",
-      description: "Bạn có chắc chắn muốn tham gia nhóm này không?",
-      confirmText: "Tham gia nhóm",
+      title: t("pages.groups.joinTitle"),
+      description: t("pages.groups.joinDescription"),
+      confirmText: t("pages.groups.join"),
     };
   };
 
@@ -125,7 +126,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
       return (
         <>
           <UserMinus size={18} />
-          <span>Rời khỏi nhóm</span>
+          <span>{t("pages.groups.leaveGroupAction")}</span>
         </>
       );
     }
@@ -134,7 +135,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
       return (
         <>
           <Clock size={18} />
-          <span>Hủy yêu cầu</span>
+          <span>{t("pages.groups.cancelRequest")}</span>
         </>
       );
     }
@@ -143,7 +144,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
       return (
         <>
           <UserPlus size={18} />
-          <span>Yêu cầu tham gia</span>
+          <span>{t("pages.groups.requestJoin")}</span>
         </>
       );
     }
@@ -151,7 +152,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
     return (
       <>
         <UserPlus size={18} />
-        <span>Tham gia nhóm</span>
+        <span>{t("pages.groups.join")}</span>
       </>
     );
   };
@@ -162,7 +163,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
         <img
           className="w-full h-full object-cover"
           src={coverUrl || DEFAULT_COVER}
-          alt="Ảnh bìa nhóm"
+          alt={t("pages.groups.coverImage")}
         />
 
         <div className="absolute inset-0 bg-linear-to-t from-slate-900/60 to-transparent" />
@@ -191,7 +192,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
               className="absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2 bg-white/90 dark:bg-slate-900/90 text-slate-900 dark:text-white text-sm font-semibold rounded-lg shadow-lg opacity-0 group-hover/cover:opacity-100 focus:opacity-100 transition-opacity hover:bg-white disabled:opacity-60 cursor-pointer"
             >
               <Camera size={18} />
-              {coverUploading ? "Đang tải..." : "Đổi ảnh bìa"}
+              {coverUploading ? t("common.loading") : t("pages.groups.changeCover")}
             </button>
           </>
         )}
@@ -207,25 +208,25 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
                   {type === "PUBLIC" && (
                     <>
                       <Globe size={16} />
-                      <span>Nhóm công khai</span>
+                      <span>{t("pages.groups.privacyPublic")}</span>
                     </>
                   )}
                   {type === "PRIVATE" && (
                     <>
                       <EarthLock size={16} />
-                      <span>Nhóm riêng tư</span>
+                      <span>{t("pages.groups.privacyPrivate")}</span>
                     </>
                   )}
                   {type === "DEPARTMENT" && (
                     <>
                       <Activity size={16} />
-                      <span>Nhóm phòng ban</span>
+                      <span>{t("pages.groups.privacyDepartment")}</span>
                     </>
                   )}
                 </span>
                 <span className="text-black/60">•</span>
                 <span className="text-sm font-semibold">
-                  {memberCount.toLocaleString()} thành viên
+                  {memberCount.toLocaleString()} {t("pages.groups.members")}
                 </span>
               </div>
             </div>
@@ -266,7 +267,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
               item.path === "review" && pendingPostCount > 0;
 
             if (
-              item.label === "Cài đặt nhóm" &&
+              item.key === "setting" &&
               currentMemberRole !== "ADMIN"
             ) {
               return null;
@@ -282,7 +283,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
 
             return (
               <NavLink
-                key={item.label}
+                key={item.key}
                 to={to}
                 end={!item.path}
                 className={({ isActive }) =>
@@ -293,7 +294,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
                   }`
                 }
               >
-                {item.label}
+                {t(`pages.groups.tabs.${item.key}`)}
 
                 {showJoinBadge && (
                   <span className="min-w-5 h-5 px-1.5 flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full">

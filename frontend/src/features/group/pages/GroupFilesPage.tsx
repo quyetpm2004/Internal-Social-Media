@@ -7,6 +7,7 @@ import { AttachmentSearchBar } from "@/features/group/components/group-detail/at
 import GroupPagination from "@/features/group/components/group-list/GroupPagination";
 import type { GroupAttachmentItem } from "@/features/group/types/group.type";
 import { formatFileSize } from "@/features/group/utils/formatFileSize";
+import { useTranslation } from "react-i18next";
 
 function getErrorMessage(error: unknown): string {
   const err = error as {
@@ -16,7 +17,7 @@ function getErrorMessage(error: unknown): string {
   return (
     err?.response?.data?.message ||
     err?.message ||
-    "Có lỗi xảy ra. Vui lòng thử lại."
+    "Unexpected error"
   );
 }
 
@@ -29,6 +30,7 @@ function formatDate(dateStr: string): string {
 }
 
 const GroupFilesPage = () => {
+  const { t } = useTranslation();
   const { groupId } = useParams();
   const [items, setItems] = useState<GroupAttachmentItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,41 +69,41 @@ const GroupFilesPage = () => {
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
       <div className="mb-6">
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white">File</h2>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t("pages.groups.filesTitle")}</h2>
         <p className="text-sm text-slate-500 mt-1">
-          Tài liệu đính kèm từ các bài viết trong nhóm
+          {t("pages.groups.filesDescription")}
         </p>
       </div>
 
       <AttachmentSearchBar
-        placeholder="Tìm theo tên file..."
+        placeholder={t("pages.groups.searchFilesPlaceholder")}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
       />
 
       {loading ? (
-        <div className="py-16 text-center text-slate-500">Đang tải...</div>
+        <div className="py-16 text-center text-slate-500">{t("common.loading")}</div>
       ) : items.length === 0 ? (
         <div className="py-16 text-center">
           <FileText size={40} className="mx-auto text-slate-300 mb-3" />
-          <p className="text-slate-500">Chưa có file nào</p>
+          <p className="text-slate-500">{t("pages.groups.noFiles")}</p>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/50 text-left text-slate-500">
-                <th className="px-4 py-3 font-semibold">Tên file</th>
+                <th className="px-4 py-3 font-semibold">{t("pages.groups.fileName")}</th>
                 <th className="px-4 py-3 font-semibold hidden sm:table-cell">
-                  Kích thước
+                  {t("pages.groups.fileSize")}
                 </th>
                 <th className="px-4 py-3 font-semibold hidden md:table-cell">
-                  Người đăng
+                  {t("pages.groups.uploader")}
                 </th>
                 <th className="px-4 py-3 font-semibold hidden lg:table-cell">
-                  Ngày tải
+                  {t("pages.groups.uploadDate")}
                 </th>
-                <th className="px-4 py-3 font-semibold text-right">Tải xuống</th>
+                <th className="px-4 py-3 font-semibold text-right">{t("pages.groups.download")}</th>
               </tr>
             </thead>
             <tbody>
@@ -123,7 +125,7 @@ const GroupFilesPage = () => {
                             to={`/groups/${groupId}/posts/${item.post.id}`}
                             className="text-xs text-blue-700 hover:underline truncate block"
                           >
-                            Xem bài viết
+                            {t("pages.groups.viewPost")}
                           </Link>
                         )}
                       </div>
@@ -162,7 +164,7 @@ const GroupFilesPage = () => {
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                      title="Tải xuống"
+                      title={t("pages.groups.download")}
                     >
                       <Download size={18} />
                     </a>
@@ -176,7 +178,7 @@ const GroupFilesPage = () => {
 
       {!loading && (
         <p className="text-xs text-slate-400 mt-4">
-          Tổng cộng {pagination.total} file
+          {t("pages.groups.totalFiles", { count: pagination.total })}
         </p>
       )}
 

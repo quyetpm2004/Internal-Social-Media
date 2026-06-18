@@ -2,6 +2,7 @@ import ConfirmModal from "@/components/common/ConfirmModal";
 import { getDefaultAvatarUrl } from "@/lib/utils";
 import { Camera, Trash2 } from "lucide-react";
 import React, { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface HeaderProps {
   isOwner: boolean;
@@ -17,6 +18,7 @@ interface HeaderProps {
   onSubmit: () => void;
   onAvatarChange: (file: File) => void;
   onAvatarDelete: () => void;
+  onOpenChangePasswordModal: () => void;
 }
 
 const ProfileHeader: React.FC<HeaderProps> = ({
@@ -33,7 +35,9 @@ const ProfileHeader: React.FC<HeaderProps> = ({
   onSubmit,
   onAvatarChange,
   onAvatarDelete,
+  onOpenChangePasswordModal,
 }) => {
+  const { t } = useTranslation();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -108,12 +112,21 @@ const ProfileHeader: React.FC<HeaderProps> = ({
 
         {isOwner && (
           <div className="flex items-center gap-3 pb-2">
+            {isOwner && (
+              <button
+                type="button"
+                onClick={onOpenChangePasswordModal}
+                className="px-6 rounded-lg mt-auto bg-blue-700 hover:bg-blue-800 text-white py-2.5 text-sm font-semibold transition-colors"
+              >
+                {t("profile.changePassword")}
+              </button>
+            )}
             {!isEditing ? (
               <button
                 onClick={onEdit}
                 className="px-6 py-2.5 rounded-xl bg-blue-700 text-white font-semibold text-sm shadow-lg hover:bg-blue-800 transition-all"
               >
-                Chỉnh sửa
+                {t("profile.edit")}
               </button>
             ) : (
               <>
@@ -122,14 +135,14 @@ const ProfileHeader: React.FC<HeaderProps> = ({
                   disabled={updating}
                   className="px-6 py-2.5 rounded-xl text-slate-600 bg-slate-100 font-semibold text-sm hover:bg-slate-200"
                 >
-                  Hủy
+                  {t("profile.cancel")}
                 </button>
                 <button
                   onClick={onSubmit}
                   disabled={updating}
                   className="px-6 py-2.5 rounded-xl bg-blue-700 text-white font-semibold text-sm shadow-lg hover:bg-blue-800 transition-all"
                 >
-                  {updating ? "Đang cập nhật..." : "Cập nhật"}
+                  {updating ? t("profile.updating") : t("profile.save")}
                 </button>
               </>
             )}

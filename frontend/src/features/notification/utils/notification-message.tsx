@@ -1,20 +1,16 @@
 import type { AppNotification } from "@/features/notification/types/notification.type";
 import { type ReactNode } from "react";
+import type { TFunction } from "i18next";
 
-const REACTION_LABELS: Record<string, string> = {
-  LIKE: "thích",
-  LOVE: "yêu thích",
-  HAHA: "haha",
-  WOW: "wow",
-  SAD: "buồn",
-  ANGRY: "phẫn nộ",
-};
+const getReactionLabel = (t: TFunction, type: string) =>
+  t(`pages.notifications.reactions.${type.toLowerCase()}`, {
+    defaultValue: t("pages.notifications.reactions.like"),
+  });
 
-const GROUP_MEMBER_ROLE_LABELS: Record<string, string> = {
-  MEMBER: "Thành viên",
-  MODERATOR: "Kiểm duyệt viên",
-  ADMIN: "Quản trị viên",
-};
+const getGroupMemberRoleLabel = (t: TFunction, role: string) =>
+  t(`pages.notifications.roles.${role.toLowerCase()}`, {
+    defaultValue: t("pages.notifications.roles.member"),
+  });
 
 export const getNotificationLink = (notification: AppNotification): string => {
   if (notification.postId) {
@@ -31,40 +27,41 @@ export const getNotificationLink = (notification: AppNotification): string => {
 
 export const getNotificationMessage = (
   notification: AppNotification,
+  t: TFunction,
 ): ReactNode => {
-  const actorName = notification.actor?.fullName ?? "Ai đó";
+  const actorName = notification.actor?.fullName ?? t("pages.notifications.someone");
   const groupName = notification.group?.groupName;
 
   switch (notification.type) {
     case "POST_APPROVED":
       return groupName ? (
         <>
-          Bài viết của bạn đã được duyệt trong nhóm <strong>{groupName}</strong>
+          {t("pages.notifications.postApprovedInGroup")} <strong>{groupName}</strong>
         </>
       ) : (
-        <>Bài viết của bạn đã được duyệt</>
+        <>{t("pages.notifications.postApproved")}</>
       );
 
     case "POST_REJECTED":
       return groupName ? (
         <>
-          Bài viết của bạn đã bị từ chối trong nhóm <strong>{groupName}</strong>
+          {t("pages.notifications.postRejectedInGroup")} <strong>{groupName}</strong>
         </>
       ) : (
-        <>Bài viết của bạn đã bị từ chối</>
+        <>{t("pages.notifications.postRejected")}</>
       );
 
     case "POST_PINNED":
       return (
         <>
-          <strong>{actorName}</strong> đã ghim bài viết của bạn
+          <strong>{actorName}</strong> {t("pages.notifications.postPinned")}
         </>
       );
 
     case "POST_UNPINNED":
       return (
         <>
-          <strong>{actorName}</strong> đã bỏ ghim bài viết của bạn
+          <strong>{actorName}</strong> {t("pages.notifications.postUnpinned")}
         </>
       );
 
@@ -72,12 +69,12 @@ export const getNotificationMessage = (
       const reactionType = String(
         notification.metadata?.reactionType ?? "LIKE",
       );
-      const label = REACTION_LABELS[reactionType] ?? "cảm xúc";
+      const label = getReactionLabel(t, reactionType);
 
       return (
         <>
-          <strong>{actorName}</strong> đã thả cảm xúc <strong>{label}</strong>{" "}
-          bài viết của bạn
+          <strong>{actorName}</strong> {t("pages.notifications.postReactionPrefix")}{" "}
+          <strong>{label}</strong> {t("pages.notifications.postReactionSuffix")}
         </>
       );
     }
@@ -85,14 +82,14 @@ export const getNotificationMessage = (
     case "POST_COMMENT":
       return (
         <>
-          <strong>{actorName}</strong> đã bình luận bài viết của bạn
+          <strong>{actorName}</strong> {t("pages.notifications.postComment")}
         </>
       );
 
     case "COMMENT_REPLY":
       return (
         <>
-          <strong>{actorName}</strong> đã trả lời bình luận của bạn
+          <strong>{actorName}</strong> {t("pages.notifications.commentReply")}
         </>
       );
 
@@ -100,18 +97,18 @@ export const getNotificationMessage = (
       const reactionType = String(
         notification.metadata?.reactionType ?? "LIKE",
       );
-      const label = REACTION_LABELS[reactionType] ?? "thích";
+      const label = getReactionLabel(t, reactionType);
       return (
         <>
-          <strong>{actorName}</strong> đã thả cảm xúc <strong>{label}</strong>{" "}
-          bình luận của bạn
+          <strong>{actorName}</strong> {t("pages.notifications.commentReactionPrefix")}{" "}
+          <strong>{label}</strong> {t("pages.notifications.commentReactionSuffix")}
         </>
       );
     }
     case "GROUP_MEMBER_ADDED":
       return (
         <>
-          <strong>{actorName}</strong> đã thêm bạn vào nhóm{" "}
+          <strong>{actorName}</strong> {t("pages.notifications.groupMemberAdded")}{" "}
           <strong>{groupName}</strong>
         </>
       );
@@ -121,9 +118,9 @@ export const getNotificationMessage = (
 
       return (
         <>
-          <strong>{actorName}</strong> đã thay đổi quyền của bạn trong nhóm{" "}
-          <strong>{groupName}</strong> thành{" "}
-          <strong>{GROUP_MEMBER_ROLE_LABELS[newRole]}</strong>
+          <strong>{actorName}</strong> {t("pages.notifications.groupRoleChangedPrefix")}{" "}
+          <strong>{groupName}</strong> {t("pages.notifications.groupRoleChangedSuffix")}{" "}
+          <strong>{getGroupMemberRoleLabel(t, newRole)}</strong>
         </>
       );
     }
@@ -131,7 +128,7 @@ export const getNotificationMessage = (
     case "GROUP_MEMBER_STATUS_CHANGED":
       return (
         <>
-          <strong>{actorName}</strong> đã thêm bạn vào nhóm{" "}
+          <strong>{actorName}</strong> {t("pages.notifications.groupMemberAdded")}{" "}
           <strong>{groupName}</strong>
         </>
       );
@@ -139,7 +136,7 @@ export const getNotificationMessage = (
     case "GROUP_MEMBER_KICKED":
       return (
         <>
-          <strong>{actorName}</strong> đã xóa bạn khỏi nhóm{" "}
+          <strong>{actorName}</strong> {t("pages.notifications.groupMemberKicked")}{" "}
           <strong>{groupName}</strong>
         </>
       );
@@ -147,12 +144,12 @@ export const getNotificationMessage = (
     case "GROUP_MEMBER_REJECTED":
       return (
         <>
-          <strong>{actorName}</strong> đã từ chối bạn vào nhóm{" "}
+          <strong>{actorName}</strong> {t("pages.notifications.groupMemberRejected")}{" "}
           <strong>{groupName}</strong>
         </>
       );
 
     default:
-      return <>Bạn có thông báo mới</>;
+      return <>{t("pages.notifications.newNotification")}</>;
   }
 };

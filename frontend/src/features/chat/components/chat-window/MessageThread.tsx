@@ -7,6 +7,7 @@ import type {
 } from "@/features/chat/types/chat.type";
 import type { PollSummary } from "@/types/poll.type";
 import { groupMessagesByDate } from "@/features/chat/utils/format-message-time";
+import { useTranslation } from "react-i18next";
 
 interface MessageThreadProps {
   conversation: ConversationDetail;
@@ -21,6 +22,7 @@ interface MessageThreadProps {
   onEditMessage?: (messageId: number, content: string) => Promise<void> | void;
   onDeleteMessage?: (messageId: number) => Promise<void> | void;
   onPollVote?: (messageId: number, poll: PollSummary) => void;
+  compact?: boolean;
 }
 
 const MessageThread = ({
@@ -36,12 +38,20 @@ const MessageThread = ({
   onEditMessage,
   onDeleteMessage,
   onPollVote,
+  compact = false,
 }: MessageThreadProps) => {
+  const { t } = useTranslation();
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length, conversation.id, typingUserIds?.length]);
+    if (compact && containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+      return;
+    }
+
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [messages.length, conversation.id, typingUserIds?.length, compact]);
 
   const groups = groupMessagesByDate(messages);
 
@@ -118,22 +128,31 @@ const MessageThread = ({
       .map((n) => n.split(" ").slice(-1)[0]);
 
     if (names.length === 0) {
-      return "Ai đó đang nhập...";
+      return t("pages.chat.someoneTyping");
     }
 
     if (names.length === 1) {
-      return `${names[0]} đang nhập...`;
+      return t("pages.chat.userTyping", { name: names[0] });
     }
 
     if (names.length === 2) {
-      return `${names[0]} và ${names[1]} đang nhập...`;
+      return t("pages.chat.twoUsersTyping", { n1: names[0], n2: names[1] });
     }
 
-    return `${names[0]}, ${names[1]} và ${names.length - 2} người khác đang nhập...`;
+    return t("pages.chat.manyUsersTyping", {
+      n1: names[0],
+      n2: names[1],
+      count: names.length - 2,
+    });
   }, [typingUserIds, conversation.members]);
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 space-y-6 flex flex-col">
+    <div
+      ref={containerRef}
+      className={`flex-1 min-h-0 overflow-y-auto overscroll-contain messenger-thread-scroll flex flex-col ${
+        compact ? "p-3 space-y-4 bg-white" : "p-6 space-y-6"
+      }`}
+    >
       {hasMore && (
         <button
           type="button"
@@ -141,14 +160,20 @@ const MessageThread = ({
           disabled={loading}
           className="self-center text-xs font-bold text-primary hover:underline disabled:opacity-50 cursor-pointer"
         >
-          {loading ? "Đang tải..." : "Tải thêm tin nhắn cũ"}
+          {loading ? t("common.loading") : t("pages.chat.loadOlder")}
         </button>
       )}
 
       {groups.map((group) => (
         <div key={group.dateLabel} className="flex flex-col gap-1">
           <div className="self-center">
-            <span className="bg-surface-container-high px-4 py-1.5 rounded-full text-[10px] font-bold text-on-surface-variant font-label uppercase tracking-widest">
+            <span
+              className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${
+                compact
+                  ? "bg-[#f0f2f5] text-[#65676b]"
+                  : "bg-surface-container-high text-on-surface-variant font-label"
+              }`}
+            >
               {group.dateLabel}
             </span>
           </div>
@@ -187,8 +212,8 @@ const MessageThread = ({
                     <div className="flex-1 h-px bg-primary/40" />
                     <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
                       {unreadCount > 1
-                        ? `${unreadCount} tin nhắn chưa đọc`
-                        : "Tin nhắn chưa đọc"}
+                        ? t("pages.chat.unreadCount", { count: unreadCount })
+                        : t("pages.chat.unreadSingle")}
                     </span>
                     <div className="flex-1 h-px bg-primary/40" />
                   </div>
@@ -204,6 +229,7 @@ const MessageThread = ({
                   onEdit={onEditMessage}
                   onDelete={onDeleteMessage}
                   onPollVote={onPollVote}
+                  compact={compact}
                 />
               </Fragment>
             );
@@ -212,16 +238,24 @@ const MessageThread = ({
       ))}
 
       {messages.length === 0 && !loading && (
-        <div className="m-auto text-center text-on-surface-variant">
-          <p className="text-sm">Chưa có tin nhắn nào trong cuộc trò chuyện</p>
+        <div
+          className={`m-auto text-center ${
+            compact ? "text-[#65676b]" : "text-on-surface-variant"
+          }`}
+        >
+          <p className="text-sm">{t("pages.chat.noMessageInConversation")}</p>
           <p className="text-xs mt-1">
-            Bắt đầu trò chuyện bằng cách gửi lời chào!
+            {t("pages.chat.startConversationHint")}
           </p>
         </div>
       )}
 
       {typingLabel && (
-        <div className="flex items-center gap-2 self-start px-3 py-2 bg-surface-container rounded-2xl">
+        <div
+          className={`flex items-center gap-2 self-start px-3 py-2 rounded-2xl ${
+            compact ? "bg-[#f0f2f5]" : "bg-surface-container"
+          }`}
+        >
           <span className="flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-on-surface-variant animate-bounce [animation-delay:0ms]" />
             <span className="w-1.5 h-1.5 rounded-full bg-on-surface-variant animate-bounce [animation-delay:150ms]" />

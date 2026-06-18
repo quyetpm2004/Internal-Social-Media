@@ -117,6 +117,12 @@ enum PollStatus {
   CLOSED
 }
 
+enum EventAttendanceStatus {
+  GOING
+  MAYBE
+  DECLINED
+}
+
 enum MessageStatus {
   ACTIVE
   EDITED
@@ -147,6 +153,7 @@ model User {
   role     Role   @default(EMPLOYEE)
 
   refreshTokens RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
 
   departmentId      Int?
   department        Department? @relation("DepartmentMembers", fields: [departmentId], references: [id], onDelete: SetNull)
@@ -175,6 +182,8 @@ model User {
   conversationMembers  ConversationMember[]
   sentMessages         Message[]
   pollVotes            PollVote[]
+  eventAttendances     EventAttendee[]
+  savedPosts           SavedPost[]
 
   notificationsReceived Notification[] @relation("NotificationRecipient")
   notificationsSent     Notification[] @relation("NotificationActor")
@@ -218,6 +227,20 @@ model RefreshToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique @map("token_hash") @db.VarChar(128)
+  expiresAt DateTime @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  userId    Int      @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId, expiresAt])
+  @@map("password_reset_tokens")
 }
 
 model Department {
@@ -331,6 +354,8 @@ model Post {
   mentions      PostMention[]
   notifications Notification[]
   poll          Poll?
+  event         Event?
+  savedBy       SavedPost[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -338,6 +363,59 @@ model Post {
   @@index([userId])
   @@index([groupId])
   @@map("posts")
+}
+
+model Event {
+  id          Int      @id @default(autoincrement()) @map("event_id")
+  postId       Int      @unique @map("post_id")
+  title       String   @db.VarChar(200)
+  description String?  @db.VarChar(1000)
+  startAt     DateTime @map("start_at")
+  endAt       DateTime? @map("end_at")
+  location    String?  @db.VarChar(255)
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  attendees EventAttendee[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([startAt])
+  @@map("events")
+}
+
+model EventAttendee {
+  id      Int                   @id @default(autoincrement()) @map("event_attendee_id")
+  eventId Int                   @map("event_id")
+  userId  Int                   @map("user_id")
+  status  EventAttendanceStatus @default(GOING)
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  respondedAt DateTime @default(now()) @map("responded_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([eventId, userId])
+  @@index([eventId, status])
+  @@index([userId])
+  @@map("event_attendees")
+}
+
+model SavedPost {
+  id     Int @id @default(autoincrement()) @map("saved_post_id")
+  userId Int @map("user_id")
+  postId Int @map("post_id")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  savedAt DateTime @default(now()) @map("saved_at")
+
+  @@unique([userId, postId])
+  @@index([userId, savedAt])
+  @@index([postId])
+  @@map("saved_posts")
 }
 
 model Comment {

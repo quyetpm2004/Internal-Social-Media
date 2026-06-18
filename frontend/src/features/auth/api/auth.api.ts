@@ -7,6 +7,10 @@ import type {
 } from "@/features/auth/types/auth.type";
 import type { ApiResponse } from "@/types/api.type";
 
+const skipRefreshConfig = {
+  skipAuthRefresh: true,
+} as unknown as Parameters<typeof axiosClient.post>[2];
+
 export const authApi = {
   login(payload: LoginPayload) {
     return axiosClient.post<ApiResponse<LoginResponse>>("/auth/login", payload);
@@ -16,19 +20,41 @@ export const authApi = {
     return axiosClient.post<ApiResponse<RefreshTokenResponse>>(
       "/auth/refresh-token",
       {},
-      {
-        skipAuthRefresh: true,
-      } as any,
+      skipRefreshConfig,
     );
   },
 
   logout() {
-    return axiosClient.post("/auth/logout", {}, {
-      skipAuthRefresh: true,
-    } as any);
+    return axiosClient.post("/auth/logout", {}, skipRefreshConfig);
   },
 
   getMe() {
     return axiosClient.get<ApiResponse<UserPublicInfo>>("/auth/me");
+  },
+
+  changePassword(payload: {
+    currentPassword: string;
+    newPassword: string;
+    confirmNewPassword: string;
+  }) {
+    return axiosClient.post<ApiResponse<null>>("/auth/change-password", payload);
+  },
+
+  forgotPassword(email: string) {
+    return axiosClient.post<
+      ApiResponse<{
+        ok: boolean;
+        resetToken?: string;
+        expiresAt?: string;
+      }>
+    >("/auth/forgot-password", { email });
+  },
+
+  resetPassword(payload: {
+    token: string;
+    newPassword: string;
+    confirmNewPassword: string;
+  }) {
+    return axiosClient.post<ApiResponse<null>>("/auth/reset-password", payload);
   },
 };

@@ -11,6 +11,7 @@ import type { ReactionType } from "../api/reaction.api";
 import { getDefaultAvatarUrl } from "@/lib/utils";
 import { ANONYMOUS_MEMBER_NAME } from "@/features/group/utils/group-member";
 import { formatTimeAgo } from "@/utils/formatTimeAgo";
+import { useTranslation } from "react-i18next";
 
 const reactionOptions: {
   type: ReactionType;
@@ -73,6 +74,7 @@ const CommentItem = ({
   onUpdated,
   onReplyCreated,
 }: CommentItemProps) => {
+  const { t } = useTranslation();
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
@@ -96,11 +98,11 @@ const CommentItem = ({
       setCurrentReaction(data.currentReaction);
       setReactionCount(data.reactionCount);
     } catch (error: any) {
-      console.error("React comment thất bại:", error);
+      console.error("React comment failed:", error);
       const message =
         error?.response?.data?.message ||
         error?.message ||
-        "Có lỗi xảy ra. Vui lòng thử lại.";
+        t("common.genericError");
       toast.error(message);
     }
   };
@@ -113,11 +115,11 @@ const CommentItem = ({
       onUpdated(comment.id, editContent.trim());
       setEditing(false);
     } catch (error: any) {
-      console.error("Sửa comment thất bại:", error);
+      console.error("Update comment failed:", error);
       const message =
         error?.response?.data?.message ||
         error?.message ||
-        "Có lỗi xảy ra. Vui lòng thử lại.";
+        t("common.genericError");
       toast.error(message);
     }
   };
@@ -127,11 +129,11 @@ const CommentItem = ({
       await CommentApi.deleteComment(comment.id);
       onDeleted(comment.id);
     } catch (error: any) {
-      console.error("Xóa comment thất bại:", error);
+      console.error("Delete comment failed:", error);
       const message =
         error?.response?.data?.message ||
         error?.message ||
-        "Có lỗi xảy ra. Vui lòng thử lại.";
+        t("common.genericError");
       toast.error(message);
     }
   };
@@ -148,11 +150,11 @@ const CommentItem = ({
       onReplyCreated?.(comment.id, newReply);
       setShowReplyInput(false);
     } catch (error: any) {
-      console.error("Reply comment thất bại:", error);
+      console.error("Reply comment failed:", error);
       const message =
         error?.response?.data?.message ||
         error?.message ||
-        "Có lỗi xảy ra. Vui lòng thử lại.";
+        t("common.genericError");
       toast.error(message);
     }
   };
@@ -199,7 +201,7 @@ const CommentItem = ({
                   onClick={handleUpdate}
                   className="text-xs text-blue-700 font-semibold"
                 >
-                  Lưu
+                  {t("pages.groups.saveChanges")}
                 </button>
 
                 <button
@@ -210,7 +212,7 @@ const CommentItem = ({
                   }}
                   className="text-xs text-slate-500"
                 >
-                  Hủy
+                  {t("common.cancel")}
                 </button>
               </div>
             ) : (
@@ -280,7 +282,7 @@ const CommentItem = ({
               onClick={() => setShowReplyInput((prev) => !prev)}
               className="font-semibold hover:text-blue-700"
             >
-              Trả lời
+              {t("pages.posts.reply")}
             </button>
           )}
 
@@ -305,7 +307,7 @@ const CommentItem = ({
           <div className="mt-2">
             <CommentInput
               autoFocus
-              placeholder="Viết phản hồi..."
+              placeholder={t("pages.posts.writeReply")}
               allowAnonymous={allowAnonymousComment}
               onSubmit={handleReply}
             />

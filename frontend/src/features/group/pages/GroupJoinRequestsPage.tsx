@@ -5,6 +5,7 @@ import { groupApi } from "@/features/group/apis/group.api";
 import { JoinRequestTable } from "@/features/group/components/group-detail/member-list/JoinRequestTable";
 import type { JoinRequest } from "@/features/group/types/group.type";
 import type { GroupOutletContext } from "@/features/group/types/group-outlet.type";
+import { useTranslation } from "react-i18next";
 
 function getErrorMessage(error: unknown): string {
   const err = error as {
@@ -14,11 +15,12 @@ function getErrorMessage(error: unknown): string {
   return (
     err?.response?.data?.message ||
     err?.message ||
-    "Có lỗi xảy ra. Vui lòng thử lại."
+    "Unexpected error"
   );
 }
 
 export const GroupJoinRequestsPage = () => {
+  const { t } = useTranslation();
   const { groupId } = useParams();
   const { canApproveJoinRequests, refreshGroupDetail } =
     useOutletContext<GroupOutletContext>();
@@ -55,7 +57,7 @@ export const GroupJoinRequestsPage = () => {
     setProcessingUserId(userId);
     try {
       await groupApi.approveJoinRequest(groupId, userId);
-      toast.success("Đã chấp nhận yêu cầu tham gia");
+      toast.success(t("pages.groups.requestApproved"));
       await fetchRequests();
       await refreshGroupDetail();
     } catch (error: unknown) {
@@ -71,7 +73,7 @@ export const GroupJoinRequestsPage = () => {
     setProcessingUserId(userId);
     try {
       await groupApi.rejectJoinRequest(groupId, userId);
-      toast.success("Đã từ chối yêu cầu tham gia");
+      toast.success(t("pages.groups.requestRejected"));
       await fetchRequests();
       await refreshGroupDetail();
     } catch (error: unknown) {
@@ -88,10 +90,11 @@ export const GroupJoinRequestsPage = () => {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-bold text-on-surface">Yêu cầu tham gia</h2>
+        <h2 className="text-lg font-bold text-on-surface">
+          {t("pages.groups.joinRequestsTitle")}
+        </h2>
         <p className="text-sm text-on-surface-variant mt-1">
-          Duyệt các yêu cầu tham gia nhóm riêng tư. Người được chấp nhận sẽ trở
-          thành thành viên ngay lập tức.
+          {t("pages.groups.joinRequestsDescription")}
         </p>
       </div>
 
