@@ -86,22 +86,6 @@ const ChatHeader = ({
       <div className="flex items-center gap-2">
         <button
           type="button"
-          className="p-2.5 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-90 cursor-pointer"
-          aria-label={t("pages.chat.voiceCall")}
-        >
-          <Phone size={20} />
-        </button>
-
-        <button
-          type="button"
-          className="p-2.5 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-90 cursor-pointer"
-          aria-label={t("pages.chat.videoCall")}
-        >
-          <Video size={20} />
-        </button>
-
-        <button
-          type="button"
           onClick={onToggleDetails}
           className="p-2.5 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-90 cursor-pointer"
           aria-label={t("common.information")}

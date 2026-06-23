@@ -18,7 +18,10 @@ interface FloatingChatWindowProps {
   onSendMessage: Parameters<typeof MessageInput>[0]["onSend"];
   onEditMessage: (messageId: number, content: string) => Promise<void>;
   onDeleteMessage: (messageId: number) => Promise<void>;
-  onPollVote: (messageId: number, poll: import("@/types/poll.type").PollSummary) => void;
+  onPollVote: (
+    messageId: number,
+    poll: import("@/types/poll.type").PollSummary,
+  ) => void;
   onTypingStart: () => void;
   onTypingStop: () => void;
 }
@@ -92,29 +95,13 @@ const FloatingChatHeader = ({
         className="flex items-center gap-0.5 shrink-0"
         onClick={(e) => e.stopPropagation()}
       >
-        {!minimized && (
-          <>
-            <button
-              type="button"
-              className="p-2 rounded-full hover:bg-[#f2f2f2] text-[#0866ff] transition-colors"
-              aria-label={t("pages.chat.voiceCall")}
-            >
-              <Phone size={16} />
-            </button>
-            <button
-              type="button"
-              className="p-2 rounded-full hover:bg-[#f2f2f2] text-[#0866ff] transition-colors"
-              aria-label={t("pages.chat.videoCall")}
-            >
-              <Video size={16} />
-            </button>
-          </>
-        )}
         <button
           type="button"
           onClick={onMinimize}
           className="p-2 rounded-full hover:bg-[#f2f2f2] text-[#0866ff] transition-colors"
-          aria-label={minimized ? t("pages.chat.expand") : t("pages.chat.minimize")}
+          aria-label={
+            minimized ? t("pages.chat.expand") : t("pages.chat.minimize")
+          }
         >
           <Minus size={16} />
         </button>
@@ -148,8 +135,15 @@ const FloatingChatWindow = ({
   onTypingStop,
 }: FloatingChatWindowProps) => {
   const { t } = useTranslation();
-  const { conversation, messages, loadingMessages, hasMoreMessages, sending, readReceipts, unreadAnchor } =
-    state;
+  const {
+    conversation,
+    messages,
+    loadingMessages,
+    hasMoreMessages,
+    sending,
+    readReceipts,
+    unreadAnchor,
+  } = state;
 
   const isCounterpartOnline = (() => {
     if (!conversation) return false;

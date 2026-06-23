@@ -1,6 +1,7 @@
 import type { GroupMemberRole } from "@/features/group/utils/group-member";
 import type { ApiPost, Post } from "@/features/new-feed/types/post.type";
 import { getDefaultAvatarUrl } from "@/lib/utils";
+import i18n from "@/i18n";
 
 export const formatTimeAgo = (dateString: string) => {
   const now = new Date();
@@ -11,22 +12,31 @@ export const formatTimeAgo = (dateString: string) => {
   const hours = Math.floor(diffMs / (1000 * 60 * 60));
   const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (minutes < 1) return "Vừa xong";
-  if (minutes < 60) return `${minutes} phút trước`;
-  if (hours < 24) return `${hours} giờ trước`;
-  return `${days} ngày trước`;
+  if (minutes < 1) {
+    return i18n.t("common.time.justNow");
+  }
+
+  if (minutes < 60) {
+    return i18n.t("common.time.minutesAgo", { count: minutes });
+  }
+
+  if (hours < 24) {
+    return i18n.t("common.time.hoursAgo", { count: hours });
+  }
+
+  return i18n.t("common.time.daysAgo", { count: days });
 };
 
 const mapRoleToLabel = (role: GroupMemberRole) => {
   switch (role) {
     case "MEMBER":
-      return "Thành viên";
+      return i18n.t("common.roles.member");
     case "MODERATOR":
-      return "Kiểm duyệt viên";
+      return i18n.t("common.roles.moderator");
     case "ADMIN":
-      return "Quản trị viên";
+      return i18n.t("common.roles.admin");
     default:
-      return "Thành viên";
+      return i18n.t("common.roles.member");
   }
 };
 
@@ -37,19 +47,21 @@ export const mapApiPostToPostCard = (post: ApiPost): Post => {
     return avatarUrl ? avatarUrl : getDefaultAvatarUrl(fullName);
   };
 
+  const anonymousName = i18n.t("common.anonymous");
+  const anonymousUserName = i18n.t("common.anonymousUser");
+  const fullName = post.user?.fullName ?? "";
+
   return {
     id: post.id,
     isPinned: post.isPinned,
     author: {
       id: post.user?.id ?? 0,
-      name: isViewAnonymous
-        ? "Ẩn Danh " + `(${post.user?.fullName})`
-        : post.user?.fullName,
+      name: isViewAnonymous ? `${anonymousName} (${fullName})` : fullName,
       avatar: isViewAnonymous
-        ? getAvatarUrl(post.user?.profile?.avatarUrl, post.user?.fullName)
+        ? getAvatarUrl(post.user?.profile?.avatarUrl || "", fullName)
         : post.isAnonymous
-          ? getAvatarUrl(null, "Người dùng ẩn danh")
-          : getAvatarUrl(post.user?.profile?.avatarUrl, post.user?.fullName),
+          ? getAvatarUrl(null, anonymousUserName)
+          : getAvatarUrl(post.user?.profile?.avatarUrl || "", fullName),
     },
     role: mapRoleToLabel(post.role || "MEMBER"),
     time: formatTimeAgo(post.createdAt),

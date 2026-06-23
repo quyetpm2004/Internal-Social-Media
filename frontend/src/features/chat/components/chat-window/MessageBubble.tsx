@@ -24,9 +24,7 @@ interface MessageBubbleProps {
   isOwn: boolean;
   showAvatar: boolean;
   showSenderName: boolean;
-  /** Danh sách user đã đọc đến đúng tin nhắn này (kể cả conversation 1-1) */
   readers?: ChatUser[];
-  /** Đây có phải là own message mới nhất hay không (dùng để hiển thị "Đã gửi") */
   isLatestOwn?: boolean;
   conversationType?: ConversationType;
   onEdit?: (messageId: number, content: string) => Promise<void> | void;
@@ -199,7 +197,9 @@ const ReadReceiptIndicator = ({
         title={t("pages.chat.sent")}
       >
         <Check size={12} />
-        <span className="text-[9px] uppercase tracking-wider">{t("pages.chat.sent")}</span>
+        <span className="text-[9px] uppercase tracking-wider">
+          {t("pages.chat.sent")}
+        </span>
       </span>
     );
   }
@@ -400,10 +400,7 @@ const MessageBubble = ({
   const isDeleted = message.status === "DELETED";
 
   const canEdit =
-    isOwn &&
-    !isDeleted &&
-    message.contentType === "TEXT" &&
-    Boolean(onEdit);
+    isOwn && !isDeleted && message.contentType === "TEXT" && Boolean(onEdit);
   const canDelete = isOwn && !isDeleted && Boolean(onDelete);
   const showActions = canEdit || canDelete;
 
@@ -435,7 +432,8 @@ const MessageBubble = ({
   }
 
   const renderPoll = () => {
-    if (message.contentType !== "POLL" || !message.poll || isDeleted) return null;
+    if (message.contentType !== "POLL" || !message.poll || isDeleted)
+      return null;
     return (
       <div className="w-80">
         <PollCard
@@ -452,7 +450,9 @@ const MessageBubble = ({
       <div className="flex gap-3 max-w-[80%] self-end flex-row-reverse group">
         <div>
           <div className="text-[10px] text-blue-600 font-medium pb-0.5 text-right">
-            {message.status === "EDITED" && <span>{t("pages.chat.edited")}</span>}
+            {message.status === "EDITED" && (
+              <span>{t("pages.chat.edited")}</span>
+            )}
           </div>
           <div className="space-y-1">
             {isDeleted ? (

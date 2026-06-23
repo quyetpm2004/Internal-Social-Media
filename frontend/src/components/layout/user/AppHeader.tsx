@@ -206,10 +206,10 @@ export default function AppHeader() {
           >
             <Search size={20} />
           </button>
+          <MessengerBellMobile />
           <NotificationBell />
 
           <MessengerBell />
-          <MessengerBellMobile />
 
           <div className="relative hidden md:flex" ref={dropdownRef}>
             <button

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { Search, Users, Landmark } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Search, Users, Landmark, X } from "lucide-react";
 import { searchApi } from "@/features/search/api/search.api";
 import UserSearchResultItem from "@/features/search/components/UserSearchResultItem";
 import GroupSearchResultItem from "@/features/search/components/GroupSearchResultItem";
@@ -25,6 +25,9 @@ export default function SearchPage() {
   const initialTab = (searchParams.get("tab") as SearchTab) || "all";
 
   const [query, setQuery] = useState(initialQuery);
+  const [inputValue, setInputValue] = useState(initialQuery);
+  const navigate = useNavigate();
+
   const [activeTab, setActiveTab] = useState<SearchTab>(initialTab);
   const [users, setUsers] = useState<SearchUser[]>([]);
   const [groups, setGroups] = useState<SearchGroup[]>([]);
@@ -37,6 +40,21 @@ export default function SearchPage() {
   const [hasMore, setHasMore] = useState(false);
 
   const trimmedQuery = query.trim();
+
+  const goToSearchPage = async (q: string) => {
+    const keyword = q.trim();
+    if (!keyword) return;
+
+    try {
+      await searchApi.saveHistory(keyword);
+    } catch {
+      /* ignore */
+    }
+
+    const tab = searchParams.get("tab");
+    const tabParam = tab ? `&tab=${tab}` : "";
+    navigate(`/search?q=${encodeURIComponent(keyword)}${tabParam}`);
+  };
 
   const performSearch = useCallback(
     async (q: string, tab: SearchTab, pageNum = 1, append = false) => {
@@ -113,21 +131,52 @@ export default function SearchPage() {
   const totalPeople = counts?.users ?? users.length;
   const totalGroups = counts?.groups ?? groups.length;
 
+  const handleClearQuery = () => {
+    setInputValue("");
+    if (location.pathname === "/search") {
+      navigate("/search");
+    }
+  };
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
+      <div className="flex items-center bg-surface-container-highest px-3 py-2 w-full rounded-full gap-2 transition-shadow ring-2 ring-blue-500/30 shadow-sm md:hidden mb-2">
+        <Search size={18} className="text-slate-500 shrink-0" />
+
+        <input
+          className="bg-transparent focus:ring-0 text-sm w-full placeholder-on-surface-variant border-none focus-visible:outline-none py-0.5"
+          placeholder={t("pages.search.searchPlaceholder")}
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              const keyword = inputValue.trim();
+
+              if (!keyword) return;
+
+              setQuery(keyword);
+              goToSearchPage(keyword);
+            }
+          }}
+        />
+
+        {inputValue && (
+          <button
+            type="button"
+            onClick={handleClearQuery}
+            className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+          >
+            <X size={16} />
+          </button>
+        )}
+      </div>
       <div className="mb-4">
         {trimmedQuery && (
           <>
             <h1 className="font-headline text-display-sm md:text-headline-lg font-extrabold tracking-tight text-on-surface mb-2">
               {t("pages.search.resultFor", { query })}
             </h1>
-            <p className="text-sm text-on-surface-variant">
-              {t("pages.search.found")}{" "}
-              <span className="font-bold text-primary">
-                {(counts?.users ?? 0) + (counts?.groups ?? 0)}
-              </span>{" "}
-              {t("pages.search.matchingResults")}
-            </p>
           </>
         )}
       </div>
@@ -154,7 +203,9 @@ export default function SearchPage() {
           </div>
 
           {loading && users.length === 0 && groups.length === 0 ? (
-            <p className="text-center text-slate-500 py-12">{t("pages.search.searching")}</p>
+            <p className="text-center text-slate-500 py-12">
+              {t("pages.search.searching")}
+            </p>
           ) : (
             <>
               {(activeTab === "all" || activeTab === "people") &&

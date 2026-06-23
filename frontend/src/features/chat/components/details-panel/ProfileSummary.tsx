@@ -1,6 +1,6 @@
 import { Users, UserPlus } from "lucide-react";
 import type { ConversationDetail } from "@/features/chat/types/chat.type";
-import GroupAvatarMenu from "./GroupAvatarMenu";
+import GroupAvatarMenu from "@/features/chat/components/details-panel/GroupAvatarMenu";
 import { useTranslation } from "react-i18next";
 
 interface ProfileSummaryProps {
@@ -20,7 +20,9 @@ const ProfileSummary = ({
   const { type, name, avatarUrl, counterpart, memberCount } = conversation;
 
   const isGroup = type === "GROUP";
-  const myMember = conversation.members.find((m) => m.user.id === currentUserId);
+  const myMember = conversation.members.find(
+    (m) => m.user.id === currentUserId,
+  );
   const isAdmin = myMember?.role === "ADMIN";
 
   return (
@@ -54,11 +56,6 @@ const ProfileSummary = ({
         {isGroup && memberCount > 0 && (
           <p className="text-sm text-on-surface-variant">
             {memberCount} {t("pages.groups.members")}
-          </p>
-        )}
-        {!isGroup && counterpart && (
-          <p className="text-sm text-on-surface-variant truncate max-w-full px-2">
-            {counterpart.fullName}
           </p>
         )}
       </div>

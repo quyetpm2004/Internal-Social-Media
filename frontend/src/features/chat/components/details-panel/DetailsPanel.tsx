@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import ProfileSummary from "./ProfileSummary";
-import GroupMembersList from "./GroupMembersList";
-import CreateChatGroupModal from "./CreateChatGroupModal";
-import SharedFiles from "./SharedFiles";
-import SharedMedia from "./SharedMedia";
-import PrivacySettings from "./PrivacySettings";
+import ProfileSummary from "@/features/chat/components/details-panel/ProfileSummary";
+import GroupMembersList from "@/features/chat/components/details-panel/GroupMembersList";
+import CreateChatGroupModal from "@/features/chat/components/details-panel/CreateChatGroupModal";
+import SharedFiles from "@/features/chat/components/details-panel/SharedFiles";
+import SharedMedia from "@/features/chat/components/details-panel/SharedMedia";
 import { chatApi } from "@/features/chat/apis/chat.api";
 import type {
   ConversationDetail,
@@ -52,7 +51,6 @@ const DetailsPanel = ({
   const [mediaTotal, setMediaTotal] = useState(0);
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [loadingMedia, setLoadingMedia] = useState(false);
-  const [muteSubmitting, setMuteSubmitting] = useState(false);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
 
   const isGroup = conversation.type === "GROUP";
@@ -95,19 +93,6 @@ const DetailsPanel = ({
     };
   }, [conversation.id]);
 
-  const handleToggleMute = async () => {
-    try {
-      setMuteSubmitting(true);
-      const next = !conversation.isMuted;
-      const response = await chatApi.setMuted(conversation.id, next);
-      onMuteChanged?.(response.data.isMuted);
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    } finally {
-      setMuteSubmitting(false);
-    }
-  };
-
   const handleCreateGroup = async (data: {
     name: string;
     memberIds: number[];
@@ -124,16 +109,14 @@ const DetailsPanel = ({
   return (
     <>
       <section
-        className={`w-80 border-l border-outline-variant/30 bg-surface-container-low hidden xl:flex flex-col overflow-y-auto flex-shrink-0 ${className ?? ""}`}
+        className={`w-80 border-l border-outline-variant/30 bg-surface-container-low hidden md:flex flex-col overflow-y-auto shrink-0 ${className ?? ""}`}
       >
         <ProfileSummary
           conversation={conversation}
           currentUserId={currentUserId}
           onConversationUpdated={onConversationUpdated}
           onCreateGroup={
-            !isGroup && counterpart
-              ? () => setCreateGroupOpen(true)
-              : undefined
+            !isGroup && counterpart ? () => setCreateGroupOpen(true) : undefined
           }
         />
 
@@ -159,11 +142,11 @@ const DetailsPanel = ({
             loading={loadingMedia}
           />
 
-          <PrivacySettings
+          {/* <PrivacySettings
             muteNotifications={conversation.isMuted}
             submitting={muteSubmitting}
             onToggleMute={handleToggleMute}
-          />
+          /> */}
         </div>
       </section>
 

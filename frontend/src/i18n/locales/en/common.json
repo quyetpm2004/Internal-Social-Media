@@ -121,7 +121,21 @@
     "close": "Close",
     "more": "More",
     "copyLink": "Copy link",
-    "options": "Options"
+    "options": "Options",
+    "roles": {
+      "member": "Member",
+      "moderator": "Moderator",
+      "admin": "Administrator"
+    },
+    "time": {
+      "justNow": "Just now",
+      "minutesAgo_one": "{{count}} minute ago",
+      "minutesAgo_other": "{{count}} minutes ago",
+      "hoursAgo_one": "{{count}} hour ago",
+      "hoursAgo_other": "{{count}} hours ago",
+      "daysAgo_one": "{{count}} day ago",
+      "daysAgo_other": "{{count}} days ago"
+    }
   },
   "nav": {
     "home": "Home",
@@ -262,7 +276,7 @@
       "creatorPlaceholder": "What's on your mind?",
       "anonymousPostHint": "Post anonymously — other members (except admins/moderators) cannot see your real name.",
       "event": "Event",
-      "create": "Create post",
+      "create": "Create",
       "reply": "Reply",
       "writeReply": "Write a reply...",
       "deleteConfirm": "Are you sure you want to delete this post?",
@@ -429,6 +443,10 @@
       "sendWish": "Send wishes"
     },
     "groups": {
+      "title": "Groups",
+      "description": "Connect teams, discover innovation hubs, and engage with departmental communities.",
+      "createGroup": "Create a new group",
+      "searchGroupsPlaceholder": "Search by group name...",
       "groupIdMissing": "Group ID is missing.",
       "loadingDetails": "Loading group details...",
       "defaultName": "Group name",

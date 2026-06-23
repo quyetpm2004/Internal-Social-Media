@@ -1,4 +1,3 @@
-import { ToggleLeft, ToggleRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface PrivacySettingsProps {
@@ -22,20 +21,6 @@ const PrivacySettings = ({
       </h4>
 
       <div className="space-y-1">
-        <button
-          type="button"
-          onClick={onToggleMute}
-          disabled={submitting}
-          className="w-full text-left px-3 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-high rounded-lg flex items-center justify-between group transition-all cursor-pointer disabled:opacity-60"
-        >
-          <span>{t("pages.chat.muteNotifications")}</span>
-          {muteNotifications ? (
-            <ToggleRight size={24} className="text-primary" />
-          ) : (
-            <ToggleLeft size={24} className="text-on-surface-variant" />
-          )}
-        </button>
-
         <button
           type="button"
           onClick={onBlockContact}

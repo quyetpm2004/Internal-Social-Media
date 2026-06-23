@@ -121,7 +121,18 @@
     "close": "Đóng",
     "more": "Thêm",
     "copyLink": "Sao chép liên kết",
-    "options": "Tùy chọn"
+    "options": "Tùy chọn",
+    "roles": {
+      "member": "Thành viên",
+      "moderator": "Kiểm duyệt viên",
+      "admin": "Quản trị viên"
+    },
+    "time": {
+      "justNow": "Vừa xong",
+      "minutesAgo": "{{count}} phút trước",
+      "hoursAgo": "{{count}} giờ trước",
+      "daysAgo": "{{count}} ngày trước"
+    }
   },
   "nav": {
     "home": "Trang chủ",
@@ -262,7 +273,7 @@
       "creatorPlaceholder": "Bạn đang nghĩ gì thế?",
       "anonymousPostHint": "Đăng ẩn danh — thành viên khác (trừ quản trị/kiểm duyệt) không thấy tên thật của bạn.",
       "event": "Sự kiện",
-      "create": "Đăng bài viết",
+      "create": "Đăng",
       "reply": "Trả lời",
       "writeReply": "Viết phản hồi...",
       "deleteConfirm": "Bạn có chắc muốn xóa bài viết này không?",
@@ -429,6 +440,10 @@
       "sendWish": "Gửi lời chúc"
     },
     "groups": {
+      "title": "Nhóm",
+      "description": "Kết nối các nhóm, khám phá các trung tâm đổi mới và tham gia cộng động của các phòng ban.",
+      "createGroup": "Tạo nhóm mới",
+      "searchGroupsPlaceholder": "Tìm theo tên nhóm...",
       "groupIdMissing": "Thiếu mã nhóm.",
       "loadingDetails": "Đang tải thông tin nhóm...",
       "defaultName": "Tên nhóm",

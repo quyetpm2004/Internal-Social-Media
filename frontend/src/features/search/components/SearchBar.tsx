@@ -5,7 +5,10 @@ import { searchApi } from "@/features/search/api/search.api";
 import type { SearchHistoryItem } from "@/features/search/types/search.type";
 import UserSearchResultItem from "@/features/search/components/UserSearchResultItem";
 import GroupSearchResultItem from "@/features/search/components/GroupSearchResultItem";
-import type { SearchGroup, SearchUser } from "@/features/search/types/search.type";
+import type {
+  SearchGroup,
+  SearchUser,
+} from "@/features/search/types/search.type";
 import { useTranslation } from "react-i18next";
 
 export default function SearchBar() {
@@ -139,20 +142,22 @@ export default function SearchBar() {
 
   const showHistory = isOpen && !trimmedQuery && histories.length > 0;
   const showPreview =
-    isOpen && trimmedQuery && (previewUsers.length > 0 || previewGroups.length > 0);
+    isOpen &&
+    trimmedQuery &&
+    (previewUsers.length > 0 || previewGroups.length > 0);
   const showDropdown = isOpen && (showHistory || showPreview || loading);
 
   return (
     <div ref={containerRef} className="relative hidden md:block w-full">
       <div
-        className={`flex items-center bg-surface-container-highest px-3 py-2 w-full rounded-full gap-2 transition-shadow ${
+        className={`flex items-center bg-surface-container-highest px-3 py-2 w-full rounded-full gap-2 transition-shadow  ${
           isOpen ? "ring-2 ring-blue-500/30 shadow-sm" : ""
         }`}
       >
         <Search size={18} className="text-slate-500 shrink-0" />
 
         <input
-          className="bg-transparent focus:ring-0 text-sm w-full placeholder-on-surface-variant border-none focus-visible:outline-none py-0.5"
+          className="bg-transparent focus:ring-0 text-sm w-full placeholder-on-surface-variant border-none focus-visible:outline-none py-0.5 "
           placeholder={t("pages.search.searchPlaceholder")}
           type="text"
           value={query}

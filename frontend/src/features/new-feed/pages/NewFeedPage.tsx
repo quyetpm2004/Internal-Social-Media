@@ -32,10 +32,7 @@ const formatEventDateParts = (iso: string) => {
   };
 };
 
-const formatEventMeta = (
-  event: UpcomingEventSummary,
-  locale: string,
-) => {
+const formatEventMeta = (event: UpcomingEventSummary, locale: string) => {
   const time = new Date(event.startAt).toLocaleTimeString(
     locale === "vi" ? "vi-VN" : "en-US",
     { hour: "2-digit", minute: "2-digit" },
@@ -370,7 +367,10 @@ const NewFeedPage = () => {
         </div>
 
         <div className="lg:col-span-4 space-y-6">
-          <RightSidebarWidget title={t("pages.newsFeed.yourGroups")} icon={Users2}>
+          <RightSidebarWidget
+            title={t("pages.newsFeed.yourGroups")}
+            icon={Users2}
+          >
             <div className="space-y-4">
               {myGroups.map((item) => (
                 <GroupItem
@@ -390,7 +390,10 @@ const NewFeedPage = () => {
             </button>
           </RightSidebarWidget>
 
-          <RightSidebarWidget title={t("pages.newsFeed.recentNotifications")} icon={Bell}>
+          <RightSidebarWidget
+            title={t("pages.newsFeed.recentNotifications")}
+            icon={Bell}
+          >
             {recentNotifications.length === 0 ? (
               <p className="text-xs text-slate-500">
                 {t("pages.newsFeed.noRecentNotifications")}
@@ -432,7 +435,10 @@ const NewFeedPage = () => {
             )}
           </RightSidebarWidget>
 
-          <RightSidebarWidget title={t("pages.newsFeed.upcomingEvents")} icon={Calendar}>
+          <RightSidebarWidget
+            title={t("pages.newsFeed.upcomingEvents")}
+            icon={Calendar}
+          >
             {upcomingEvents.length === 0 ? (
               <p className="text-xs text-slate-500">
                 {t("pages.newsFeed.noUpcomingEvents")}
@@ -477,27 +483,6 @@ const NewFeedPage = () => {
                 })}
               </div>
             )}
-          </RightSidebarWidget>
-
-          <RightSidebarWidget title={t("pages.newsFeed.birthdays")} icon={Cake}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full overflow-hidden">
-                  <img
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuBkbItoWEKJD1P7vjxukWlrSwklmQ0tFqijb6DKbjWUf5-g6_7xyJYkW2zBVwx6Gux6Ce-J0psux77L9GqVvgxbvo1PAjw40_re0Zjoiv5ZDhMDx_DOFjktBdO-Fn8M__JJ0RljPPckOz2dASeeW3JWQESTVJilaj69mFeTH5_pUZWPuVsF9dhv--GlXMivFjDRunyNApgNcK4inbTmNoBbwGM7rNJRD7Tvn8V8OP5cb7d6euVZseeCTgphTOu333TIkjinvw5lprk"
-                    alt="Birthday"
-                  />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold">Julie Watson</h4>
-                  <p className="text-[10px] text-slate-500">{t("pages.newsFeed.today")}</p>
-                </div>
-              </div>
-
-              <button className="text-[10px] font-bold text-blue-700 hover:underline">
-                {t("pages.newsFeed.sendWish")}
-              </button>
-            </div>
           </RightSidebarWidget>
         </div>
       </div>

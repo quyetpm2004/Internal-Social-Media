@@ -70,13 +70,6 @@ const MessengerDropdown = () => {
         <div className="flex items-center gap-1">
           <button
             type="button"
-            className="p-2 rounded-full hover:bg-[#f2f2f2] text-[#0866ff] transition-colors"
-            aria-label={t("common.more")}
-          >
-            <MoreHorizontal size={20} />
-          </button>
-          <button
-            type="button"
             onClick={() => {
               setDropdownOpen(false);
               navigate("/messages");
@@ -85,17 +78,6 @@ const MessengerDropdown = () => {
             aria-label={t("pages.chat.openInMessenger")}
           >
             <Maximize2 size={20} />
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setDropdownOpen(false);
-              navigate("/messages");
-            }}
-            className="p-2 rounded-full hover:bg-[#f2f2f2] text-[#0866ff] transition-colors"
-            aria-label={t("pages.chat.newMessage")}
-          >
-            <PenLine size={20} />
           </button>
         </div>
       </div>

@@ -5,7 +5,7 @@ import { getDefaultAvatarUrl } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { chatApi } from "@/features/chat/apis/chat.api";
 import type { ConversationMember } from "@/features/chat/types/chat.type";
-import AddGroupMembersModal from "./AddGroupMembersModal";
+import AddGroupMembersModal from "@/features/chat/components/details-panel/AddGroupMembersModal";
 import ConfirmModal from "@/components/common/ConfirmModal";
 import { useTranslation } from "react-i18next";
 
@@ -146,7 +146,9 @@ const GroupMembersList = ({
                         setRemovingUserId(member.user.id);
                       }}
                       className="p-1.5 rounded-full text-on-surface-variant hover:text-error hover:bg-error/10 transition-all disabled:opacity-50 shrink-0"
-                      aria-label={t("pages.chat.removeMemberAria", { name: member.user.fullName })}
+                      aria-label={t("pages.chat.removeMemberAria", {
+                        name: member.user.fullName,
+                      })}
                       title={t("pages.chat.removeFromGroup")}
                     >
                       <UserMinus size={16} />
@@ -173,7 +175,9 @@ const GroupMembersList = ({
             className="mt-2 w-full flex items-center cursor-pointer justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-error hover:bg-error/10 transition-colors disabled:opacity-50"
           >
             <LogOut size={18} />
-            {leaving ? t("pages.chat.leavingGroup") : t("pages.chat.leaveGroup")}
+            {leaving
+              ? t("pages.chat.leavingGroup")
+              : t("pages.chat.leaveGroup")}
           </button>
         </div>
       )}

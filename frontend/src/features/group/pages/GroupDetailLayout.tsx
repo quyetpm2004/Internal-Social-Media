@@ -139,7 +139,9 @@ const GroupDetailLayout = () => {
             : prev,
         );
 
-        toast.success(response.message || t("pages.groups.cancelRequestSuccess"));
+        toast.success(
+          response.message || t("pages.groups.cancelRequestSuccess"),
+        );
       } else {
         const response = await groupApi.joinGroup(groupId);
 
@@ -200,7 +202,9 @@ const GroupDetailLayout = () => {
   if (!groupId) {
     return (
       <div className="flex items-center justify-center h-64">
-        <span className="text-gray-500">{t("pages.groups.groupIdMissing")}</span>
+        <span className="text-gray-500">
+          {t("pages.groups.groupIdMissing")}
+        </span>
       </div>
     );
   }
@@ -209,10 +213,12 @@ const GroupDetailLayout = () => {
     <>
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <span className="text-gray-500">{t("pages.groups.loadingDetails")}</span>
+          <span className="text-gray-500">
+            {t("pages.groups.loadingDetails")}
+          </span>
         </div>
       ) : (
-        <main className="flex-1 py-8 max-w-6xl mx-auto px-4 bg-slate-50 dark:bg-slate-950">
+        <main className="flex-1 py-8 max-w-6xl mx-auto bg-slate-50 dark:bg-slate-950">
           <GroupHeader
             name={groupDetail?.groupName || t("pages.groups.defaultName")}
             type={groupDetail?.groupType || "PUBLIC"}
@@ -230,7 +236,7 @@ const GroupDetailLayout = () => {
             currentMemberRole={currentMemberRole}
           />
 
-          <div className="w-full mx-auto px-4 py-8">
+          <div className="w-full mx-auto py-8 px-1">
             {isPrivateBlocked ? (
               <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-10 text-center">
                 <div className="flex justify-center mb-5">
@@ -258,7 +264,11 @@ const GroupDetailLayout = () => {
                 <div className="flex items-center justify-center gap-2 text-sm text-slate-500">
                   <Users size={16} />
 
-                  <span>{t("pages.groups.memberCount", { count: groupDetail?._count.members ?? 0 })}</span>
+                  <span>
+                    {t("pages.groups.memberCount", {
+                      count: groupDetail?._count.members ?? 0,
+                    })}
+                  </span>
                 </div>
               </div>
             ) : (

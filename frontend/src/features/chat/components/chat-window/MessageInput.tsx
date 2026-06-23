@@ -164,8 +164,7 @@ const MessageInput = ({
       filtered = files.filter((f) => f.type.startsWith("video/"));
     } else {
       filtered = files.filter(
-        (f) =>
-          !f.type.startsWith("image/") && !f.type.startsWith("video/"),
+        (f) => !f.type.startsWith("image/") && !f.type.startsWith("video/"),
       );
     }
 
@@ -180,9 +179,7 @@ const MessageInput = ({
     setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const uploadAttachments = async (
-    files: File[],
-  ): Promise<number[]> => {
+  const uploadAttachments = async (files: File[]): Promise<number[]> => {
     if (files.length === 0) return [];
 
     const presignRes = await uploadApi.presign(
@@ -279,9 +276,7 @@ const MessageInput = ({
       resetForm();
     } catch (error: unknown) {
       const message =
-        error instanceof Error
-          ? error.message
-          : t("pages.chat.sendFailed");
+        error instanceof Error ? error.message : t("pages.chat.sendFailed");
       toast.error(message);
     } finally {
       setUploading(false);
@@ -400,10 +395,7 @@ const MessageInput = ({
           </div>
         )}
 
-        <form
-          onSubmit={handleSubmit}
-          className="flex items-center gap-0.5"
-        >
+        <form onSubmit={handleSubmit} className="flex items-center gap-0.5">
           <button
             type="button"
             onClick={() => imageInputRef.current?.click()}
@@ -468,7 +460,7 @@ const MessageInput = ({
                   theme={Theme.LIGHT}
                   lazyLoadEmojis
                   searchPlaceholder={t("pages.chat.searchEmoji")}
-                  width={300}
+                  width={280}
                   height={340}
                 />
               </div>
@@ -688,7 +680,7 @@ const MessageInput = ({
                 theme={Theme.AUTO}
                 lazyLoadEmojis
                 searchPlaceholder={t("pages.chat.searchEmoji")}
-                width={320}
+                width={280}
                 height={380}
               />
             </div>
