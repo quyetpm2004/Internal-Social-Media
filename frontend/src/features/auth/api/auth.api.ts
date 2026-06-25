@@ -37,7 +37,10 @@ export const authApi = {
     newPassword: string;
     confirmNewPassword: string;
   }) {
-    return axiosClient.post<ApiResponse<null>>("/auth/change-password", payload);
+    return axiosClient.post<ApiResponse<null>>(
+      "/auth/change-password",
+      payload,
+    );
   },
 
   forgotPassword(email: string) {
@@ -56,5 +59,11 @@ export const authApi = {
     confirmNewPassword: string;
   }) {
     return axiosClient.post<ApiResponse<null>>("/auth/reset-password", payload);
+  },
+
+  verifyResetToken(token: string) {
+    return axiosClient.get<ApiResponse<null>>(
+      `/auth/verify-reset-token/${token}`,
+    );
   },
 };

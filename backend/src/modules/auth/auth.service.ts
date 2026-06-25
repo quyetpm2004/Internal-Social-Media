@@ -1,3 +1,4 @@
+import dotenv from "dotenv";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { Role } from "@prisma/client";
@@ -10,6 +11,8 @@ import {
   verifyRefreshToken,
 } from "@/shared/utils/jwt";
 import { getFileUrl } from "@/modules/file/file.service";
+import { sendResetPasswordEmail } from "./email.service";
+dotenv.config();
 
 function generateTokens(payload: JwtPayload) {
   const accessToken = signAccessToken(payload);
@@ -286,11 +289,49 @@ export async function forgotPassword(email: string) {
     },
   });
 
+  // Link frontend
+  const resetLink = `${process.env.URL_FRONTEND}/reset-password/${rawToken}`;
+
+  await sendResetPasswordEmail(email, resetLink);
+
   // TODO: gửi email thật. Hiện trả token để FE/demo sử dụng.
   return {
     ok: true,
     resetToken: rawToken,
     expiresAt: expiresAt.toISOString(),
+  };
+}
+
+export async function verifyTokenPasswordReset(token: string) {
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const now = new Date();
+
+  const resetToken = await prisma.passwordResetToken.findFirst({
+    where: {
+      tokenHash,
+      usedAt: null,
+      expiresAt: { gt: now },
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          password: true,
+        },
+      },
+    },
+  });
+
+  if (!resetToken) {
+    throw new AppError(
+      400,
+      "Token đặt lại mật khẩu không hợp lệ hoặc đã hết hạn",
+    );
+  }
+
+  return {
+    ok: true,
+    userId: resetToken.user.id,
   };
 }
 

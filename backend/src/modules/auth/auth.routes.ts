@@ -6,10 +6,14 @@ import {
   loginSchema,
   registerSchema,
   resetPasswordSchema,
+  verifyTokenPasswordResetSchema,
 } from "@/modules/auth/auth.schema";
 import { asyncHandler } from "@/shared/middlewares/async-handler.middleware";
 import { authMiddleware } from "@/shared/middlewares/auth.middleware";
-import { validateBody } from "@/shared/middlewares/validate.middleware";
+import {
+  validateBody,
+  validateParams,
+} from "@/shared/middlewares/validate.middleware";
 
 const router = Router();
 
@@ -41,6 +45,11 @@ router.post(
   authMiddleware,
   validateBody(changePasswordSchema),
   asyncHandler(authController.changePassword),
+);
+router.get(
+  "/verify-reset-token/:token",
+  validateParams(verifyTokenPasswordResetSchema),
+  asyncHandler(authController.verifyTokenPasswordReset),
 );
 
 export default router;

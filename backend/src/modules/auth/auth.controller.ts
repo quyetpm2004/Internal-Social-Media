@@ -125,3 +125,12 @@ export async function resetPassword(req: Request, res: Response) {
     message: "Đặt lại mật khẩu thành công",
   });
 }
+
+export async function verifyTokenPasswordReset(req: Request, res: Response) {
+  const token = req.validated.token;
+  await authService.verifyTokenPasswordReset(token as string);
+
+  res.status(200).json({
+    message: "Token hợp lệ",
+  });
+}

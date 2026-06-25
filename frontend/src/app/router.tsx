@@ -32,6 +32,8 @@ import AdminPostsPage from "@/features/admin/pages/AdminPostsPage";
 import AdminPostDetailPage from "@/features/admin/pages/AdminPostDetailPage";
 import AdminGroupsPage from "@/features/admin/pages/AdminGroupsPage";
 import AdminGroupDetailPage from "@/features/admin/pages/AdminGroupDetailPage";
+import ResetPasswordPage from "@/features/auth/pages/ResetPasswordPage";
+import ForgotPasswordPage from "@/features/auth/pages/ForgotPasswordPage";
 
 export const router = createBrowserRouter([
   {
@@ -40,6 +42,14 @@ export const router = createBrowserRouter([
       {
         path: "/login",
         element: <LoginPage />,
+      },
+      {
+        path: "/reset-password/:token",
+        element: <ResetPasswordPage />,
+      },
+      {
+        path: "/forgot-password",
+        element: <ForgotPasswordPage />,
       },
     ],
   },
