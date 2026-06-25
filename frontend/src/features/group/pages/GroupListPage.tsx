@@ -110,7 +110,7 @@ const GroupListPage = () => {
 
   return (
     <>
-      <main className="flex-1 py-8 max-w-6xl mx-auto px-4">
+      <main className="flex-1 py-8 max-w-6xl mx-auto">
         <div className="mb-10 space-y-6">
           <GroupHeader onClick={() => setOnCreateGroupOpen(true)} />
 
@@ -125,7 +125,9 @@ const GroupListPage = () => {
 
         {loading ? (
           <div className="flex justify-center py-20">
-            <p className="text-on-surface-variant">{t("pages.groups.loadingGroups")}</p>
+            <p className="text-on-surface-variant">
+              {t("pages.groups.loadingGroups")}
+            </p>
           </div>
         ) : (
           <>

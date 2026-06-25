@@ -139,7 +139,7 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6">
+    <div className="max-w-4xl mx-auto px-4 py-6">
       <div className="flex items-center bg-surface-container-highest px-3 py-2 w-full rounded-full gap-2 transition-shadow ring-2 ring-blue-500/30 shadow-sm md:hidden mb-2">
         <Search size={18} className="text-slate-500 shrink-0" />
 

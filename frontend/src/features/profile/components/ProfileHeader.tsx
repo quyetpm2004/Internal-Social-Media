@@ -1,6 +1,6 @@
 import ConfirmModal from "@/components/common/ConfirmModal";
 import { getDefaultAvatarUrl } from "@/lib/utils";
-import { Camera, Trash2 } from "lucide-react";
+import { Camera, KeyRound, Trash2 } from "lucide-react";
 import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -116,15 +116,15 @@ const ProfileHeader: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={onOpenChangePasswordModal}
-                className="px-6 rounded-lg mt-auto bg-blue-700 hover:bg-blue-800 text-white py-2.5 text-sm font-semibold transition-colors"
+                className="cursor-pointer px-6 rounded-xl mt-auto bg-blue-100/80 hover:bg-blue-100 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400 py-2.5 text-sm font-semibold transition-colors flex items-center gap-2"
               >
-                {t("profile.changePassword")}
+                <KeyRound size={16} /> {t("profile.changePassword")}
               </button>
             )}
             {!isEditing ? (
               <button
                 onClick={onEdit}
-                className="px-6 py-2.5 rounded-xl bg-blue-700 text-white font-semibold text-sm shadow-lg hover:bg-blue-800 transition-all"
+                className="cursor-pointer px-6 py-2.5 rounded-xl bg-blue-700 text-white font-semibold text-sm shadow-lg hover:bg-blue-800 transition-all"
               >
                 {t("profile.edit")}
               </button>
@@ -133,14 +133,14 @@ const ProfileHeader: React.FC<HeaderProps> = ({
                 <button
                   onClick={onCancel}
                   disabled={updating}
-                  className="px-6 py-2.5 rounded-xl text-slate-600 bg-slate-100 font-semibold text-sm hover:bg-slate-200"
+                  className="cursor-pointer px-6 py-2.5 rounded-xl text-slate-600 bg-slate-100 font-semibold text-sm hover:bg-slate-200"
                 >
                   {t("profile.cancel")}
                 </button>
                 <button
                   onClick={onSubmit}
                   disabled={updating}
-                  className="px-6 py-2.5 rounded-xl bg-blue-700 text-white font-semibold text-sm shadow-lg hover:bg-blue-800 transition-all"
+                  className="cursor-pointer px-6 py-2.5 rounded-xl bg-blue-700 text-white font-semibold text-sm shadow-lg hover:bg-blue-800 transition-all"
                 >
                   {updating ? t("profile.updating") : t("profile.save")}
                 </button>

@@ -18,37 +18,43 @@ const SavedPostsPage = () => {
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const isFetchingRef = useRef(false);
 
-  const fetchSavedPosts = useCallback(async (currentPage: number) => {
-    if (isFetchingRef.current) return;
-    if (!hasMore && currentPage > 1) return;
+  const fetchSavedPosts = useCallback(
+    async (currentPage: number) => {
+      if (isFetchingRef.current) return;
+      if (!hasMore && currentPage > 1) return;
 
-    try {
-      isFetchingRef.current = true;
-      setLoading(true);
-      const res = await PostsApi.getSavedPosts(currentPage, LIMIT);
-      const mapped = (res.data.posts || []).map(mapApiPostToPostCard);
+      try {
+        isFetchingRef.current = true;
+        setLoading(true);
+        const res = await PostsApi.getSavedPosts(currentPage, LIMIT);
+        const mapped = (res.data.posts || []).map(mapApiPostToPostCard);
 
-      if (currentPage === 1) {
-        setPosts(mapped);
-      } else {
-        setPosts((prev) => {
-          const existingIds = new Set(prev.map((item) => item.id));
-          return [...prev, ...mapped.filter((item) => !existingIds.has(item.id))];
-        });
+        if (currentPage === 1) {
+          setPosts(mapped);
+        } else {
+          setPosts((prev) => {
+            const existingIds = new Set(prev.map((item) => item.id));
+            return [
+              ...prev,
+              ...mapped.filter((item) => !existingIds.has(item.id)),
+            ];
+          });
+        }
+        setHasMore(Boolean(res.data.hasMore));
+      } catch (error: any) {
+        const message =
+          error?.response?.data?.message ||
+          error?.message ||
+          t("pages.savedPosts.loadFailed");
+        toast.error(message);
+      } finally {
+        isFetchingRef.current = false;
+        setLoading(false);
+        setInitialLoading(false);
       }
-      setHasMore(Boolean(res.data.hasMore));
-    } catch (error: any) {
-      const message =
-        error?.response?.data?.message ||
-        error?.message ||
-        t("pages.savedPosts.loadFailed");
-      toast.error(message);
-    } finally {
-      isFetchingRef.current = false;
-      setLoading(false);
-      setInitialLoading(false);
-    }
-  }, [hasMore]);
+    },
+    [hasMore],
+  );
 
   useEffect(() => {
     fetchSavedPosts(1);
@@ -90,8 +96,10 @@ const SavedPostsPage = () => {
     <main className="flex-1 py-8">
       <div className="max-w-4xl mx-auto space-y-6">
         <div>
-          <h1 className="text-xl font-bold">{t("pages.savedPosts.title")}</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-4xl font-extrabold tracking-tight text-on-surface mb-2">
+            {t("pages.savedPosts.title")}
+          </h1>
+          <p className="text-on-surface-variant text-sm">
             {t("pages.savedPosts.description")}
           </p>
         </div>

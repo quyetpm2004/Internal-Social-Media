@@ -17,16 +17,11 @@ import { Label } from "@/components/ui/label";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { login } = useAuthStore();
   const { t } = useTranslation();
 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  const from =
-    (location.state as { from?: { pathname?: string } })?.from?.pathname ||
-    "/profile";
 
   const {
     register,
@@ -45,7 +40,7 @@ export default function LoginPage() {
       setLoading(true);
       await login(values);
       toast.success(t("auth.loginSuccess"));
-      navigate(from === "/login" ? "/news-feed" : from);
+      navigate("/news-feed");
     } catch {
       toast.error(t("auth.loginFailed"));
     } finally {

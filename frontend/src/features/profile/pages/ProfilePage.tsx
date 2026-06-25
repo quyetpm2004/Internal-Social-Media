@@ -73,6 +73,7 @@ export default function ProfilePage() {
 
     try {
       const res = await profileApi.getProfile(userId);
+      console.log("Fetched profile:", res.data);
       setProfile(res.data);
     } catch {
       toast.error(t("profile.loadFailed"));
@@ -124,6 +125,8 @@ export default function ProfilePage() {
         birthdate: profile.birthdate,
         gender: profile.gender,
       };
+
+      console.log("Submitting profile update:", profilePayload);
 
       const res = await profileApi.updateProfile(profilePayload);
 
@@ -475,7 +478,9 @@ export default function ProfilePage() {
       {openChangePasswordModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
           <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg p-6 space-y-3">
-            <h3 className="text-lg font-bold">{t("profile.changePasswordTitle")}</h3>
+            <h3 className="text-lg font-bold">
+              {t("profile.changePasswordTitle")}
+            </h3>
             <input
               type="password"
               name="currentPassword"
