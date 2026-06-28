@@ -6,7 +6,7 @@ import {
 } from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
 import prisma from "@/shared/utils/prisma";
-import type { PollInput } from "@/modules/poll/poll.schema";
+import type { PollInput, PollUpdateInput } from "@/modules/poll/poll.schema";
 import {
   pollInclude,
   type PollSummary,
@@ -84,6 +84,68 @@ export const createPollInTransaction = async (
   });
 
   return poll;
+};
+
+export const updatePollForPost = async (
+  tx: Prisma.TransactionClient,
+  pollId: number,
+  input: PollUpdateInput,
+  existingOptions: Array<{ id: number; _count: { votes: number } }>,
+) => {
+  await tx.poll.update({
+    where: { id: pollId },
+    data: {
+      question: input.question,
+      allowMultiple: input.allowMultiple ?? false,
+    },
+  });
+
+  const existingById = new Map(
+    existingOptions.map((option) => [option.id, option]),
+  );
+  const keptOptionIds = new Set<number>();
+
+  for (let index = 0; index < input.options.length; index++) {
+    const option = input.options[index];
+
+    if (option.id) {
+      const existing = existingById.get(option.id);
+      if (!existing) {
+        throw new AppError(400, "Lựa chọn không hợp lệ");
+      }
+
+      await tx.pollOption.update({
+        where: { id: option.id },
+        data: {
+          label: option.label,
+          sortOrder: index,
+        },
+      });
+      keptOptionIds.add(option.id);
+      continue;
+    }
+
+    const created = await tx.pollOption.create({
+      data: {
+        pollId,
+        label: option.label,
+        sortOrder: index,
+      },
+    });
+    keptOptionIds.add(created.id);
+  }
+
+  for (const existing of existingOptions) {
+    if (keptOptionIds.has(existing.id)) continue;
+
+    if (existing._count.votes > 0) {
+      throw new AppError(400, "Không thể xóa lựa chọn đã có người bình chọn");
+    }
+
+    await tx.pollOption.delete({
+      where: { id: existing.id },
+    });
+  }
 };
 
 const assertPollActive = (poll: { status: PollStatus; endsAt: Date | null }) => {

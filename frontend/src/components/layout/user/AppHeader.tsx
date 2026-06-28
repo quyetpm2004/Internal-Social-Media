@@ -3,6 +3,7 @@ import {
   Bookmark,
   ChevronDown,
   Group,
+  Languages,
   LogOut,
   Search,
   Settings,
@@ -42,7 +43,8 @@ function UserMenuPanel({
   onLogout,
 }: UserMenuPanelProps) {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const user = useAuthStore((state) => state.user);
 
   const menuItemClass =
     "w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors";
@@ -92,16 +94,36 @@ function UserMenuPanel({
         </button>
 
         {openSettingsSubmenu && (
-          <button
-            type="button"
-            onClick={() => {
-              navigate("/login");
-              onClose();
-            }}
-            className="w-full pl-11 pr-4 py-2.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left"
-          >
-            {t("nav.forgotPassword")}
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                navigate("/profile/" + user?.id);
+                onClose();
+              }}
+              className="w-full flex items-center pl-11 gap-2 pr-4 py-2.5 text-sm  hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              <User size={18} />
+              {t("nav.profile")}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                i18n.changeLanguage(
+                  i18n.language.startsWith("vi") ? "en" : "vi",
+                );
+              }}
+              className="w-full flex items-center gap-2 pl-11 pr-4 py-2.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              <Languages size={18} />
+              <span>
+                {i18n.language.startsWith("vi")
+                  ? t("languageName.vi")
+                  : t("languageName.en")}
+              </span>
+            </button>
+          </>
         )}
       </div>
 

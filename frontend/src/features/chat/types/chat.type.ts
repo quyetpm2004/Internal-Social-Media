@@ -39,6 +39,7 @@ export interface ChatMessage {
   sender: ChatUser;
   attachments: MessageAttachment[];
   poll?: PollSummary | null;
+  mentions?: Array<{ id: number; fullName: string }>;
 }
 
 export interface Conversation {

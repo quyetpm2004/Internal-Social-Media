@@ -24,6 +24,7 @@ import type {
 import type { SendMessagePayload } from "@/features/chat/components/chat-window/MessageInput";
 import type { PollSummary } from "@/types/poll.type";
 import { useTranslation } from "react-i18next";
+import { ArrowLeft } from "lucide-react";
 
 export interface ChatOutletContext {
   conversation: ConversationDetail | null;
@@ -59,11 +60,7 @@ const getErrorMessage = (error: unknown, fallback: string) => {
     response?: { data?: { message?: string } };
     message?: string;
   };
-  return (
-    err?.response?.data?.message ||
-    err?.message ||
-    fallback
-  );
+  return err?.response?.data?.message || err?.message || fallback;
 };
 
 const TYPING_TIMEOUT_MS = 4000;
@@ -591,6 +588,8 @@ const ChatLayout = () => {
           content: payload.content,
           contentType: payload.contentType,
           attachmentIds: payload.attachmentIds,
+          mentionedUserIds: payload.mentionedUserIds,
+          mentionAll: payload.mentionAll,
           poll: payload.poll,
         });
         const newMessage = res.data;
@@ -769,26 +768,38 @@ const ChatLayout = () => {
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-background">
-      <ConversationList
-        conversations={conversations}
-        activeConversationId={conversationId}
-        currentUserId={currentUserId}
-        loading={loadingConversations}
-        onlineUserIds={onlineUserIdsList}
-        onSelectConversation={handleSelectConversation}
-        onOpenUserChat={handleOpenUserChat}
-        className={conversationId ? "hidden md:flex" : "flex"}
-      />
-
-      <div
-        className={`flex-1 flex min-w-0 ${
-          conversationId ? "flex" : "hidden md:flex"
-        }`}
-      >
-        <Outlet context={context} />
+    <>
+      <div className="md:hidden">
+        <button
+          onClick={() => navigate(-1)}
+          className="text-sm text-slate-500 hover:text-slate-700 py-4 dark:hover:text-slate-300 flex items-center gap-2 cursor-pointer"
+        >
+          <ArrowLeft size={16} />
+          <span className="font-medium">{t("common.back")}</span>
+        </button>
       </div>
-    </div>
+
+      <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-background">
+        <ConversationList
+          conversations={conversations}
+          activeConversationId={conversationId}
+          currentUserId={currentUserId}
+          loading={loadingConversations}
+          onlineUserIds={onlineUserIdsList}
+          onSelectConversation={handleSelectConversation}
+          onOpenUserChat={handleOpenUserChat}
+          className={conversationId ? "hidden md:flex" : "flex"}
+        />
+
+        <div
+          className={`flex-1 flex min-w-0 ${
+            conversationId ? "flex" : "hidden md:flex"
+          }`}
+        >
+          <Outlet context={context} />
+        </div>
+      </div>
+    </>
   );
 };
 

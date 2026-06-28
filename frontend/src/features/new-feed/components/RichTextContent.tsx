@@ -1,4 +1,10 @@
 import { useMemo } from "react";
+import MentionText from "@/features/mention/components/MentionText";
+import {
+  containsMentionHtml,
+  hasMentionTokens,
+  replaceMentionTokensWithHtml,
+} from "@/features/mention/utils/mention";
 import {
   resolveContentFormat,
   sanitizePostHtml,
@@ -35,12 +41,23 @@ const RichTextContent = ({
     const format = resolveContentFormat(content, contentFormat);
 
     if (format === "PLAIN") {
+      if (containsMentionHtml(content)) {
+        return {
+          type: "html" as const,
+          html: sanitizePostHtml(content),
+        };
+      }
+
+      if (hasMentionTokens(content)) {
+        return { type: "plain-mentions" as const, text: content };
+      }
+
       return { type: "plain" as const, text: content };
     }
 
     return {
       type: "html" as const,
-      html: sanitizePostHtml(content),
+      html: sanitizePostHtml(replaceMentionTokensWithHtml(content)),
     };
   }, [content, contentFormat]);
 
@@ -52,6 +69,14 @@ const RichTextContent = ({
         className={`${RICH_TEXT_DISPLAY_CLASS} whitespace-pre-wrap ${className}`}
       >
         {rendered.text}
+      </p>
+    );
+  }
+
+  if (rendered.type === "plain-mentions") {
+    return (
+      <p className={`${RICH_TEXT_DISPLAY_CLASS} ${className}`}>
+        <MentionText content={rendered.text} />
       </p>
     );
   }

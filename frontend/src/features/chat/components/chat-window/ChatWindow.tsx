@@ -87,6 +87,8 @@ const ChatWindow = ({
         disabled={sending}
         onTypingStart={onTypingStart}
         onTypingStop={onTypingStop}
+        currentUserId={currentUserId}
+        mentionCandidates={conversation.members.map((member) => member.user)}
       />
     </section>
   );

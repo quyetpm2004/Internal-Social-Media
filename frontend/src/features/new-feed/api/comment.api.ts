@@ -13,6 +13,14 @@ export type CommentReactionType =
   | "SAD"
   | "ANGRY";
 
+const buildMentionBody = (
+  mentionedUserIds?: number[],
+  mentionAll?: boolean,
+) => ({
+  ...(mentionedUserIds?.length ? { mentionedUserIds } : {}),
+  ...(mentionAll ? { mentionAll: true } : {}),
+});
+
 export const CommentApi = {
   getComments(postId: number, page = 1, limit = 10) {
     return axiosClient.get<ApiResponse<CommentApiResponse>>(
@@ -23,10 +31,17 @@ export const CommentApi = {
     );
   },
 
-  createComment(postId: number, content: string, isAnonymous?: boolean) {
+  createComment(
+    postId: number,
+    content: string,
+    isAnonymous?: boolean,
+    mentionedUserIds?: number[],
+    mentionAll?: boolean,
+  ) {
     return axiosClient.post(`/posts/${postId}/comments`, {
       content,
       ...(isAnonymous ? { isAnonymous: true } : {}),
+      ...buildMentionBody(mentionedUserIds, mentionAll),
     });
   },
 
@@ -39,15 +54,30 @@ export const CommentApi = {
     );
   },
 
-  replyComment(commentId: number, content: string, isAnonymous?: boolean) {
+  replyComment(
+    commentId: number,
+    content: string,
+    isAnonymous?: boolean,
+    mentionedUserIds?: number[],
+    mentionAll?: boolean,
+  ) {
     return axiosClient.post(`/comments/${commentId}/replies`, {
       content,
       ...(isAnonymous ? { isAnonymous: true } : {}),
+      ...buildMentionBody(mentionedUserIds, mentionAll),
     });
   },
 
-  updateComment(commentId: number, content: string) {
-    return axiosClient.patch(`/comments/${commentId}`, { content });
+  updateComment(
+    commentId: number,
+    content: string,
+    mentionedUserIds?: number[],
+    mentionAll?: boolean,
+  ) {
+    return axiosClient.patch(`/comments/${commentId}`, {
+      content,
+      ...buildMentionBody(mentionedUserIds, mentionAll),
+    });
   },
 
   deleteComment(commentId: number) {
@@ -58,5 +88,9 @@ export const CommentApi = {
     return axiosClient.post(`/comments/${commentId}/reactions`, {
       reactionType,
     });
+  },
+
+  pinComment(commentId: number, isPinned: boolean) {
+    return axiosClient.patch(`/comments/${commentId}/pin`, { isPinned });
   },
 };

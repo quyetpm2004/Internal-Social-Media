@@ -78,6 +78,10 @@ export const mapMessage = async (
   },
   attachments: await Promise.all(message.attachments.map(mapAttachment)),
   poll: message.poll ? mapPollSummary(message.poll, userId) : null,
+  mentions: message.mentions.map((mention) => ({
+    id: mention.mentionedUser.id,
+    fullName: mention.mentionedUser.fullName,
+  })),
 });
 
 export const assertConversationMember = async (

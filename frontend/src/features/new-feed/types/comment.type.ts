@@ -25,6 +25,7 @@ export type CommentItemType = {
   replyCount: number;
   reactionCount: number;
   currentReaction?: CommentReactionType | null;
+  isPinned?: boolean;
 };
 
 export interface CommentApiResponse {

@@ -15,6 +15,7 @@ import { formatMessageTime } from "@/features/chat/utils/format-message-time";
 import { formatFileSize } from "@/features/chat/utils/format-file-size";
 import { getDefaultAvatarUrl } from "@/lib/utils";
 import PollCard from "@/components/poll/PollCard";
+import MentionText from "@/features/mention/components/MentionText";
 import type { PollSummary } from "@/types/poll.type";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -45,7 +46,7 @@ const renderAttachment = (attachment: MessageAttachment, isOwn: boolean) => {
         href={attachment.fileUrl}
         target="_blank"
         rel="noreferrer"
-        className={`block rounded-xl overflow-hidden border-4 shadow-sm w-72 ${
+        className={`block rounded-xl overflow-hidden border-4 shadow-sm w-52 ${
           isOwn ? "border-primary/20 ml-auto" : "border-surface-container"
         }`}
       >
@@ -68,7 +69,7 @@ const renderAttachment = (attachment: MessageAttachment, isOwn: boolean) => {
         key={attachment.id}
         controls
         src={attachment.fileUrl}
-        className={`w-72 rounded-xl overflow-hidden border-4 shadow-sm ${
+        className={`w-52 rounded-xl overflow-hidden border-4 shadow-sm ${
           isOwn ? "border-primary/20 ml-auto" : "border-surface-container"
         }`}
       />
@@ -81,7 +82,7 @@ const renderAttachment = (attachment: MessageAttachment, isOwn: boolean) => {
       href={attachment.fileUrl ?? undefined}
       target="_blank"
       rel="noreferrer"
-      className={`flex items-center gap-3 px-3 py-2 rounded-lg border w-72 ${
+      className={`flex items-center gap-3 px-3 py-2 rounded-lg border w-52 ${
         isOwn
           ? "border-primary/20 bg-primary/5 ml-auto"
           : "border-outline-variant bg-surface-container"
@@ -435,7 +436,7 @@ const MessageBubble = ({
     if (message.contentType !== "POLL" || !message.poll || isDeleted)
       return null;
     return (
-      <div className="w-80">
+      <div className="w-52">
         <PollCard
           poll={message.poll}
           compact
@@ -493,7 +494,11 @@ const MessageBubble = ({
                     <div
                       className={`${ownBubbleClass} px-3 py-1.5 rounded-xl w-fit text-sm leading-relaxed shadow-md whitespace-pre-wrap wrap-break-word`}
                     >
-                      {message.content}
+                      <MentionText
+                        className={"text-white"}
+                        content={message.content}
+                        mentions={message.mentions}
+                      />
                     </div>
                   </div>
                 )}
@@ -573,7 +578,10 @@ const MessageBubble = ({
                 <div
                   className={`${otherBubbleClass} px-3 py-1.5 rounded-xl text-sm leading-relaxed shadow-sm whitespace-pre-wrap wrap-break-word w-fit`}
                 >
-                  {message.content}
+                  <MentionText
+                    content={message.content}
+                    mentions={message.mentions}
+                  />
                 </div>
               )}
             </>

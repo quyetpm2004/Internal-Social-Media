@@ -3,6 +3,7 @@ import type {
   CreatePostInput,
   PinPostInput,
   PostListQuery,
+  PostReactionListQuery,
   ReactPostInput,
   SavedPostListQuery,
   UpdatePostInput,
@@ -13,6 +14,7 @@ import {
   getSavedPostListService,
   getPostById,
   getPostListService,
+  getPostReactionsService,
   pinPostByUserId,
   reactPostService,
   toggleSavePostService,
@@ -47,6 +49,8 @@ export async function createPost(req: Request, res: Response) {
     groupId: body.groupId,
     attachmentIds: body.attachmentIds ?? [],
     isAnonymous: body.isAnonymous,
+    mentionedUserIds: body.mentionedUserIds ?? [],
+    mentionAll: body.mentionAll ?? false,
     poll: body.poll,
     event: body.event,
   });
@@ -66,6 +70,10 @@ export async function updatePost(req: Request, res: Response) {
     postId,
     content: body.content,
     contentFormat: body.contentFormat,
+    mentionedUserIds: body.mentionedUserIds ?? [],
+    mentionAll: body.mentionAll ?? false,
+    poll: body.poll,
+    event: body.event,
   });
 
   res.status(200).json({
@@ -87,6 +95,24 @@ export async function reactPost(req: Request, res: Response) {
   res.status(200).json({
     message: result.message,
     data: result.data,
+  });
+}
+
+export async function getPostReactions(req: Request, res: Response) {
+  const postId = Number(req.params.postId);
+  const { page, limit, reactionType } = req.validated as PostReactionListQuery;
+
+  const result = await getPostReactionsService({
+    userId: req.user!.id,
+    postId,
+    page,
+    limit,
+    reactionType,
+  });
+
+  res.status(200).json({
+    message: "Lấy danh sách cảm xúc thành công",
+    data: result,
   });
 }
 

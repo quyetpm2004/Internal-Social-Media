@@ -10,6 +10,7 @@ import {
   pinPostSchema,
   postIdParamsSchema,
   postListQuerySchema,
+  postReactionListQuerySchema,
   reactPostSchema,
   savedPostListQuerySchema,
   updatePostSchema,
@@ -41,6 +42,12 @@ router.post(
   "/",
   validateBody(createPostSchema),
   asyncHandler(postController.createPost),
+);
+router.get(
+  "/:postId/reactions",
+  validateParams(postIdParamsSchema),
+  validateQuery(postReactionListQuerySchema),
+  asyncHandler(postController.getPostReactions),
 );
 router.post(
   "/:postId/reactions",

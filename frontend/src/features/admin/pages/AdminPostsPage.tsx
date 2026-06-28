@@ -26,6 +26,16 @@ function getErrorMessage(error: unknown): string {
   return "Unexpected error";
 }
 
+function getPostStatusLabel(
+  status: string,
+  t: (key: string) => string,
+) {
+  if (status === "ACTIVE") return t("common.active");
+  if (status === "PENDING_REVIEW") return t("common.pendingReview");
+  if (status === "HIDDEN") return t("pages.admin.commentHidden");
+  return t("common.locked");
+}
+
 export default function AdminPostsPage() {
   const { t } = useTranslation();
   const [posts, setPosts] = useState<AdminPost[]>([]);
@@ -119,11 +129,11 @@ export default function AdminPostsPage() {
                   <TableCell>{post.group?.groupName ?? t("pages.admin.newsFeed")}</TableCell>
                   <TableCell>
                     <Badge
-                      variant={post.status === "ACTIVE" ? "active" : "inactive"}
+                      variant={
+                        post.status === "ACTIVE" ? "active" : "inactive"
+                      }
                     >
-                      {post.status === "ACTIVE"
-                        ? t("common.active")
-                        : t("common.locked")}
+                      {getPostStatusLabel(post.status, t)}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">

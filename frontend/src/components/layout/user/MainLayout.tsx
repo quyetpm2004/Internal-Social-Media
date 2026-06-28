@@ -11,12 +11,14 @@ export default function MainLayout() {
   return (
     <MessengerProvider>
       <TooltipProvider delayDuration={0}>
-        <SidebarProvider style={{ "--sidebar-width": "20rem" } as CSSProperties}>
+        <SidebarProvider
+          style={{ "--sidebar-width": "20rem" } as CSSProperties}
+        >
           <div className="min-h-screen bg-background w-full">
             <AppHeader />
             <div className="flex pt-16">
               <AppSidebar />
-              <div className="flex-1 w-full min-w-0 mx-auto">
+              <div className="flex-1 w-full min-w-0 mx-auto px-1 md:px-0">
                 <Outlet />
               </div>
             </div>

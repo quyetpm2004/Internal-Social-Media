@@ -207,6 +207,8 @@ const FloatingChatWindow = ({
               onTypingStart={onTypingStart}
               onTypingStop={onTypingStop}
               compact
+              currentUserId={currentUserId}
+              mentionCandidates={conversation.members.map((member) => member.user)}
             />
           </div>
         </>

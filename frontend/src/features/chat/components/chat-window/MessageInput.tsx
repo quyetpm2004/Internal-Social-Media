@@ -27,14 +27,20 @@ import {
   type PresignedItem,
   type UploadPurpose,
 } from "@/features/uploads/api/upload.api";
-import type { MessageContentType } from "@/features/chat/types/chat.type";
+import type {
+  ChatUser,
+  MessageContentType,
+} from "@/features/chat/types/chat.type";
 import type { PollInput } from "@/types/poll.type";
+import MentionTextarea from "@/features/mention/components/MentionTextarea";
 import { useTranslation } from "react-i18next";
 
 export interface SendMessagePayload {
   content: string;
   contentType: MessageContentType;
   attachmentIds: number[];
+  mentionedUserIds?: number[];
+  mentionAll?: boolean;
   poll?: PollInput;
 }
 
@@ -44,6 +50,8 @@ interface MessageInputProps {
   onTypingStart?: () => void;
   onTypingStop?: () => void;
   compact?: boolean;
+  currentUserId?: number;
+  mentionCandidates?: ChatUser[];
 }
 
 interface PreviewItem {
@@ -83,9 +91,13 @@ const MessageInput = ({
   onTypingStart,
   onTypingStop,
   compact = false,
+  currentUserId,
+  mentionCandidates,
 }: MessageInputProps) => {
   const { t } = useTranslation();
   const [value, setValue] = useState("");
+  const [mentionedUserIds, setMentionedUserIds] = useState<number[]>([]);
+  const [mentionAll, setMentionAll] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [previews, setPreviews] = useState<PreviewItem[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -105,7 +117,6 @@ const MessageInput = ({
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const emojiPanelRef = useRef<HTMLDivElement | null>(null);
 
   // Tạo preview URLs và cleanup khi attachments thay đổi
@@ -144,6 +155,16 @@ const MessageInput = ({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showEmojiPicker]);
+
+  const chatMentionCandidates = useMemo(
+    () =>
+      mentionCandidates?.map((user) => ({
+        id: user.id,
+        fullName: user.fullName,
+        avatarUrl: user.avatarUrl,
+      })),
+    [mentionCandidates],
+  );
 
   const canSubmit = useMemo(() => {
     if (disabled || uploading) return false;
@@ -222,6 +243,8 @@ const MessageInput = ({
 
   const resetForm = () => {
     setValue("");
+    setMentionedUserIds([]);
+    setMentionAll(false);
     setAttachments([]);
     setPoll(null);
     onTypingStop?.();
@@ -271,6 +294,8 @@ const MessageInput = ({
         content: trimmed,
         contentType,
         attachmentIds,
+        mentionedUserIds,
+        mentionAll,
       });
 
       resetForm();
@@ -283,32 +308,18 @@ const MessageInput = ({
     }
   };
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (
+    event: KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>,
+  ) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       handleSubmit();
     }
   };
 
-  const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
-    const next = event.target.value;
-    setValue(next);
-
-    if (next.trim().length > 0) {
-      onTypingStart?.();
-    } else {
-      onTypingStop?.();
-    }
-  };
-
-  const handleBlur = () => {
-    onTypingStop?.();
-  };
-
   const handleEmojiClick = (emojiData: { emoji: string }) => {
     setValue((prev) => prev + emojiData.emoji);
     onTypingStart?.();
-    textareaRef.current?.focus();
   };
 
   const handleQuickLike = async () => {
@@ -428,14 +439,26 @@ const MessageInput = ({
           </button>
 
           <div className="flex-1 relative flex items-center bg-[#f0f2f5] rounded-full px-3 py-1.5 min-w-0">
-            <textarea
-              ref={textareaRef}
+            <MentionTextarea
+              multiline
               rows={1}
-              placeholder={t("pages.chat.messengerInputPlaceholder")}
               value={value}
-              onChange={handleChange}
+              mentionCandidates={chatMentionCandidates}
+              excludeMentionUserId={currentUserId}
+              allowMentionAll={Boolean(chatMentionCandidates?.length)}
+              onMentionedUserIdsChange={setMentionedUserIds}
+              onMentionAllChange={setMentionAll}
+              onChange={(next) => {
+                setValue(next);
+                if (next.trim().length > 0) {
+                  onTypingStart?.();
+                } else {
+                  onTypingStop?.();
+                }
+              }}
               onKeyDown={handleKeyDown}
-              onBlur={handleBlur}
+              onBlur={() => onTypingStop?.()}
+              placeholder={t("pages.chat.messengerInputPlaceholder")}
               disabled={disabled || uploading}
               className="flex-1 bg-transparent border-none focus:ring-0 focus:outline-none text-sm py-0.5 resize-none max-h-24 text-[#050505] placeholder:text-[#65676b] disabled:opacity-60"
             />
@@ -631,18 +654,30 @@ const MessageInput = ({
           </button>
         </div>
 
-        <textarea
-          ref={textareaRef}
+        <MentionTextarea
+          multiline
           rows={1}
+          value={value}
+          mentionCandidates={chatMentionCandidates}
+          excludeMentionUserId={currentUserId}
+          allowMentionAll={Boolean(chatMentionCandidates?.length)}
+          onMentionedUserIdsChange={setMentionedUserIds}
+          onMentionAllChange={setMentionAll}
+          onChange={(next) => {
+            setValue(next);
+            if (next.trim().length > 0) {
+              onTypingStart?.();
+            } else {
+              onTypingStop?.();
+            }
+          }}
+          onKeyDown={handleKeyDown}
+          onBlur={() => onTypingStop?.()}
           placeholder={
             poll ? t("pages.chat.creatingPoll") : t("pages.chat.typeMessage")
           }
-          value={value}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onBlur={handleBlur}
           disabled={disabled || uploading || Boolean(poll)}
-          className="flex-1 bg-transparent border-none focus:ring-0 focus:outline-none text-sm py-2 px-1 resize-none max-h-32 font-body text-on-surface placeholder:text-on-surface-variant disabled:opacity-60"
+          className="flex-1 bg-transparent border-none focus:ring-0 focus:outline-none text-sm py-2 px-1 resize-none max-h-32 w-full font-body text-on-surface placeholder:text-on-surface-variant disabled:opacity-60"
         />
 
         <div className="flex items-center gap-1 relative">

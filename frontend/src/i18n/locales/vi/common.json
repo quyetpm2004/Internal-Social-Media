@@ -132,7 +132,9 @@
       "minutesAgo": "{{count}} phút trước",
       "hoursAgo": "{{count}} giờ trước",
       "daysAgo": "{{count}} ngày trước"
-    }
+    },
+    "anonymous": "Ẩn danh",
+    "anonymousUser": "Người dùng ẩn danh"
   },
   "nav": {
     "home": "Trang chủ",
@@ -151,6 +153,8 @@
     "dashboard": "Tổng quan",
     "users": "Người dùng",
     "posts": "Bài viết",
+    "pendingPosts": "Chờ duyệt",
+    "comments": "Bình luận",
     "groups": "Nhóm",
     "logoutTitle": "Đăng xuất?",
     "logoutDescription": "Bạn có chắc muốn đăng xuất khỏi tài khoản admin?"
@@ -277,6 +281,8 @@
       "reply": "Trả lời",
       "writeReply": "Viết phản hồi...",
       "deleteConfirm": "Bạn có chắc muốn xóa bài viết này không?",
+      "deleteCommentTitle": "Xóa bình luận",
+      "deleteCommentConfirm": "Bạn có chắc muốn xóa bình luận này không?",
       "saved": "Đã lưu bài viết",
       "unsaved": "Đã bỏ lưu bài viết",
       "saveFailed": "Không thể lưu bài viết. Vui lòng thử lại.",
@@ -286,6 +292,17 @@
       "delete": "Xóa bài viết",
       "save": "Lưu",
       "savedState": "Đã lưu",
+      "reactionsAll": "Tất cả",
+      "reactionsTitle": "Người đã thả cảm xúc",
+      "viewReactions": "Xem người đã thả cảm xúc",
+      "noReactions": "Chưa có ai thả cảm xúc",
+      "message": "Nhắn tin",
+      "additionalContent": "Nội dung thêm",
+      "pinComment": "Ghim bình luận",
+      "unpinComment": "Bỏ ghim bình luận",
+      "pinnedComment": "Bình luận nổi bật",
+      "pinCommentSuccess": "Đã ghim bình luận",
+      "unpinCommentSuccess": "Đã bỏ ghim bình luận",
       "pinTitle": "Ghim bài",
       "unpinTitle": "Gỡ bài ghim",
       "pinConfirm": "Bạn có chắc chắn muốn ghim bài viết này không?",
@@ -331,7 +348,8 @@
       "multipleChoice": "Chọn nhiều",
       "changeVote": "Thay đổi bình chọn",
       "updateVote": "Cập nhật bình chọn",
-      "vote": "Bình chọn"
+      "vote": "Bình chọn",
+      "invalidPoll": "Vui lòng nhập đầy đủ câu hỏi và ít nhất 2 lựa chọn"
     },
     "event": {
       "titlePlaceholder": "Tên sự kiện...",
@@ -345,7 +363,8 @@
       "viewAttendees": "Xem người tham gia",
       "attendeesTitle": "Người tham gia sự kiện",
       "updateStatusFailed": "Không thể cập nhật trạng thái tham gia.",
-      "loadAttendeesFailed": "Không lấy được danh sách tham gia."
+      "loadAttendeesFailed": "Không lấy được danh sách tham gia.",
+      "invalidEvent": "Vui lòng nhập đầy đủ thông tin sự kiện"
     },
     "system": {
       "forbiddenTitle": "Forbidden!",
@@ -373,6 +392,9 @@
       "commentReply": "đã trả lời bình luận của bạn",
       "commentReactionPrefix": "đã thả cảm xúc",
       "commentReactionSuffix": "bình luận của bạn",
+      "postMention": "đã tag bạn trong một bài viết",
+      "commentMention": "đã tag bạn trong một bình luận",
+      "messageMention": "đã nhắc đến bạn trong tin nhắn",
       "groupMemberAdded": "đã thêm bạn vào nhóm",
       "groupRoleChangedPrefix": "đã thay đổi quyền của bạn trong nhóm",
       "groupRoleChangedSuffix": "thành",
@@ -392,6 +414,11 @@
         "moderator": "Kiểm duyệt viên",
         "admin": "Quản trị viên"
       }
+    },
+    "mention": {
+      "searching": "Đang tìm người...",
+      "mentionAll": "@all",
+      "mentionAllDescription": "Tag tất cả thành viên"
     },
     "search": {
       "searchPlaceholder": "Tìm kiếm trên Workplace",
@@ -611,7 +638,46 @@
       "totalGroups": "Tổng nhóm",
       "memberStatusActive": "Đang tham gia",
       "memberStatusPending": "Chờ duyệt",
-      "memberStatusBlocked": "Đã chặn"
+      "memberStatusBlocked": "Đã chặn",
+      "pendingPostsTitle": "Bài viết chờ duyệt",
+      "pendingPostsDescription": "Duyệt hoặc từ chối các bài viết đang chờ phê duyệt trong nhóm.",
+      "noPendingPosts": "Không có bài viết nào đang chờ duyệt.",
+      "approve": "Duyệt",
+      "reject": "Từ chối",
+      "postApproved": "Đã duyệt bài viết",
+      "postRejected": "Đã từ chối bài viết",
+      "commentsTitle": "Quản lý bình luận",
+      "commentsDescription": "Ẩn, khôi phục hoặc xóa bình luận vi phạm trên toàn hệ thống.",
+      "searchCommentsPlaceholder": "Tìm theo nội dung, tác giả hoặc bài viết...",
+      "allCommentStatuses": "Tất cả trạng thái",
+      "commentHidden": "Đã ẩn",
+      "commentDeleted": "Đã xóa",
+      "relatedPost": "Bài viết liên quan",
+      "anonymousComment": "Bình luận ẩn danh",
+      "hide": "Ẩn",
+      "restore": "Khôi phục",
+      "commentStatusUpdated": "Đã cập nhật trạng thái bình luận",
+      "hideCommentTitle": "Ẩn bình luận?",
+      "hideCommentDescription": "Bình luận này sẽ không còn hiển thị với người dùng.",
+      "deleteCommentTitle": "Xóa bình luận?",
+      "deleteCommentDescription": "Bình luận này sẽ bị đánh dấu đã xóa.",
+      "restoreCommentTitle": "Khôi phục bình luận?",
+      "restoreCommentDescription": "Bình luận này sẽ hiển thị lại bình thường.",
+      "growthChartTitle": "Tăng trưởng 14 ngày gần đây",
+      "growthChartDescription": "Số lượng người dùng, bài viết và bình luận mới theo ngày.",
+      "chartUsers": "Người dùng",
+      "chartPosts": "Bài viết",
+      "chartComments": "Bình luận",
+      "postVisibilityTitle": "Phân bổ bài viết",
+      "publicPosts": "Bảng tin công khai",
+      "groupPosts": "Bài viết trong nhóm",
+      "topGroupsTitle": "Top nhóm hoạt động",
+      "noGroupsChart": "Chưa có dữ liệu nhóm.",
+      "allRoles": "Tất cả vai trò",
+      "changeRole": "Đổi vai trò",
+      "changeRoleTitle": "Đổi vai trò người dùng",
+      "changeRoleDescription": "Chọn vai trò mới cho {{name}}.",
+      "roleUpdated": "Đã cập nhật vai trò người dùng"
     }
   }
 }

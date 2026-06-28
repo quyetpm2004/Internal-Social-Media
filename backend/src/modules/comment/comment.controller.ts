@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import type {
   CommentListQuery,
   CreateCommentInput,
+  PinCommentInput,
   ReactCommentInput,
   ReplyCommentInput,
   UpdateCommentInput,
@@ -11,6 +12,7 @@ import {
   deleteCommentService,
   getCommentRepliesService,
   getPostCommentsService,
+  pinCommentService,
   reactCommentService,
   replyCommentService,
   updateCommentService,
@@ -42,6 +44,7 @@ export async function createComment(req: Request, res: Response) {
     postId,
     content: body.content,
     mentionedUserIds: body.mentionedUserIds,
+    mentionAll: body.mentionAll,
     isAnonymous: body.isAnonymous,
   });
 
@@ -77,6 +80,7 @@ export async function replyComment(req: Request, res: Response) {
     parentCommentId: commentId,
     content: body.content,
     mentionedUserIds: body.mentionedUserIds,
+    mentionAll: body.mentionAll,
     isAnonymous: body.isAnonymous,
   });
 
@@ -111,6 +115,7 @@ export async function updateComment(req: Request, res: Response) {
     commentId,
     content: body.content,
     mentionedUserIds: body.mentionedUserIds,
+    mentionAll: body.mentionAll,
   });
 
   res.status(200).json({
@@ -130,5 +135,23 @@ export async function deleteComment(req: Request, res: Response) {
   res.status(200).json({
     message: result.message,
     data: result.data,
+  });
+}
+
+export async function pinComment(req: Request, res: Response) {
+  const commentId = Number(req.params.commentId);
+  const { isPinned } = req.validated as PinCommentInput;
+
+  const result = await pinCommentService({
+    userId: req.user!.id,
+    commentId,
+    isPinned,
+  });
+
+  res.status(200).json({
+    message: isPinned
+      ? "Ghim bình luận thành công"
+      : "Bỏ ghim bình luận thành công",
+    data: result,
   });
 }

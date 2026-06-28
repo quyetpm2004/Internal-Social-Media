@@ -3,17 +3,33 @@ import { CommentApi } from "@/features/new-feed/api/comment.api";
 import type { CommentItemType } from "@/features/new-feed/types/comment.type";
 import CommentInput from "@/features/new-feed/components/CommentInput";
 import CommentItem from "@/features/new-feed/components/CommentItem";
+import type { MentionUser } from "@/features/mention/utils/mention";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
 type CommentSectionProps = {
   postId: number;
+  canPinComment?: boolean;
   allowAnonymousComment?: boolean;
+  mentionCandidates?: MentionUser[];
+  excludeMentionUserId?: number;
 };
+
+const sortComments = (items: CommentItemType[]) =>
+  [...items].sort((a, b) => {
+    if (Boolean(a.isPinned) !== Boolean(b.isPinned)) {
+      return a.isPinned ? -1 : 1;
+    }
+
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
 
 const CommentSection = ({
   postId,
+  canPinComment = false,
   allowAnonymousComment = false,
+  mentionCandidates,
+  excludeMentionUserId,
 }: CommentSectionProps) => {
   const { t } = useTranslation();
   const [comments, setComments] = useState<CommentItemType[]>([]);
@@ -45,8 +61,8 @@ const CommentSection = ({
       const hasMoreValue = payload.hasMore ?? false;
 
       setComments((prev) => {
-        if (nextPage === 1) return data;
-        return [...prev, ...data];
+        if (nextPage === 1) return sortComments(data);
+        return sortComments([...prev, ...data]);
       });
 
       setPage(payload.page ?? nextPage);
@@ -63,11 +79,22 @@ const CommentSection = ({
     }
   };
 
-  const handleCreateComment = async (content: string, isAnonymous?: boolean) => {
+  const handleCreateComment = async (
+    content: string,
+    isAnonymous?: boolean,
+    mentionedUserIds?: number[],
+    mentionAll?: boolean,
+  ) => {
     try {
       setCreating(true);
 
-      const res = await CommentApi.createComment(postId, content, isAnonymous);
+      const res = await CommentApi.createComment(
+        postId,
+        content,
+        isAnonymous,
+        mentionedUserIds,
+        mentionAll,
+      );
       const newComment = res.data;
 
       setComments((prev) => [newComment, ...prev]);
@@ -150,6 +177,24 @@ const CommentSection = ({
     });
   };
 
+  const handlePinned = (commentId: number, isPinned: boolean) => {
+    setComments((prev) =>
+      sortComments(
+        prev.map((item) => {
+          if (item.id === commentId) {
+            return { ...item, isPinned };
+          }
+
+          if (isPinned) {
+            return { ...item, isPinned: false };
+          }
+
+          return item;
+        }),
+      ),
+    );
+  };
+
   const handleReplyCreated = (parentId: number, reply: CommentItemType) => {
     setRepliesMap((prev) => ({
       ...prev,
@@ -185,6 +230,8 @@ const CommentSection = ({
         loading={creating}
         placeholder={t("pages.posts.writeComment")}
         allowAnonymous={allowAnonymousComment}
+        mentionCandidates={mentionCandidates}
+        excludeMentionUserId={excludeMentionUserId}
         onSubmit={handleCreateComment}
       />
 
@@ -200,8 +247,12 @@ const CommentSection = ({
               <CommentItem
                 comment={comment}
                 allowAnonymousComment={allowAnonymousComment}
+                canPinComment={canPinComment}
+                mentionCandidates={mentionCandidates}
+                excludeMentionUserId={excludeMentionUserId}
                 onDeleted={handleDeleted}
                 onUpdated={handleUpdated}
+                onPinned={handlePinned}
                 onReplyCreated={handleReplyCreated}
               />
 
@@ -221,6 +272,8 @@ const CommentSection = ({
                   comment={reply}
                   isReply
                   allowAnonymousComment={allowAnonymousComment}
+                  mentionCandidates={mentionCandidates}
+                  excludeMentionUserId={excludeMentionUserId}
                   onDeleted={handleDeleted}
                   onUpdated={handleUpdated}
                 />

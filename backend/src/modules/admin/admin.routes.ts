@@ -2,12 +2,17 @@ import { Role } from "@prisma/client";
 import { Router } from "express";
 import * as adminController from "@/modules/admin/admin.controller";
 import {
+  adminCommentListQuerySchema,
   adminGroupListQuerySchema,
   adminGroupMembersQuerySchema,
   adminPostListQuerySchema,
   adminUserListQuerySchema,
+  commentIdParamsSchema,
   groupIdParamsSchema,
   postIdParamsSchema,
+  reviewPostSchema,
+  updateCommentStatusSchema,
+  updateUserRoleSchema,
   updateUserStatusSchema,
   userIdParamsSchema,
 } from "@/modules/admin/admin.schema";
@@ -37,6 +42,12 @@ router.patch(
   validateBody(updateUserStatusSchema),
   asyncHandler(adminController.updateUserStatus),
 );
+router.patch(
+  "/users/:userId/role",
+  validateParams(userIdParamsSchema),
+  validateBody(updateUserRoleSchema),
+  asyncHandler(adminController.updateUserRole),
+);
 
 router.get(
   "/posts",
@@ -48,10 +59,28 @@ router.get(
   validateParams(postIdParamsSchema),
   asyncHandler(adminController.getPostDetail),
 );
+router.patch(
+  "/posts/:postId/review",
+  validateParams(postIdParamsSchema),
+  validateBody(reviewPostSchema),
+  asyncHandler(adminController.reviewPost),
+);
 router.delete(
   "/posts/:postId",
   validateParams(postIdParamsSchema),
   asyncHandler(adminController.deletePost),
+);
+
+router.get(
+  "/comments",
+  validateQuery(adminCommentListQuerySchema),
+  asyncHandler(adminController.listComments),
+);
+router.patch(
+  "/comments/:commentId/status",
+  validateParams(commentIdParamsSchema),
+  validateBody(updateCommentStatusSchema),
+  asyncHandler(adminController.updateCommentStatus),
 );
 
 router.get(

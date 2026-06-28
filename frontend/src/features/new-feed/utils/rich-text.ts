@@ -45,7 +45,7 @@ const SANITIZE_CONFIG: Config = {
     "li",
     "a",
   ],
-  ALLOWED_ATTR: ["style", "href", "target", "rel"],
+  ALLOWED_ATTR: ["style", "href", "target", "rel", "class", "data-mention-id"],
 };
 
 export type PostContentFormat = "PLAIN" | "HTML";

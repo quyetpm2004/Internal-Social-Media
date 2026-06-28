@@ -1,5 +1,10 @@
-import { ReactionType } from "@prisma/client";
-
+import {
+  ReactionType,
+  GroupMemberRole,
+  GroupMemberStatus,
+  Role,
+  CommentStatus,
+} from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
 import prisma from "@/shared/utils/prisma";
 import { getFileUrl } from "@/modules/file/file.service";
@@ -8,10 +13,16 @@ import {
   maskGroupCommentAuthors,
 } from "@/shared/utils/group-anonymous";
 import {
+  notifyCommentMentions,
   notifyCommentReaction,
   notifyCommentReply,
   notifyPostComment,
 } from "@/modules/notification/notification.service";
+import {
+  assertMentionedUsersExist,
+  assertMentionedUsersInGroup,
+  resolveMentionTargets,
+} from "@/shared/utils/mentions";
 
 type GetPostCommentsParams = {
   userId: number;
@@ -32,6 +43,7 @@ type CreateCommentParams = {
   postId: number;
   content: string;
   mentionedUserIds?: number[];
+  mentionAll?: boolean;
   isAnonymous?: boolean;
 };
 
@@ -40,6 +52,7 @@ type ReplyCommentParams = {
   parentCommentId: number;
   content: string;
   mentionedUserIds?: number[];
+  mentionAll?: boolean;
   isAnonymous?: boolean;
 };
 
@@ -54,11 +67,114 @@ type UpdateCommentParams = {
   commentId: number;
   content: string;
   mentionedUserIds?: number[];
+  mentionAll?: boolean;
 };
 
 type DeleteCommentParams = {
   userId: number;
   commentId: number;
+};
+
+type PinCommentParams = {
+  userId: number;
+  commentId: number;
+  isPinned: boolean;
+};
+
+const commentInclude = (userId: number) => ({
+  user: {
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      profile: {
+        select: {
+          avatarKey: true,
+        },
+      },
+    },
+  },
+  reactions: {
+    where: {
+      userId,
+    },
+    select: {
+      reactionType: true,
+    },
+  },
+  mentions: {
+    include: {
+      mentionedUser: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+        },
+      },
+    },
+  },
+  _count: {
+    select: {
+      replies: {
+        where: {
+          status: CommentStatus.ACTIVE,
+        },
+      },
+      reactions: true,
+    },
+  },
+});
+
+const assertCanPinComment = async (postId: number, userId: number) => {
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: {
+      userId: true,
+      groupId: true,
+    },
+  });
+
+  if (!post) {
+    throw new AppError(404, "Bài viết không tồn tại");
+  }
+
+  if (post.userId === userId) {
+    return;
+  }
+
+  if (post.groupId) {
+    const member = await prisma.groupMember.findUnique({
+      where: {
+        groupId_userId: {
+          groupId: post.groupId,
+          userId,
+        },
+      },
+      select: {
+        memberRole: true,
+        status: true,
+      },
+    });
+
+    if (
+      member?.status === GroupMemberStatus.ACTIVE &&
+      (member.memberRole === GroupMemberRole.ADMIN ||
+        member.memberRole === GroupMemberRole.MODERATOR)
+    ) {
+      return;
+    }
+  } else {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (user?.role === Role.ADMIN) {
+      return;
+    }
+  }
+
+  throw new AppError(403, "Bạn không có quyền ghim bình luận");
 };
 
 const formatCommentResponse = async (comment: any) => ({
@@ -69,6 +185,7 @@ const formatCommentResponse = async (comment: any) => ({
   content: comment.content,
   status: comment.status,
   isAnonymous: comment.isAnonymous ?? false,
+  isPinned: comment.isPinned ?? false,
   createdAt: comment.createdAt,
   updatedAt: comment.updatedAt,
   user: {
@@ -164,52 +281,8 @@ export const getPostCommentsService = async ({
     },
     skip,
     take: limit + 1,
-    orderBy: {
-      createdAt: "desc",
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-          profile: {
-            select: {
-              avatarKey: true,
-            },
-          },
-        },
-      },
-      reactions: {
-        where: {
-          userId: userId,
-        },
-        select: {
-          reactionType: true,
-        },
-      },
-      mentions: {
-        include: {
-          mentionedUser: {
-            select: {
-              id: true,
-              fullName: true,
-              email: true,
-            },
-          },
-        },
-      },
-      _count: {
-        select: {
-          replies: {
-            where: {
-              status: "ACTIVE",
-            },
-          },
-          reactions: true,
-        },
-      },
-    },
+    orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
+    include: commentInclude(userId),
   });
 
   const hasMore = comments.length > limit;
@@ -231,7 +304,7 @@ export const getPostCommentsService = async ({
     page,
     limit,
     hasMore,
-    comments,
+    comments: formattedComments,
   };
 };
 
@@ -349,6 +422,7 @@ export const createCommentService = async ({
   postId,
   content,
   mentionedUserIds = [],
+  mentionAll = false,
   isAnonymous: wantsAnonymous = false,
 }: CreateCommentParams) => {
   const [existingUser, existingPost] = await Promise.all([
@@ -381,23 +455,18 @@ export const createCommentService = async ({
     throw new AppError(400, "Chỉ có thể bình luận ẩn danh trong nhóm");
   }
 
-  const uniqueMentionedUserIds = [
-    ...new Set(mentionedUserIds.map(Number)),
-  ].filter((id) => Number.isInteger(id) && id > 0);
-
-  if (uniqueMentionedUserIds.length > 0) {
-    const mentionedUsers = await prisma.user.findMany({
-      where: {
-        id: {
-          in: uniqueMentionedUserIds,
-        },
-      },
-      select: { id: true },
-    });
-
-    if (mentionedUsers.length !== uniqueMentionedUserIds.length) {
-      throw new AppError(404, "Có người dùng được mention không tồn tại");
-    }
+  const uniqueMentionedUserIds = await resolveMentionTargets({
+    mentionAll,
+    mentionedUserIds,
+    actorId: userId,
+    groupId: existingPost.groupId,
+  });
+  await assertMentionedUsersExist(uniqueMentionedUserIds);
+  if (existingPost.groupId) {
+    await assertMentionedUsersInGroup(
+      existingPost.groupId,
+      uniqueMentionedUserIds,
+    );
   }
 
   const comment = await prisma.comment.create({
@@ -454,6 +523,12 @@ export const createCommentService = async ({
   });
 
   await notifyPostComment(postId, comment.id, userId);
+  await notifyCommentMentions(
+    postId,
+    comment.id,
+    userId,
+    uniqueMentionedUserIds,
+  );
 
   const formatted = await formatCommentResponse(comment);
   if (!existingPost.groupId) {
@@ -471,6 +546,7 @@ export const replyCommentService = async ({
   parentCommentId,
   content,
   mentionedUserIds = [],
+  mentionAll = false,
   isAnonymous: wantsAnonymous = false,
 }: ReplyCommentParams) => {
   const [existingUser, parentComment] = await Promise.all([
@@ -513,23 +589,15 @@ export const replyCommentService = async ({
     throw new AppError(400, "Chỉ có thể bình luận ẩn danh trong nhóm");
   }
 
-  const uniqueMentionedUserIds = [
-    ...new Set(mentionedUserIds.map(Number)),
-  ].filter((id) => Number.isInteger(id) && id > 0);
-
-  if (uniqueMentionedUserIds.length > 0) {
-    const mentionedUsers = await prisma.user.findMany({
-      where: {
-        id: {
-          in: uniqueMentionedUserIds,
-        },
-      },
-      select: { id: true },
-    });
-
-    if (mentionedUsers.length !== uniqueMentionedUserIds.length) {
-      throw new AppError(404, "Có người dùng được mention không tồn tại");
-    }
+  const uniqueMentionedUserIds = await resolveMentionTargets({
+    mentionAll,
+    mentionedUserIds,
+    actorId: userId,
+    groupId: groupId ?? null,
+  });
+  await assertMentionedUsersExist(uniqueMentionedUserIds);
+  if (groupId) {
+    await assertMentionedUsersInGroup(groupId, uniqueMentionedUserIds);
   }
 
   const reply = await prisma.comment.create({
@@ -590,6 +658,12 @@ export const replyCommentService = async ({
     reply.id,
     parentCommentId,
     userId,
+  );
+  await notifyCommentMentions(
+    parentComment.postId,
+    reply.id,
+    userId,
+    uniqueMentionedUserIds,
   );
 
   const formatted = await formatCommentResponse(reply);
@@ -719,13 +793,18 @@ export const updateCommentService = async ({
   commentId,
   content,
   mentionedUserIds = [],
+  mentionAll = false,
 }: UpdateCommentParams) => {
   const existingComment = await prisma.comment.findUnique({
     where: { id: commentId },
     select: {
       id: true,
       userId: true,
+      postId: true,
       status: true,
+      post: {
+        select: { groupId: true },
+      },
     },
   });
 
@@ -741,23 +820,18 @@ export const updateCommentService = async ({
     throw new AppError(403, "Bạn không có quyền sửa comment này");
   }
 
-  const uniqueMentionedUserIds = [
-    ...new Set(mentionedUserIds.map(Number)),
-  ].filter((id) => Number.isInteger(id) && id > 0);
-
-  if (uniqueMentionedUserIds.length > 0) {
-    const mentionedUsers = await prisma.user.findMany({
-      where: {
-        id: {
-          in: uniqueMentionedUserIds,
-        },
-      },
-      select: { id: true },
-    });
-
-    if (mentionedUsers.length !== uniqueMentionedUserIds.length) {
-      throw new AppError(404, "Có người dùng được mention không tồn tại");
-    }
+  const uniqueMentionedUserIds = await resolveMentionTargets({
+    mentionAll,
+    mentionedUserIds,
+    actorId: userId,
+    groupId: existingComment.post?.groupId ?? null,
+  });
+  await assertMentionedUsersExist(uniqueMentionedUserIds);
+  if (existingComment.post?.groupId) {
+    await assertMentionedUsersInGroup(
+      existingComment.post.groupId,
+      uniqueMentionedUserIds,
+    );
   }
 
   const updatedComment = await prisma.comment.update({
@@ -814,6 +888,13 @@ export const updateCommentService = async ({
     },
   });
 
+  await notifyCommentMentions(
+    existingComment.postId,
+    commentId,
+    userId,
+    uniqueMentionedUserIds,
+  );
+
   return await formatCommentResponse(updatedComment);
 };
 
@@ -862,4 +943,84 @@ export const deleteCommentService = async ({
       deleted: true,
     },
   };
+};
+
+export const pinCommentService = async ({
+  userId,
+  commentId,
+  isPinned,
+}: PinCommentParams) => {
+  const existingComment = await prisma.comment.findUnique({
+    where: { id: commentId },
+    select: {
+      id: true,
+      postId: true,
+      parentCommentId: true,
+      status: true,
+      post: {
+        select: {
+          groupId: true,
+        },
+      },
+    },
+  });
+
+  if (!existingComment) {
+    throw new AppError(404, "Bình luận không tồn tại");
+  }
+
+  if (existingComment.status !== "ACTIVE") {
+    throw new AppError(400, "Bình luận không khả dụng");
+  }
+
+  if (existingComment.parentCommentId !== null) {
+    throw new AppError(400, "Chỉ có thể ghim bình luận cấp 1");
+  }
+
+  await assertCanPinComment(existingComment.postId, userId);
+
+  await prisma.$transaction(async (tx) => {
+    if (isPinned) {
+      await tx.comment.updateMany({
+        where: {
+          postId: existingComment.postId,
+          parentCommentId: null,
+          isPinned: true,
+          id: {
+            not: commentId,
+          },
+        },
+        data: {
+          isPinned: false,
+        },
+      });
+    }
+
+    await tx.comment.update({
+      where: { id: commentId },
+      data: { isPinned },
+    });
+  });
+
+  const updatedComment = await prisma.comment.findUnique({
+    where: { id: commentId },
+    include: commentInclude(userId),
+  });
+
+  if (!updatedComment) {
+    throw new AppError(404, "Bình luận không tồn tại");
+  }
+
+  let formatted = await formatCommentResponse(updatedComment);
+
+  if (existingComment.post?.groupId) {
+    const [masked] = await maskGroupCommentAuthors(
+      existingComment.post.groupId,
+      userId,
+      [formatted],
+    );
+    formatted = masked;
+  }
+
+  return formatted;
 };

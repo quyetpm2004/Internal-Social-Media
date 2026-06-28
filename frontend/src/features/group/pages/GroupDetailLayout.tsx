@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import GroupHeader from "@/features/group/components/group-detail/main-detail/GroupHeader";
-import { Clock, Lock, Plus, Users } from "lucide-react";
-import { Outlet, useParams } from "react-router-dom";
+import { ArrowLeft, Clock, Lock, Plus, Users } from "lucide-react";
+import { Outlet, useNavigate, useParams } from "react-router-dom";
 import type {
   GroupDetail,
   GroupMembershipStatus,
@@ -20,11 +20,9 @@ import { useTranslation } from "react-i18next";
 const GroupDetailLayout = () => {
   const { t } = useTranslation();
   const { groupId } = useParams();
-
+  const navigate = useNavigate();
   const currentUser = useAuthStore((state) => state.user);
-
   const [groupDetail, setGroupDetail] = useState<GroupDetail | null>(null);
-
   const [loading, setLoading] = useState(false);
   const [coverUploading, setCoverUploading] = useState(false);
 
@@ -218,7 +216,16 @@ const GroupDetailLayout = () => {
           </span>
         </div>
       ) : (
-        <main className="flex-1 py-8 max-w-6xl mx-auto bg-slate-50 dark:bg-slate-950">
+        <main className="flex-1 py-6 max-w-6xl mx-auto bg-slate-50 dark:bg-slate-950">
+          <div className="md:hidden">
+            <button
+              onClick={() => navigate(-1)}
+              className="text-sm text-slate-500 hover:text-slate-700 pb-4 dark:hover:text-slate-300 flex items-center gap-2 cursor-pointer"
+            >
+              <ArrowLeft size={16} />
+              <span className="font-medium">{t("common.back")}</span>
+            </button>
+          </div>
           <GroupHeader
             name={groupDetail?.groupName || t("pages.groups.defaultName")}
             type={groupDetail?.groupType || "PUBLIC"}
@@ -284,10 +291,6 @@ const GroupDetailLayout = () => {
               />
             )}
           </div>
-
-          <button className="fixed bottom-8 right-8 w-14 h-14 bg-blue-700 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all md:hidden">
-            <Plus size={28} />
-          </button>
         </main>
       )}
     </>

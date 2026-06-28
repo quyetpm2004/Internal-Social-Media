@@ -5,6 +5,8 @@ import { PostsApi } from "@/features/new-feed/api/post.api";
 import type { Post } from "@/features/new-feed/types/post.type";
 import { mapApiPostToPostCard } from "@/utils/formatTimeAgo";
 import { useTranslation } from "react-i18next";
+import { ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const LIMIT = 10;
 
@@ -17,7 +19,7 @@ const SavedPostsPage = () => {
   const [initialLoading, setInitialLoading] = useState(true);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const isFetchingRef = useRef(false);
-
+  const navigate = useNavigate();
   const fetchSavedPosts = useCallback(
     async (currentPage: number) => {
       if (isFetchingRef.current) return;
@@ -93,7 +95,16 @@ const SavedPostsPage = () => {
   };
 
   return (
-    <main className="flex-1 py-8">
+    <main className="flex-1 py-6 md:px-4">
+      <div className="md:hidden">
+        <button
+          onClick={() => navigate("/")}
+          className="text-sm text-slate-500 hover:text-slate-700 pb-4 dark:hover:text-slate-300 flex items-center gap-2 cursor-pointer"
+        >
+          <ArrowLeft size={16} />
+          <span className="font-medium">{t("common.back")}</span>
+        </button>
+      </div>
       <div className="max-w-4xl mx-auto space-y-6">
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight text-on-surface mb-2">

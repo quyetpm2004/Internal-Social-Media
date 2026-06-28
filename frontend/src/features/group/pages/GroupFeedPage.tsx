@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { Post } from "@/features/new-feed/types/post.type";
 import PostCreator from "@/features/new-feed/components/PostCreator";
 import PostCard from "@/features/new-feed/components/PostCard";
@@ -11,6 +17,8 @@ import type { GroupDetail } from "@/features/group/types/group.type";
 import type { GroupOutletContext } from "../types/group-outlet.type";
 import { PostsApi } from "@/features/new-feed/api/post.api";
 import { useTranslation } from "react-i18next";
+import { mapGroupMembersToMentionCandidates } from "@/features/mention/utils/mention";
+import { useAuthStore } from "@/features/auth/store/auth.store";
 
 const LIMIT = 10;
 
@@ -36,6 +44,14 @@ const GroupFeedPage: React.FC = () => {
   }>();
 
   const allowAnonymous = groupDetail?.allowAnonymousJoin ?? false;
+  const currentUser = useAuthStore((state) => state.user);
+  const mentionCandidates = useMemo(
+    () =>
+      groupDetail?.members
+        ? mapGroupMembersToMentionCandidates(groupDetail.members)
+        : undefined,
+    [groupDetail?.members],
+  );
 
   // Refs để theo dõi state trong IntersectionObserver
   const hasMoreRef = useRef(hasMore);
@@ -163,7 +179,7 @@ const GroupFeedPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col md:grid md:grid-cols-12 gap-8">
+    <div className="flex flex-col md:grid md:grid-cols-12 gap-8 md:px-4">
       <div className="md:col-span-8 space-y-6">
         {/* 1. Tạo bài viết */}
         {isMember && (
@@ -171,6 +187,8 @@ const GroupFeedPage: React.FC = () => {
             fetchPosts={fetchPosts}
             groupVisibility="GROUP"
             allowAnonymousPost={allowAnonymous}
+            mentionCandidates={mentionCandidates}
+            excludeMentionUserId={currentUser?.id}
           />
         )}
 
@@ -211,6 +229,8 @@ const GroupFeedPage: React.FC = () => {
                 pinGroupId={numericGroupId}
                 onPinned={handlePinPost}
                 allowAnonymousComment={allowAnonymous}
+                mentionCandidates={mentionCandidates}
+                excludeMentionUserId={currentUser?.id}
               />
             ))}
           </div>
@@ -243,6 +263,8 @@ const GroupFeedPage: React.FC = () => {
               pinGroupId={numericGroupId}
               onPinned={handlePinPost}
               allowAnonymousComment={allowAnonymous}
+              mentionCandidates={mentionCandidates}
+              excludeMentionUserId={currentUser?.id}
             />
           ))}
         </div>

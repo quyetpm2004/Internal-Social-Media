@@ -3,6 +3,7 @@ import * as commentController from "@/modules/comment/comment.controller";
 import {
   commentIdParamsSchema,
   commentListQuerySchema,
+  pinCommentSchema,
   reactCommentSchema,
   replyCommentSchema,
   updateCommentSchema,
@@ -37,6 +38,13 @@ router.post(
   validateParams(commentIdParamsSchema),
   validateBody(reactCommentSchema),
   asyncHandler(commentController.reactComment),
+);
+router.patch(
+  "/:commentId/pin",
+  authMiddleware,
+  validateParams(commentIdParamsSchema),
+  validateBody(pinCommentSchema),
+  asyncHandler(commentController.pinComment),
 );
 router.patch(
   "/:commentId",

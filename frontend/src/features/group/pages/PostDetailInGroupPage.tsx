@@ -1,5 +1,5 @@
 import { useNavigate, useOutletContext, useParams } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PostCard from "@/features/new-feed/components/PostCard";
 import { toast } from "sonner";
 import type { Post } from "@/features/new-feed/types/post.type";
@@ -8,6 +8,8 @@ import { groupApi } from "@/features/group/apis/group.api";
 import AboutSidebar from "@/features/group/components/group-detail/main-detail/AboutSidebar";
 import type { GroupDetail } from "@/features/group/types/group.type";
 import { useTranslation } from "react-i18next";
+import { mapGroupMembersToMentionCandidates } from "@/features/mention/utils/mention";
+import { useAuthStore } from "@/features/auth/store/auth.store";
 
 const PostDetailInGroupPage = () => {
   const { t } = useTranslation();
@@ -19,6 +21,14 @@ const PostDetailInGroupPage = () => {
     isMember: boolean;
     groupDetail: GroupDetail | null;
   }>();
+  const currentUser = useAuthStore((state) => state.user);
+  const mentionCandidates = useMemo(
+    () =>
+      groupDetail?.members
+        ? mapGroupMembersToMentionCandidates(groupDetail.members)
+        : undefined,
+    [groupDetail?.members],
+  );
 
   useEffect(() => {
     if (!groupId || !postId) return;
@@ -68,6 +78,8 @@ const PostDetailInGroupPage = () => {
         <PostCard
           {...post}
           allowAnonymousComment={groupDetail?.allowAnonymousJoin ?? false}
+          mentionCandidates={mentionCandidates}
+          excludeMentionUserId={currentUser?.id}
           onUpdated={(postId, newContent, newFormat) => {
             setPost((prev) =>
               prev && prev.id === postId

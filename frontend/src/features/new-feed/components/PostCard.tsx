@@ -4,23 +4,27 @@ import {
   Download,
   EllipsisVertical,
   FileText,
+  Link2,
   MessageSquare,
   Pin,
-  Share2,
   ThumbsUp,
 } from "lucide-react";
 import type { PostCardProps } from "@/features/new-feed/types/post.type";
 import {
   ReactionApi,
+  type ReactionSummary,
   type ReactionType,
 } from "@/features/new-feed/api/reaction.api";
 import CommentSection from "@/features/new-feed/components/CommentSection";
+import PostReactionsModal from "@/features/new-feed/components/PostReactionsModal";
+import ReactionSummaryIcons from "@/features/new-feed/components/ReactionSummaryIcons";
 import RichTextContent from "@/features/new-feed/components/RichTextContent";
 import RichTextEditor from "@/features/new-feed/components/RichTextEditor";
 import {
   isRichTextEmpty,
   sanitizePostHtml,
 } from "@/features/new-feed/utils/rich-text";
+import { extractMentionPayloadFromHtml } from "@/features/mention/utils/mention";
 import { Pencil, Trash2 } from "lucide-react";
 import { PostsApi } from "@/features/new-feed/api/post.api";
 import Lightbox from "yet-another-react-lightbox";
@@ -29,11 +33,23 @@ import { toast } from "sonner";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import ConfirmModal from "@/components/common/ConfirmModal";
 import PollCard from "@/components/poll/PollCard";
+import PollForm from "@/components/poll/PollForm";
 import EventCard from "@/components/event/EventCard";
+import EventForm from "@/components/event/EventForm";
 import { Link } from "react-router-dom";
-import type { PollSummary } from "@/types/poll.type";
-import type { EventSummary } from "@/types/event.type";
+import type { PollInput, PollSummary } from "@/types/poll.type";
+import type { EventInput, EventSummary } from "@/types/event.type";
 import { useTranslation } from "react-i18next";
+import { mapApiPostToPostCard } from "@/utils/formatTimeAgo";
+
+const emptyReactionSummary = (): ReactionSummary => ({
+  LIKE: 0,
+  LOVE: 0,
+  HAHA: 0,
+  WOW: 0,
+  SAD: 0,
+  ANGRY: 0,
+});
 
 const reactionOptions: {
   type: ReactionType;
@@ -79,6 +95,37 @@ const reactionOptions: {
   },
 ];
 
+const isPollValid = (value: PollInput) =>
+  value.question.trim().length > 0 &&
+  value.options.filter((option) => option.trim().length > 0).length >= 2;
+
+const isEventValid = (value: EventInput) => {
+  if (!value.title.trim() || !value.startAt) return false;
+  const start = new Date(value.startAt);
+  if (Number.isNaN(start.getTime())) return false;
+  if (value.endAt) {
+    const end = new Date(value.endAt);
+    if (Number.isNaN(end.getTime()) || end < start) return false;
+  }
+  return true;
+};
+
+const eventToInput = (value: EventSummary): EventInput => {
+  const toInputValue = (iso: string) => {
+    const date = new Date(iso);
+    const tzOffset = date.getTimezoneOffset() * 60000;
+    return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+  };
+
+  return {
+    title: value.title,
+    description: value.description ?? "",
+    startAt: toInputValue(value.startAt),
+    endAt: value.endAt ? toInputValue(value.endAt) : undefined,
+    location: value.location ?? "",
+  };
+};
+
 const PostCard: React.FC<PostCardProps> = ({
   id: postId,
   author,
@@ -90,6 +137,7 @@ const PostCard: React.FC<PostCardProps> = ({
   isPinned = false,
   stats,
   currentReaction: initialReaction = null,
+  reactionSummary: initialReactionSummary,
   isSaved: initialIsSaved = false,
   onDeleted,
   onUpdated,
@@ -100,6 +148,8 @@ const PostCard: React.FC<PostCardProps> = ({
   onSavedChanged,
   allowAnonymousComment = false,
   showComment = false,
+  mentionCandidates,
+  excludeMentionUserId,
   poll: initialPoll = null,
   event: initialEvent = null,
 }) => {
@@ -108,6 +158,10 @@ const PostCard: React.FC<PostCardProps> = ({
   const [poll, setPoll] = useState<PollSummary | null>(initialPoll);
   const [event, setEvent] = useState<EventSummary | null>(initialEvent);
   const [reactionCount, setReactionCount] = useState(stats.likes);
+  const [reactionSummary, setReactionSummary] = useState<ReactionSummary>(
+    initialReactionSummary ?? emptyReactionSummary(),
+  );
+  const [showReactionsModal, setShowReactionsModal] = useState(false);
   const [currentReaction, setCurrentReaction] = useState<ReactionType | null>(
     initialReaction,
   );
@@ -115,6 +169,8 @@ const PostCard: React.FC<PostCardProps> = ({
   const [showMenu, setShowMenu] = useState(false);
   const [editingPost, setEditingPost] = useState(false);
   const [editContent, setEditContent] = useState(content);
+  const [editPoll, setEditPoll] = useState<PollInput | null>(null);
+  const [editEvent, setEditEvent] = useState<EventInput | null>(null);
   const [displayContent, setDisplayContent] = useState(content);
   const [displayFormat, setDisplayFormat] = useState(contentFormat);
   const user = useAuthStore((state) => state.user);
@@ -131,6 +187,36 @@ const PostCard: React.FC<PostCardProps> = ({
   useEffect(() => {
     setIsSaved(Boolean(initialIsSaved));
   }, [initialIsSaved]);
+  useEffect(() => {
+    setReactionCount(stats.likes);
+  }, [stats.likes]);
+  useEffect(() => {
+    if (initialReactionSummary) {
+      setReactionSummary(initialReactionSummary);
+    }
+  }, [initialReactionSummary]);
+
+  useEffect(() => {
+    if (reactionCount <= 0 || initialReactionSummary) return;
+
+    const fetchReactionSummary = async () => {
+      try {
+        const res = await ReactionApi.getPostReactions(postId, {
+          page: 1,
+          limit: 1,
+        });
+        const data = res.data;
+        setReactionSummary({
+          ...emptyReactionSummary(),
+          ...data.summary,
+        });
+      } catch (error: any) {
+        console.error("Fetch reaction summary failed:", error);
+      }
+    };
+
+    fetchReactionSummary();
+  }, [postId, reactionCount, initialReactionSummary]);
 
   useEffect(() => {
     if (!editingPost) {
@@ -174,6 +260,12 @@ const PostCard: React.FC<PostCardProps> = ({
 
       setCurrentReaction(data.currentReaction);
       setReactionCount(data.reactionCount);
+      if (data.reactionSummary) {
+        setReactionSummary({
+          ...emptyReactionSummary(),
+          ...data.reactionSummary,
+        });
+      }
     } catch (error: any) {
       console.error("React post failed:", error);
       const message =
@@ -186,16 +278,142 @@ const PostCard: React.FC<PostCardProps> = ({
     }
   };
 
+  const handleStartEdit = () => {
+    setEditingPost(true);
+    setShowMenu(false);
+
+    if (poll) {
+      setEditPoll({
+        question: poll.question,
+        options: poll.options.map((option) => option.label),
+        allowMultiple: poll.allowMultiple,
+      });
+    }
+
+    if (event) {
+      setEditEvent(eventToInput(event));
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingPost(false);
+    setEditContent(content);
+    setEditPoll(null);
+    setEditEvent(null);
+  };
+
   const handleUpdatePost = async () => {
-    if (isRichTextEmpty(editContent)) return;
-
-    const sanitizedContent = sanitizePostHtml(editContent);
-
     try {
-      await PostsApi.updatePost(postId, sanitizedContent, "HTML");
-      setDisplayContent(sanitizedContent);
-      setDisplayFormat("HTML");
-      onUpdated?.(postId, sanitizedContent, "HTML");
+      if (poll && editPoll) {
+        if (!isPollValid(editPoll)) {
+          toast.error(t("pages.poll.invalidPoll"));
+          return;
+        }
+
+        const sanitizedContent = showPostContent
+          ? sanitizePostHtml(editContent)
+          : "";
+        const usedOptionIds = new Set<number>();
+        const pollOptions = editPoll.options
+          .map((label) => label.trim())
+          .filter((label) => label.length > 0)
+          .map((label, index) => {
+            const matchedByLabel = poll.options.find(
+              (option) =>
+                option.label === label && !usedOptionIds.has(option.id),
+            );
+            const matchedByIndex = poll.options[index];
+            const matched =
+              matchedByLabel ??
+              (matchedByIndex && !usedOptionIds.has(matchedByIndex.id)
+                ? matchedByIndex
+                : undefined);
+
+            if (matched) {
+              usedOptionIds.add(matched.id);
+            }
+
+            return {
+              ...(matched ? { id: matched.id } : {}),
+              label,
+            };
+          });
+
+        const mentionPayload = extractMentionPayloadFromHtml(sanitizedContent);
+        const res = await PostsApi.updatePost(postId, {
+          content: sanitizedContent,
+          contentFormat: "HTML",
+          mentionedUserIds: mentionPayload.mentionedUserIds,
+          mentionAll: mentionPayload.mentionAll,
+          poll: {
+            question: editPoll.question.trim(),
+            options: pollOptions,
+            allowMultiple: editPoll.allowMultiple,
+          },
+        });
+        const mappedPost = mapApiPostToPostCard(res.data);
+
+        setDisplayContent(mappedPost.content);
+        setDisplayFormat(mappedPost.contentFormat);
+        setPoll(mappedPost.poll ?? null);
+        onUpdated?.(postId, mappedPost.content, mappedPost.contentFormat);
+        setEditingPost(false);
+        setEditPoll(null);
+        return;
+      }
+
+      if (event && editEvent) {
+        if (!isEventValid(editEvent)) {
+          toast.error(t("pages.event.invalidEvent"));
+          return;
+        }
+
+        const sanitizedContent = showPostContent
+          ? sanitizePostHtml(editContent)
+          : "";
+
+        const mentionPayload = extractMentionPayloadFromHtml(sanitizedContent);
+        const res = await PostsApi.updatePost(postId, {
+          content: sanitizedContent,
+          contentFormat: "HTML",
+          mentionedUserIds: mentionPayload.mentionedUserIds,
+          mentionAll: mentionPayload.mentionAll,
+          event: {
+            title: editEvent.title.trim(),
+            description: editEvent.description?.trim() || undefined,
+            startAt: new Date(editEvent.startAt).toISOString(),
+            endAt: editEvent.endAt
+              ? new Date(editEvent.endAt).toISOString()
+              : undefined,
+            location: editEvent.location?.trim() || undefined,
+          },
+        });
+        const mappedPost = mapApiPostToPostCard(res.data);
+
+        setDisplayContent(mappedPost.content);
+        setDisplayFormat(mappedPost.contentFormat);
+        setEvent(mappedPost.event ?? null);
+        onUpdated?.(postId, mappedPost.content, mappedPost.contentFormat);
+        setEditingPost(false);
+        setEditEvent(null);
+        return;
+      }
+
+      if (isRichTextEmpty(editContent)) return;
+
+      const sanitizedContent = sanitizePostHtml(editContent);
+      const mentionPayload = extractMentionPayloadFromHtml(sanitizedContent);
+      const res = await PostsApi.updatePost(postId, {
+        content: sanitizedContent,
+        contentFormat: "HTML",
+        mentionedUserIds: mentionPayload.mentionedUserIds,
+        mentionAll: mentionPayload.mentionAll,
+      });
+      const mappedPost = mapApiPostToPostCard(res.data);
+
+      setDisplayContent(mappedPost.content);
+      setDisplayFormat(mappedPost.contentFormat);
+      onUpdated?.(postId, mappedPost.content, mappedPost.contentFormat);
       setEditingPost(false);
     } catch (error: any) {
       console.error("Update post failed:", error);
@@ -232,7 +450,9 @@ const PostCard: React.FC<PostCardProps> = ({
       const nextSaved = res.data.isSaved;
       setIsSaved(nextSaved);
       onSavedChanged?.(postId, nextSaved);
-      toast.success(nextSaved ? t("pages.posts.saved") : t("pages.posts.unsaved"));
+      toast.success(
+        nextSaved ? t("pages.posts.saved") : t("pages.posts.unsaved"),
+      );
     } catch (error: any) {
       const message =
         error?.response?.data?.message ||
@@ -299,10 +519,7 @@ const PostCard: React.FC<PostCardProps> = ({
               <div className="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-30 overflow-hidden">
                 <button
                   type="button"
-                  onClick={() => {
-                    setEditingPost(true);
-                    setShowMenu(false);
-                  }}
+                  onClick={handleStartEdit}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700"
                 >
                   <Pencil size={14} />
@@ -323,20 +540,42 @@ const PostCard: React.FC<PostCardProps> = ({
         </div>
 
         {editingPost ? (
-          <div className="mb-4">
-            <RichTextEditor
-              value={editContent}
-              onChange={setEditContent}
-              minRows={3}
-            />
+          <div className="mb-4 space-y-4">
+            {poll && editPoll ? (
+              <PollForm value={editPoll} onChange={setEditPoll} />
+            ) : null}
 
-            <div className="flex justify-end gap-2 mt-2">
+            {event && editEvent ? (
+              <EventForm value={editEvent} onChange={setEditEvent} />
+            ) : null}
+
+            {!poll && !event ? (
+              <RichTextEditor
+                value={editContent}
+                onChange={setEditContent}
+                mentionCandidates={mentionCandidates}
+                excludeMentionUserId={excludeMentionUserId}
+                minRows={3}
+              />
+            ) : showPostContent ? (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 mb-2">
+                  {t("pages.posts.additionalContent")}
+                </p>
+                <RichTextEditor
+                  value={editContent}
+                  onChange={setEditContent}
+                  mentionCandidates={mentionCandidates}
+                  excludeMentionUserId={excludeMentionUserId}
+                  minRows={2}
+                />
+              </div>
+            ) : null}
+
+            <div className="flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setEditingPost(false);
-                  setEditContent(content);
-                }}
+                onClick={handleCancelEdit}
                 className="px-3 py-1.5 rounded-lg text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 {t("common.cancel")}
@@ -451,93 +690,108 @@ const PostCard: React.FC<PostCardProps> = ({
           </div>
         )}
 
-        <div className="flex items-center gap-6 pt-4 border-t border-slate-100 dark:border-slate-800">
-          <div className="relative group">
-            <div className="absolute bottom-full left-0 hidden group-hover:block h-3 w-52" />
+        <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-5 min-w-0">
+            <div className="relative group">
+              <div className="absolute bottom-full left-0 hidden group-hover:block h-3 w-52" />
 
-            <div className="absolute bottom-full left-0 mb-2 group-hover:flex w-max gap-2 bg-white hidden dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-lg px-3 py-2 z-20">
-              {reactionOptions.map((reaction) => {
-                return (
-                  <button
-                    key={reaction.type}
-                    type="button"
-                    disabled={loadingReaction}
-                    onClick={() => handleReactPost(reaction.type)}
-                    className={`p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-transform hover:scale-125 ${reaction.className}`}
-                    title={reaction.label}
-                  >
-                    <img
-                      src={reaction.icon}
-                      alt={reaction.label}
-                      className="w-6 h-6 shrink-0 object-contain"
-                    />
-                  </button>
-                );
-              })}
+              <div className="absolute bottom-full left-0 mb-2 group-hover:flex w-max gap-2 bg-white hidden dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-lg px-3 py-2 z-20">
+                {reactionOptions.map((reaction) => {
+                  return (
+                    <button
+                      key={reaction.type}
+                      type="button"
+                      disabled={loadingReaction}
+                      onClick={() => handleReactPost(reaction.type)}
+                      className={`p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-transform hover:scale-125 ${reaction.className}`}
+                      title={reaction.label}
+                    >
+                      <img
+                        src={reaction.icon}
+                        alt={reaction.label}
+                        className="w-6 h-6 shrink-0 object-contain"
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                disabled={loadingReaction}
+                onClick={() => handleReactPost(currentReaction ?? "LIKE")}
+                className={`flex items-center gap-2 transition-colors disabled:opacity-60 ${
+                  selectedReactionData
+                    ? "text-slate-700 dark:text-slate-200"
+                    : "text-slate-500 hover:text-blue-700"
+                }`}
+              >
+                {selectedReactionData ? (
+                  <img
+                    src={selectedReactionData.icon}
+                    alt={selectedReactionData.label}
+                    className="w-5 h-5 object-contain shrink-0"
+                  />
+                ) : (
+                  <ThumbsUp size={18} />
+                )}
+
+                <span className="text-xs font-semibold">{reactionCount}</span>
+              </button>
             </div>
 
             <button
               type="button"
-              disabled={loadingReaction}
-              onClick={() => handleReactPost(currentReaction ?? "LIKE")}
-              className={`flex items-center gap-2 transition-colors disabled:opacity-60 ${
-                selectedReactionData
-                  ? "text-slate-700 dark:text-slate-200"
-                  : "text-slate-500 hover:text-blue-700"
-              }`}
+              onClick={() => setShowComments((prev) => !prev)}
+              className="flex items-center gap-2 text-slate-500 hover:text-blue-700 transition-colors"
             >
-              {selectedReactionData ? (
-                <img
-                  src={selectedReactionData.icon}
-                  alt={selectedReactionData.label}
-                  className="w-6 h-6 object-contain shrink-0"
-                />
-              ) : (
-                <ThumbsUp size={18} />
-              )}
+              <MessageSquare size={18} />
+              <span className="text-xs font-semibold">{stats.comments}</span>
+            </button>
 
-              <span className="text-xs font-semibold">{reactionCount}</span>
+            <button
+              type="button"
+              onClick={() => onCopied?.(postId as number)}
+              className="flex items-center gap-2 text-slate-500 hover:text-blue-700 transition-colors"
+              title={t("common.copyLink")}
+            >
+              <Link2 size={18} />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleToggleSavePost}
+              disabled={savingPost}
+              className={`flex items-center gap-2 transition-colors disabled:opacity-60 ${
+                isSaved ? "text-blue-700" : "text-slate-500 hover:text-blue-700"
+              }`}
+              title={
+                isSaved ? t("pages.posts.savedState") : t("pages.posts.save")
+              }
+            >
+              <Bookmark size={18} className={isSaved ? "fill-current" : ""} />
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setShowComments((prev) => !prev)}
-            className="flex items-center gap-2 text-slate-500 hover:text-blue-700 transition-colors"
-          >
-            <MessageSquare size={18} />
-            <span className="text-xs font-semibold">{stats.comments}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onCopied?.(postId as number)}
-            className="flex items-center gap-2 text-slate-500 hover:text-blue-700 transition-colors ml-auto"
-          >
-            <Share2 size={18} />
-            <span className="text-xs font-semibold">{t("common.copyLink")}</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleToggleSavePost}
-            disabled={savingPost}
-            className={`flex items-center gap-2 transition-colors disabled:opacity-60 ${
-              isSaved
-                ? "text-blue-700"
-                : "text-slate-500 hover:text-blue-700"
-            }`}
-          >
-            <Bookmark size={18} className={isSaved ? "fill-current" : ""} />
-            <span className="text-xs font-semibold">
-              {isSaved ? t("pages.posts.savedState") : t("pages.posts.save")}
-            </span>
-          </button>
+          {reactionCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowReactionsModal(true)}
+              className="flex shrink-0 items-center rounded-full px-1 py-0.5 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+              title={t("pages.posts.viewReactions")}
+            >
+              <ReactionSummaryIcons summary={reactionSummary} />
+            </button>
+          )}
         </div>
         {showComments && (
           <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
             <CommentSection
               postId={postId}
+              canPinComment={user?.id === author.id || Boolean(canPinPost)}
               allowAnonymousComment={allowAnonymousComment}
+              mentionCandidates={mentionCandidates}
+              excludeMentionUserId={excludeMentionUserId}
             />
           </div>
         )}
@@ -549,10 +803,19 @@ const PostCard: React.FC<PostCardProps> = ({
         slides={imageAttachments.map((item) => ({ src: item.fileUrl }))}
       />
 
+      <PostReactionsModal
+        postId={postId}
+        open={showReactionsModal}
+        onClose={() => setShowReactionsModal(false)}
+        initialSummary={reactionSummary}
+      />
+
       {canPinPost && onPinned && (
         <ConfirmModal
           open={openConfirmPinPost}
-          title={isPinned ? t("pages.posts.unpinTitle") : t("pages.posts.pinTitle")}
+          title={
+            isPinned ? t("pages.posts.unpinTitle") : t("pages.posts.pinTitle")
+          }
           description={
             isPinned
               ? t("pages.posts.unpinConfirm")

@@ -124,6 +124,8 @@ export async function sendMessage(req: Request, res: Response) {
     content: body.content ?? "",
     contentType: body.contentType,
     attachmentIds: body.attachmentIds ?? [],
+    mentionedUserIds: body.mentionedUserIds ?? [],
+    mentionAll: body.mentionAll ?? false,
     poll: body.poll,
   });
 

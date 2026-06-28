@@ -29,6 +29,8 @@ import AdminLayout from "@/components/layout/admin/AdminLayout";
 import AdminDashboardPage from "@/features/admin/pages/AdminDashboardPage";
 import AdminUsersPage from "@/features/admin/pages/AdminUsersPage";
 import AdminPostsPage from "@/features/admin/pages/AdminPostsPage";
+import AdminPendingPostsPage from "@/features/admin/pages/AdminPendingPostsPage";
+import AdminCommentsPage from "@/features/admin/pages/AdminCommentsPage";
 import AdminPostDetailPage from "@/features/admin/pages/AdminPostDetailPage";
 import AdminGroupsPage from "@/features/admin/pages/AdminGroupsPage";
 import AdminGroupDetailPage from "@/features/admin/pages/AdminGroupDetailPage";
@@ -163,6 +165,8 @@ export const router = createBrowserRouter([
               { index: true, element: <AdminDashboardPage /> },
               { path: "users", element: <AdminUsersPage /> },
               { path: "posts", element: <AdminPostsPage /> },
+              { path: "pending-posts", element: <AdminPendingPostsPage /> },
+              { path: "comments", element: <AdminCommentsPage /> },
               { path: "posts/:postId", element: <AdminPostDetailPage /> },
               { path: "groups", element: <AdminGroupsPage /> },
               { path: "groups/:groupId", element: <AdminGroupDetailPage /> },

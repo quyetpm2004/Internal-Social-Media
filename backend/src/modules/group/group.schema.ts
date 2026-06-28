@@ -35,7 +35,7 @@ export const groupListQuerySchema = z.object({
 
 export const groupMembersQuerySchema = paginationQuerySchema.extend({
   search: z.string().optional().default(""),
-  role: groupMemberRoleSchema.optional(),
+  role: z.enum(["STAFF", "MEMBER"]).optional(),
 });
 
 export const groupMediaQuerySchema = z.object({

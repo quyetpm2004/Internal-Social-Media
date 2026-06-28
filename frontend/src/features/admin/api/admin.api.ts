@@ -1,5 +1,6 @@
 import { axiosClient } from "@/lib/axios";
 import type {
+  AdminComment,
   AdminGroup,
   AdminGroupDetail,
   AdminGroupMember,
@@ -21,6 +22,7 @@ export const adminApi = {
     limit?: number;
     search?: string;
     status?: string;
+    role?: string;
   }) {
     return axiosClient.get<
       ApiResponse<{ users: AdminUser[]; pagination: Pagination }>
@@ -31,6 +33,13 @@ export const adminApi = {
     return axiosClient.patch<ApiResponse<AdminUser>>(
       `/admin/users/${userId}/status`,
       { status },
+    );
+  },
+
+  updateUserRole(userId: number, role: "EMPLOYEE" | "MANAGER" | "ADMIN") {
+    return axiosClient.patch<ApiResponse<AdminUser>>(
+      `/admin/users/${userId}/role`,
+      { role },
     );
   },
 
@@ -51,8 +60,36 @@ export const adminApi = {
     );
   },
 
+  reviewPost(postId: number, action: "approve" | "reject") {
+    return axiosClient.patch<ApiResponse<AdminPost>>(
+      `/admin/posts/${postId}/review`,
+      { action },
+    );
+  },
+
   deletePost(postId: number) {
     return axiosClient.delete<ApiResponse<boolean>>(`/admin/posts/${postId}`);
+  },
+
+  getComments(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+  }) {
+    return axiosClient.get<
+      ApiResponse<{ comments: AdminComment[]; pagination: Pagination }>
+    >("/admin/comments", { params });
+  },
+
+  updateCommentStatus(
+    commentId: number,
+    status: "ACTIVE" | "HIDDEN" | "DELETED",
+  ) {
+    return axiosClient.patch<ApiResponse<AdminComment>>(
+      `/admin/comments/${commentId}/status`,
+      { status },
+    );
   },
 
   getGroups(params?: {

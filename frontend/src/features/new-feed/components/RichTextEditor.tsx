@@ -6,6 +6,18 @@ import { Color } from "@tiptap/extension-color";
 import { TextStyle } from "@tiptap/extension-text-style";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
+import MentionAutocomplete from "@/features/mention/components/MentionAutocomplete";
+import { useMentionSearch } from "@/features/mention/hooks/useMentionSearch";
+import type { MentionUser } from "@/features/mention/utils/mention";
+import {
+  extractMentionPayloadFromHtml,
+  getMentionQueryAtCursor,
+  isMentionAllSearchUser,
+  MENTION_ALL_DATA_ID,
+  MENTION_ALL_TOKEN,
+} from "@/features/mention/utils/mention";
+import { MentionMark } from "@/features/mention/extensions/mention-mark";
+import type { SearchUser } from "@/features/search/types/search.type";
 import {
   Bold,
   Heading1,
@@ -27,6 +39,11 @@ import { useTranslation } from "react-i18next";
 type RichTextEditorProps = {
   value: string;
   onChange: (html: string) => void;
+  onMentionedUserIdsChange?: (ids: number[]) => void;
+  mentionCandidates?: MentionUser[];
+  excludeMentionUserId?: number;
+  allowMentionAll?: boolean;
+  onMentionAllChange?: (mentionAll: boolean) => void;
   placeholder?: string;
   minRows?: number;
   className?: string;
@@ -45,6 +62,11 @@ const TEXT_COLORS = [
 const RichTextEditor = ({
   value,
   onChange,
+  onMentionedUserIdsChange,
+  mentionCandidates,
+  excludeMentionUserId,
+  allowMentionAll = true,
+  onMentionAllChange,
   placeholder,
   minRows = 3,
   className = "",
@@ -53,8 +75,20 @@ const RichTextEditor = ({
   const effectivePlaceholder = placeholder ?? t("pages.posts.creatorPlaceholder");
   const [colorOpen, setColorOpen] = useState(false);
   const [headingOpen, setHeadingOpen] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
   const colorRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLDivElement>(null);
+  const editorWrapRef = useRef<HTMLDivElement>(null);
+  const { users: mentionUsers, loading: mentionLoading } = useMentionSearch(
+    mentionQuery,
+    mentionQuery != null,
+    {
+      candidates: mentionCandidates,
+      excludeUserId: excludeMentionUserId,
+      allowMentionAll,
+    },
+  );
 
   const editor = useEditor({
     extensions: [
@@ -71,6 +105,7 @@ const RichTextEditor = ({
           target: "_blank",
         },
       }),
+      MentionMark,
       Placeholder.configure({ placeholder: effectivePlaceholder }),
     ],
     content: value || "",
@@ -81,9 +116,132 @@ const RichTextEditor = ({
       },
     },
     onUpdate: ({ editor: ed }) => {
-      onChange(ed.getHTML());
+      const html = ed.getHTML();
+      onChange(html);
+      const payload = extractMentionPayloadFromHtml(html);
+      onMentionedUserIdsChange?.(payload.mentionedUserIds);
+      onMentionAllChange?.(payload.mentionAll);
+
+      const { from } = ed.state.selection;
+      const textBefore = ed.state.doc.textBetween(
+        Math.max(0, from - 50),
+        from,
+        "\n",
+        "\0",
+      );
+      const mentionInfo = getMentionQueryAtCursor(textBefore, textBefore.length);
+      setMentionQuery(mentionInfo ? mentionInfo.query : null);
     },
   });
+
+  useEffect(() => {
+    setMentionActiveIndex(0);
+  }, [mentionUsers]);
+
+  const insertMentionAll = () => {
+    if (!editor) return;
+
+    const { from } = editor.state.selection;
+    const textBefore = editor.state.doc.textBetween(
+      Math.max(0, from - 50),
+      from,
+      "\n",
+      "\0",
+    );
+    const mentionInfo = getMentionQueryAtCursor(textBefore, textBefore.length);
+    const deleteFrom = mentionInfo ? from - (mentionInfo.query.length + 1) : from;
+
+    editor
+      .chain()
+      .focus()
+      .deleteRange({ from: deleteFrom, to: from })
+      .insertContent([
+        {
+          type: "text",
+          text: MENTION_ALL_TOKEN,
+          marks: [
+            {
+              type: "mention",
+              attrs: { userId: MENTION_ALL_DATA_ID },
+            },
+          ],
+        },
+        { type: "text", text: " " },
+      ])
+      .run();
+
+    setMentionQuery(null);
+  };
+
+  const insertMention = (user: SearchUser) => {
+    if (isMentionAllSearchUser(user)) {
+      insertMentionAll();
+      return;
+    }
+
+    if (!editor) return;
+
+    const { from } = editor.state.selection;
+    const textBefore = editor.state.doc.textBetween(
+      Math.max(0, from - 50),
+      from,
+      "\n",
+      "\0",
+    );
+    const mentionInfo = getMentionQueryAtCursor(textBefore, textBefore.length);
+    const deleteFrom = mentionInfo ? from - (mentionInfo.query.length + 1) : from;
+
+    editor
+      .chain()
+      .focus()
+      .deleteRange({ from: deleteFrom, to: from })
+      .insertContent([
+        {
+          type: "text",
+          text: `@${user.fullName}`,
+          marks: [
+            {
+              type: "mention",
+              attrs: { userId: String(user.id) },
+            },
+          ],
+        },
+        { type: "text", text: " " },
+      ])
+      .run();
+
+    setMentionQuery(null);
+  };
+
+  useEffect(() => {
+    if (!editor) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (mentionQuery == null || mentionUsers.length === 0) {
+        return;
+      }
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setMentionActiveIndex((prev) => (prev + 1) % mentionUsers.length);
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setMentionActiveIndex(
+          (prev) => (prev - 1 + mentionUsers.length) % mentionUsers.length,
+        );
+      } else if (event.key === "Enter" || event.key === "Tab") {
+        event.preventDefault();
+        insertMention(mentionUsers[mentionActiveIndex]);
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        setMentionQuery(null);
+      }
+    };
+
+    const dom = editor.view.dom;
+    dom.addEventListener("keydown", handleKeyDown);
+    return () => dom.removeEventListener("keydown", handleKeyDown);
+  }, [editor, mentionActiveIndex, mentionQuery, mentionUsers]);
 
   useEffect(() => {
     if (!editor) return;
@@ -303,10 +461,20 @@ const RichTextEditor = ({
       </div>
 
       <div
-        className="bg-slate-50 dark:bg-slate-800/50 rounded-b-xl focus-within:ring-2 focus-within:ring-blue-500/20 p-4 text-sm transition-all overflow-y-auto"
+        ref={editorWrapRef}
+        className="bg-slate-50 dark:bg-slate-800/50 rounded-b-xl focus-within:ring-2 focus-within:ring-blue-500/20 p-4 text-sm transition-all overflow-y-auto relative"
         style={{ minHeight }}
       >
         <EditorContent editor={editor} />
+        {mentionQuery != null && (
+          <MentionAutocomplete
+            users={mentionUsers}
+            loading={mentionLoading}
+            activeIndex={mentionActiveIndex}
+            onSelect={insertMention}
+            className="left-4 bottom-4"
+          />
+        )}
       </div>
     </div>
   );

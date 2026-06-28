@@ -107,8 +107,7 @@
     "videoNotSupported": "Your browser does not support video.",
     "description": "Description",
     "creator": "Creator",
-    "joinedAt": "Joined at"
-    ,
+    "joinedAt": "Joined at",
     "processing": "Processing...",
     "you": "You",
     "goHome": "Go to home",
@@ -135,7 +134,9 @@
       "hoursAgo_other": "{{count}} hours ago",
       "daysAgo_one": "{{count}} day ago",
       "daysAgo_other": "{{count}} days ago"
-    }
+    },
+    "anonymous": "Anonymous",
+    "anonymousUser": "Anonymous user"
   },
   "nav": {
     "home": "Home",
@@ -154,6 +155,8 @@
     "dashboard": "Dashboard",
     "users": "Users",
     "posts": "Posts",
+    "pendingPosts": "Pending review",
+    "comments": "Comments",
     "groups": "Groups",
     "logoutTitle": "Log out?",
     "logoutDescription": "Are you sure you want to log out of the admin account?"
@@ -280,6 +283,8 @@
       "reply": "Reply",
       "writeReply": "Write a reply...",
       "deleteConfirm": "Are you sure you want to delete this post?",
+      "deleteCommentTitle": "Delete comment",
+      "deleteCommentConfirm": "Are you sure you want to delete this comment?",
       "saved": "Post saved",
       "unsaved": "Post unsaved",
       "saveFailed": "Unable to save post. Please try again.",
@@ -289,6 +294,17 @@
       "delete": "Delete post",
       "save": "Save",
       "savedState": "Saved",
+      "reactionsAll": "All",
+      "reactionsTitle": "People who reacted",
+      "viewReactions": "View reactions",
+      "noReactions": "No reactions yet",
+      "message": "Message",
+      "additionalContent": "Additional content",
+      "pinComment": "Pin comment",
+      "unpinComment": "Unpin comment",
+      "pinnedComment": "Pinned comment",
+      "pinCommentSuccess": "Comment pinned",
+      "unpinCommentSuccess": "Comment unpinned",
       "pinTitle": "Pin post",
       "unpinTitle": "Unpin post",
       "pinConfirm": "Are you sure you want to pin this post?",
@@ -334,7 +350,8 @@
       "multipleChoice": "Multiple choice",
       "changeVote": "Change vote",
       "updateVote": "Update vote",
-      "vote": "Vote"
+      "vote": "Vote",
+      "invalidPoll": "Please enter a question and at least 2 options"
     },
     "event": {
       "titlePlaceholder": "Event title...",
@@ -348,7 +365,8 @@
       "viewAttendees": "View attendees",
       "attendeesTitle": "Event attendees",
       "updateStatusFailed": "Unable to update attendance status.",
-      "loadAttendeesFailed": "Unable to load attendees."
+      "loadAttendeesFailed": "Unable to load attendees.",
+      "invalidEvent": "Please enter valid event information"
     },
     "system": {
       "forbiddenTitle": "Forbidden!",
@@ -376,6 +394,9 @@
       "commentReply": "replied to your comment",
       "commentReactionPrefix": "reacted with",
       "commentReactionSuffix": "to your comment",
+      "postMention": "tagged you in a post",
+      "commentMention": "tagged you in a comment",
+      "messageMention": "mentioned you in a message",
       "groupMemberAdded": "added you to group",
       "groupRoleChangedPrefix": "changed your role in group",
       "groupRoleChangedSuffix": "to",
@@ -395,6 +416,11 @@
         "moderator": "Moderator",
         "admin": "Administrator"
       }
+    },
+    "mention": {
+      "searching": "Searching people...",
+      "mentionAll": "@all",
+      "mentionAllDescription": "Tag all members"
     },
     "search": {
       "searchPlaceholder": "Search on Workplace",
@@ -614,7 +640,46 @@
       "totalGroups": "Total groups",
       "memberStatusActive": "Active",
       "memberStatusPending": "Pending",
-      "memberStatusBlocked": "Blocked"
+      "memberStatusBlocked": "Blocked",
+      "pendingPostsTitle": "Pending review posts",
+      "pendingPostsDescription": "Approve or reject posts waiting for group approval.",
+      "noPendingPosts": "No posts are waiting for review.",
+      "approve": "Approve",
+      "reject": "Reject",
+      "postApproved": "Post approved",
+      "postRejected": "Post rejected",
+      "commentsTitle": "Comment moderation",
+      "commentsDescription": "Hide, restore, or delete comments across the system.",
+      "searchCommentsPlaceholder": "Search by content, author, or post...",
+      "allCommentStatuses": "All statuses",
+      "commentHidden": "Hidden",
+      "commentDeleted": "Deleted",
+      "relatedPost": "Related post",
+      "anonymousComment": "Anonymous comment",
+      "hide": "Hide",
+      "restore": "Restore",
+      "commentStatusUpdated": "Comment status updated",
+      "hideCommentTitle": "Hide comment?",
+      "hideCommentDescription": "This comment will no longer be visible to users.",
+      "deleteCommentTitle": "Delete comment?",
+      "deleteCommentDescription": "This comment will be marked as deleted.",
+      "restoreCommentTitle": "Restore comment?",
+      "restoreCommentDescription": "This comment will be visible again.",
+      "growthChartTitle": "Growth in the last 14 days",
+      "growthChartDescription": "New users, posts, and comments per day.",
+      "chartUsers": "Users",
+      "chartPosts": "Posts",
+      "chartComments": "Comments",
+      "postVisibilityTitle": "Post distribution",
+      "publicPosts": "Public feed",
+      "groupPosts": "Group posts",
+      "topGroupsTitle": "Top active groups",
+      "noGroupsChart": "No group data yet.",
+      "allRoles": "All roles",
+      "changeRole": "Change role",
+      "changeRoleTitle": "Change user role",
+      "changeRoleDescription": "Select a new role for {{name}}.",
+      "roleUpdated": "User role updated"
     }
   }
 }

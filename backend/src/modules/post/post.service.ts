@@ -22,14 +22,24 @@ import {
   maskGroupPostAuthors,
 } from "@/shared/utils/group-anonymous";
 import {
+  notifyPostMentions,
   notifyPostPinned,
   notifyPostReaction,
 } from "@/modules/notification/notification.service";
+import {
+  assertMentionedUsersExist,
+  assertMentionedUsersInGroup,
+  normalizeMentionedUserIds,
+  resolveMentionTargets,
+  syncPostMentions,
+} from "@/shared/utils/mentions";
 import type { PollInput } from "@/modules/poll/poll.schema";
 import {
   attachPollSummaryToPosts,
   createPollInTransaction,
+  updatePollForPost,
 } from "@/modules/poll/poll.service";
+import type { PollUpdateInput } from "@/modules/poll/poll.schema";
 import { getPollInclude } from "@/modules/poll/poll.types";
 
 type EventInput = {
@@ -94,6 +104,53 @@ const attachEventSummaryToPosts = async <
   }));
 };
 
+const defaultReactionSummary = (): Record<ReactionType, number> => ({
+  LIKE: 0,
+  LOVE: 0,
+  HAHA: 0,
+  WOW: 0,
+  SAD: 0,
+  ANGRY: 0,
+});
+
+const attachReactionSummariesToPosts = async <
+  T extends { id: number },
+>(
+  posts: T[],
+): Promise<Array<T & { reactionSummary: Record<ReactionType, number> }>> => {
+  if (posts.length === 0) return [];
+
+  const postIds = posts.map((post) => post.id);
+  const rows = await prisma.reaction.groupBy({
+    by: ["postId", "reactionType"],
+    where: {
+      postId: { in: postIds },
+    },
+    _count: {
+      reactionType: true,
+    },
+  });
+
+  const summaryByPostId: Record<number, Partial<Record<ReactionType, number>>> =
+    {};
+
+  for (const row of rows) {
+    if (!row.postId) continue;
+    if (!summaryByPostId[row.postId]) {
+      summaryByPostId[row.postId] = {};
+    }
+    summaryByPostId[row.postId]![row.reactionType] = row._count.reactionType;
+  }
+
+  return posts.map((post) => ({
+    ...post,
+    reactionSummary: {
+      ...defaultReactionSummary(),
+      ...(summaryByPostId[post.id] ?? {}),
+    },
+  }));
+};
+
 const attachPostEnhancements = async <
   T extends {
     poll?: unknown;
@@ -111,8 +168,11 @@ const attachPostEnhancements = async <
   const withEvent = (await attachEventSummaryToPosts(
     withPoll as any,
     userId,
-  )) as Array<Record<string, any>>;
-  return withEvent.map((post) => ({
+  )) as Array<
+    Record<string, any> & { id: number; savedBy?: Array<{ id: number }> }
+  >;
+  const withReactions = await attachReactionSummariesToPosts(withEvent);
+  return withReactions.map((post) => ({
     ...post,
     isSaved: (post.savedBy?.length ?? 0) > 0,
   }));
@@ -328,6 +388,8 @@ type CreatePostParams = {
   groupId?: number;
   attachmentIds?: number[];
   isAnonymous?: boolean;
+  mentionedUserIds?: number[];
+  mentionAll?: boolean;
   poll?: PollInput;
   event?: EventInput;
 };
@@ -340,6 +402,8 @@ export const createPostService = async ({
   groupId,
   attachmentIds = [],
   isAnonymous: wantsAnonymous = false,
+  mentionedUserIds = [],
+  mentionAll = false,
   poll,
   event,
 }: CreatePostParams) => {
@@ -433,6 +497,17 @@ export const createPostService = async ({
     }
   }
 
+  const uniqueMentionedUserIds = await resolveMentionTargets({
+    mentionAll,
+    mentionedUserIds,
+    actorId: userId,
+    groupId: groupId || null,
+  });
+  await assertMentionedUsersExist(uniqueMentionedUserIds);
+  if (groupId) {
+    await assertMentionedUsersInGroup(groupId, uniqueMentionedUserIds);
+  }
+
   /**
    * Transaction
    */
@@ -493,6 +568,10 @@ export const createPostService = async ({
       });
     }
 
+    if (uniqueMentionedUserIds.length > 0) {
+      await syncPostMentions(tx, createdPost.id, uniqueMentionedUserIds);
+    }
+
     /**
      * Return full post
      */
@@ -506,6 +585,10 @@ export const createPostService = async ({
 
   if (!post) {
     throw new AppError(500, "Không thể tạo bài viết");
+  }
+
+  if (post.status === PostStatus.ACTIVE && uniqueMentionedUserIds.length > 0) {
+    await notifyPostMentions(post.id, userId, uniqueMentionedUserIds);
   }
 
   const [mappedPost] = await attachPostEnhancements([post], userId);
@@ -705,13 +788,21 @@ export const reactPostService = async ({
 export const updatePostService = async ({
   userId,
   postId,
-  content,
+  content = "",
   contentFormat = PostContentFormat.HTML,
+  mentionedUserIds = [],
+  mentionAll = false,
+  poll,
+  event,
 }: {
   userId: number;
   postId: number;
-  content: string;
+  content?: string;
   contentFormat?: PostContentFormatType;
+  mentionedUserIds?: number[];
+  mentionAll?: boolean;
+  poll?: PollUpdateInput;
+  event?: EventInput;
 }) => {
   const existingPost = await prisma.post.findUnique({
     where: { id: postId },
@@ -719,6 +810,22 @@ export const updatePostService = async ({
       id: true,
       userId: true,
       status: true,
+      groupId: true,
+      poll: {
+        include: {
+          options: {
+            orderBy: { sortOrder: "asc" },
+            include: {
+              _count: {
+                select: { votes: true },
+              },
+            },
+          },
+        },
+      },
+      event: {
+        select: { id: true },
+      },
     },
   });
 
@@ -734,36 +841,95 @@ export const updatePostService = async ({
     throw new AppError(403, "Bạn không có quyền sửa bài viết này");
   }
 
-  const processed = processPostContent(content, contentFormat);
+  if (poll && !existingPost.poll) {
+    throw new AppError(400, "Bài viết không có bình chọn để cập nhật");
+  }
 
-  return prisma.post.update({
-    where: { id: postId },
-    data: {
-      content: processed.content,
-      contentFormat: processed.contentFormat,
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-          profile: {
-            select: {
-              avatarKey: true,
-            },
-          },
-        },
-      },
-      attachments: true,
-      _count: {
-        select: {
-          comments: true,
-          reactions: true,
-        },
-      },
-    },
+  if (event && !existingPost.event) {
+    throw new AppError(400, "Bài viết không có sự kiện để cập nhật");
+  }
+
+  const trimmedContent = content.trim();
+  let processed: { content: string; contentFormat: PostContentFormatType };
+
+  if (poll) {
+    if (!trimmedContent) {
+      processed = {
+        content: poll.question,
+        contentFormat: PostContentFormat.PLAIN,
+      };
+    } else {
+      processed = processPostContent(content, contentFormat);
+    }
+  } else if (event) {
+    if (!trimmedContent) {
+      processed = {
+        content: event.title,
+        contentFormat: PostContentFormat.PLAIN,
+      };
+    } else {
+      processed = processPostContent(content, contentFormat);
+    }
+  } else {
+    if (!trimmedContent) {
+      throw new AppError(400, "Nội dung bài viết không được để trống");
+    }
+    processed = processPostContent(content, contentFormat);
+  }
+
+  const uniqueMentionedUserIds = await resolveMentionTargets({
+    mentionAll,
+    mentionedUserIds,
+    actorId: userId,
+    groupId: existingPost.groupId,
   });
+  await assertMentionedUsersExist(uniqueMentionedUserIds);
+  if (existingPost.groupId) {
+    await assertMentionedUsersInGroup(
+      existingPost.groupId,
+      uniqueMentionedUserIds,
+    );
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.post.update({
+      where: { id: postId },
+      data: {
+        content: processed.content,
+        contentFormat: processed.contentFormat,
+      },
+    });
+
+    if (poll && existingPost.poll) {
+      await updatePollForPost(
+        tx,
+        existingPost.poll.id,
+        poll,
+        existingPost.poll.options,
+      );
+    }
+
+    if (event && existingPost.event) {
+      await tx.event.update({
+        where: { id: existingPost.event.id },
+        data: {
+          title: event.title,
+          description: event.description?.trim() || null,
+          startAt: event.startAt,
+          endAt: event.endAt ?? null,
+          location: event.location?.trim() || null,
+        },
+      });
+    }
+
+    await syncPostMentions(tx, postId, uniqueMentionedUserIds);
+  });
+
+  if (uniqueMentionedUserIds.length > 0) {
+    await notifyPostMentions(postId, userId, uniqueMentionedUserIds);
+  }
+
+  return getPostById(postId, userId);
 };
 
 export const deletePostService = async (userId: number, postId: number) => {
@@ -869,6 +1035,99 @@ const assertUserCanAccessPost = async (postId: number, userId: number) => {
   }
 
   return post;
+};
+
+type GetPostReactionsParams = {
+  userId: number;
+  postId: number;
+  page?: number;
+  limit?: number;
+  reactionType?: ReactionType;
+};
+
+export const getPostReactionsService = async ({
+  userId,
+  postId,
+  page = 1,
+  limit = 20,
+  reactionType,
+}: GetPostReactionsParams) => {
+  await assertUserCanAccessPost(postId, userId);
+
+  const skip = (page - 1) * limit;
+  const where = {
+    postId,
+    ...(reactionType ? { reactionType } : {}),
+  };
+
+  const [summaryRaw, total, reactions] = await Promise.all([
+    prisma.reaction.groupBy({
+      by: ["reactionType"],
+      where: { postId },
+      _count: { reactionType: true },
+    }),
+    prisma.reaction.count({ where }),
+    prisma.reaction.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            profile: {
+              select: {
+                avatarKey: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+  ]);
+
+  const summary = {
+    ...defaultReactionSummary(),
+    ...summaryRaw.reduce(
+      (acc, item) => {
+        acc[item.reactionType] = item._count.reactionType;
+        return acc;
+      },
+      {} as Record<ReactionType, number>,
+    ),
+  };
+
+  const items = await Promise.all(
+    reactions.map(async (reaction) => ({
+      id: reaction.id,
+      reactionType: reaction.reactionType,
+      createdAt: reaction.createdAt,
+      user: {
+        id: reaction.user.id,
+        fullName: reaction.user.fullName,
+        profile: reaction.user.profile
+          ? {
+              avatarUrl: reaction.user.profile.avatarKey
+                ? await getFileUrl(reaction.user.profile.avatarKey, 24 * 60 * 60)
+                : null,
+            }
+          : null,
+      },
+    })),
+  );
+
+  return {
+    summary,
+    total,
+    items,
+    pagination: {
+      page,
+      limit,
+      hasMore: skip + items.length < total,
+    },
+  };
 };
 
 export const toggleSavePostService = async ({

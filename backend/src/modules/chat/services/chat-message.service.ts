@@ -19,6 +19,12 @@ import {
 } from "@/modules/chat/services/chat-cache.service";
 import type { PollInput } from "@/modules/poll/poll.schema";
 import { createPollInTransaction } from "@/modules/poll/poll.service";
+import { notifyMessageMentions } from "@/modules/notification/notification.service";
+import {
+  assertMentionedUsersExist,
+  assertMentionedUsersInConversation,
+  resolveMentionTargets,
+} from "@/shared/utils/mentions";
 import prisma from "@/shared/utils/prisma";
 
 export const getMessagesService = async ({
@@ -89,6 +95,8 @@ export const sendMessageService = async ({
   content,
   contentType,
   attachmentIds,
+  mentionedUserIds = [],
+  mentionAll = false,
   poll,
 }: {
   conversationId: number;
@@ -96,6 +104,8 @@ export const sendMessageService = async ({
   content: string;
   contentType: MessageContentType;
   attachmentIds: number[];
+  mentionedUserIds?: number[];
+  mentionAll?: boolean;
   poll?: PollInput;
 }) => {
   await assertConversationMember(conversationId, userId);
@@ -132,6 +142,18 @@ export const sendMessageService = async ({
     }
   }
 
+  const uniqueMentionedUserIds = await resolveMentionTargets({
+    mentionAll,
+    mentionedUserIds,
+    actorId: userId,
+    conversationId,
+  });
+  await assertMentionedUsersExist(uniqueMentionedUserIds);
+  await assertMentionedUsersInConversation(
+    conversationId,
+    uniqueMentionedUserIds,
+  );
+
   const now = new Date();
 
   const message = await prisma.$transaction(async (tx) => {
@@ -164,6 +186,16 @@ export const sendMessageService = async ({
       });
     }
 
+    if (uniqueMentionedUserIds.length > 0) {
+      await tx.messageMention.createMany({
+        data: uniqueMentionedUserIds.map((mentionedUserId) => ({
+          messageId: created.id,
+          mentionedUserId,
+        })),
+        skipDuplicates: true,
+      });
+    }
+
     await tx.conversation.update({
       where: { id: conversationId },
       data: { lastMessageAt: now },
@@ -181,6 +213,15 @@ export const sendMessageService = async ({
   });
 
   const mapped = await mapMessage(message, userId);
+  if (uniqueMentionedUserIds.length > 0) {
+    await notifyMessageMentions(
+      conversationId,
+      message.id,
+      userId,
+      uniqueMentionedUserIds,
+      message.content,
+    );
+  }
   await invalidateConversationCaches(conversationId);
   return mapped;
 };

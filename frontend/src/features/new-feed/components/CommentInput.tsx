@@ -1,12 +1,21 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import MentionTextarea from "@/features/mention/components/MentionTextarea";
+import type { MentionUser } from "@/features/mention/utils/mention";
 
 type CommentInputProps = {
   placeholder?: string;
   loading?: boolean;
   autoFocus?: boolean;
   allowAnonymous?: boolean;
-  onSubmit: (content: string, isAnonymous?: boolean) => Promise<void> | void;
+  mentionCandidates?: MentionUser[];
+  excludeMentionUserId?: number;
+  onSubmit: (
+    content: string,
+    isAnonymous?: boolean,
+    mentionedUserIds?: number[],
+    mentionAll?: boolean,
+  ) => Promise<void> | void;
 };
 
 const CommentInput = ({
@@ -14,10 +23,14 @@ const CommentInput = ({
   loading = false,
   autoFocus = false,
   allowAnonymous = false,
+  mentionCandidates,
+  excludeMentionUserId,
   onSubmit,
 }: CommentInputProps) => {
   const { t } = useTranslation();
   const [content, setContent] = useState("");
+  const [mentionedUserIds, setMentionedUserIds] = useState<number[]>([]);
+  const [mentionAll, setMentionAll] = useState(false);
   const [commentAsAnonymous, setCommentAsAnonymous] = useState(false);
 
   const handleSubmit = async () => {
@@ -26,18 +39,26 @@ const CommentInput = ({
     await onSubmit(
       content.trim(),
       allowAnonymous && commentAsAnonymous ? true : undefined,
+      mentionedUserIds,
+      mentionAll,
     );
     setContent("");
+    setMentionedUserIds([]);
+    setMentionAll(false);
     setCommentAsAnonymous(false);
   };
 
   return (
     <div className="space-y-2">
       <div className="flex gap-2">
-        <input
+        <MentionTextarea
           autoFocus={autoFocus}
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={setContent}
+          onMentionedUserIdsChange={setMentionedUserIds}
+          onMentionAllChange={setMentionAll}
+          mentionCandidates={mentionCandidates}
+          excludeMentionUserId={excludeMentionUserId}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
@@ -45,7 +66,8 @@ const CommentInput = ({
             }
           }}
           placeholder={placeholder ?? t("pages.posts.writeComment")}
-          className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-full px-4 py-2 text-sm outline-none text-slate-900 dark:text-slate-100"
+          disabled={loading}
+          className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-full px-4 py-2 text-sm outline-none w-full text-slate-900 dark:text-slate-100"
         />
 
         <button

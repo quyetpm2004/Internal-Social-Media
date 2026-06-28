@@ -20,6 +20,8 @@ import {
   isRichTextEmpty,
   sanitizePostHtml,
 } from "@/features/new-feed/utils/rich-text";
+import { extractMentionPayloadFromHtml } from "@/features/mention/utils/mention";
+import type { MentionUser } from "@/features/mention/utils/mention";
 import { uploadApi } from "@/features/uploads/api/upload.api";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { toast } from "sonner";
@@ -32,6 +34,8 @@ type PostCreatorProps = {
   fetchPosts: (currentPage: number) => Promise<void>;
   groupVisibility: "PUBLIC" | "GROUP";
   allowAnonymousPost?: boolean;
+  mentionCandidates?: MentionUser[];
+  excludeMentionUserId?: number;
 };
 
 type UploadedAttachment = {
@@ -57,6 +61,8 @@ const PostCreator = ({
   fetchPosts,
   groupVisibility,
   allowAnonymousPost = false,
+  mentionCandidates,
+  excludeMentionUserId,
 }: PostCreatorProps) => {
   const { t } = useTranslation();
   const { groupId } = useParams();
@@ -236,6 +242,7 @@ const PostCreator = ({
           }
         : undefined;
 
+      const mentionPayload = extractMentionPayloadFromHtml(sanitizedContent);
       const res = await PostsApi.createPost({
         content: sanitizedContent,
         contentFormat: "HTML",
@@ -244,6 +251,8 @@ const PostCreator = ({
         attachmentIds: uploadedAttachments.map((item) => item.attachmentId),
         isAnonymous:
           groupVisibility === "GROUP" && allowAnonymousPost && postAsAnonymous,
+        mentionedUserIds: mentionPayload.mentionedUserIds,
+        mentionAll: mentionPayload.mentionAll,
         poll: pollPayload,
         event: eventPayload,
       });
@@ -286,6 +295,8 @@ const PostCreator = ({
           <RichTextEditor
             value={content}
             onChange={setContent}
+            mentionCandidates={mentionCandidates}
+            excludeMentionUserId={excludeMentionUserId}
             placeholder={t("pages.posts.creatorPlaceholder")}
             minRows={3}
           />

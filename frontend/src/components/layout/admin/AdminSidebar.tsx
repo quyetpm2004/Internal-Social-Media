@@ -2,8 +2,10 @@ import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import ConfirmModal from "@/components/common/ConfirmModal";
 import {
+  ClipboardCheck,
   LayoutDashboard,
   Languages,
+  MessageSquare,
   Users,
   FileText,
   UsersRound,
@@ -37,6 +39,8 @@ export default function AdminSidebar() {
     { to: "/admin", label: t("admin.dashboard"), icon: LayoutDashboard, end: true },
     { to: "/admin/users", label: t("admin.users"), icon: Users },
     { to: "/admin/posts", label: t("admin.posts"), icon: FileText },
+    { to: "/admin/pending-posts", label: t("admin.pendingPosts"), icon: ClipboardCheck },
+    { to: "/admin/comments", label: t("admin.comments"), icon: MessageSquare },
     { to: "/admin/groups", label: t("admin.groups"), icon: UsersRound },
   ];
 

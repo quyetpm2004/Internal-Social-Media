@@ -6,7 +6,7 @@ import type {
 import type { PostContentFormat } from "@/features/new-feed/utils/rich-text";
 import type { ApiResponse } from "@/types/api.type";
 import type { GroupApiResponse } from "@/features/group/types/group.type";
-import type { PollInput } from "@/types/poll.type";
+import type { PollInput, PollUpdateInput } from "@/types/poll.type";
 import type { EventInput } from "@/types/event.type";
 
 export const PostsApi = {
@@ -40,6 +40,8 @@ export const PostsApi = {
     groupId?: number;
     attachmentIds: number[];
     isAnonymous?: boolean;
+    mentionedUserIds?: number[];
+    mentionAll?: boolean;
     poll?: PollInput;
     event?: EventInput;
   }) {
@@ -52,10 +54,16 @@ export const PostsApi = {
 
   updatePost(
     postId: number,
-    content: string,
-    contentFormat: PostContentFormat = "HTML",
+    data: {
+      content?: string;
+      contentFormat?: PostContentFormat;
+      mentionedUserIds?: number[];
+      mentionAll?: boolean;
+      poll?: PollUpdateInput;
+      event?: EventInput;
+    },
   ) {
-    return axiosClient.patch(`/posts/${postId}`, { content, contentFormat });
+    return axiosClient.patch<ApiResponse<ApiPost>>(`/posts/${postId}`, data);
   },
 
   getPostById(postId: string) {

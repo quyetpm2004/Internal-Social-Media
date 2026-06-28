@@ -611,6 +611,8 @@ export const MessengerProvider = ({ children }: { children: ReactNode }) => {
           content: payload.content,
           contentType: payload.contentType,
           attachmentIds: payload.attachmentIds,
+          mentionedUserIds: payload.mentionedUserIds,
+          mentionAll: payload.mentionAll,
           poll: payload.poll,
         });
         const newMessage = res.data;

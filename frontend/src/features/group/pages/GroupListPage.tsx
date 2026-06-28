@@ -12,22 +12,19 @@ import type { Group } from "@/features/group/types/group.type";
 import type { CreateGroupFormData } from "@/features/group/components/group-list/CreateGroupModal";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 
 const GroupListPage = () => {
   const { t } = useTranslation();
   const [onCreateGroupOpen, setOnCreateGroupOpen] = useState(false);
-
   const [groups, setGroups] = useState<Group[]>([]);
-
   const [filter, setFilter] = useState("");
-
   const [searchQuery, setSearchQuery] = useState("");
-
   const [currentPage, setCurrentPage] = useState(1);
-
   const [totalPages, setTotalPages] = useState(1);
-
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   // fetch groups
   const fetchGroups = async () => {
@@ -110,7 +107,16 @@ const GroupListPage = () => {
 
   return (
     <>
-      <main className="flex-1 py-8 max-w-6xl mx-auto">
+      <main className="flex-1 py-6 max-w-6xl mx-auto md:px-4">
+        <div className="md:hidden">
+          <button
+            onClick={() => navigate("/")}
+            className="text-sm text-slate-500 hover:text-slate-700 pb-4 dark:hover:text-slate-300 flex items-center gap-2 cursor-pointer"
+          >
+            <ArrowLeft size={16} />
+            <span className="font-medium">{t("common.back")}</span>
+          </button>
+        </div>
         <div className="mb-10 space-y-6">
           <GroupHeader onClick={() => setOnCreateGroupOpen(true)} />
 

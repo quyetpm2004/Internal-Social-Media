@@ -24,3 +24,12 @@ export interface PollInput {
   options: string[];
   allowMultiple?: boolean;
 }
+
+export interface PollUpdateInput {
+  question: string;
+  options: Array<{
+    id?: number;
+    label: string;
+  }>;
+  allowMultiple?: boolean;
+}

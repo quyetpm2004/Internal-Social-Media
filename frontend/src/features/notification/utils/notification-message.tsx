@@ -13,6 +13,13 @@ const getGroupMemberRoleLabel = (t: TFunction, role: string) =>
   });
 
 export const getNotificationLink = (notification: AppNotification): string => {
+  if (notification.type === "MESSAGE_MENTION") {
+    const conversationId = notification.metadata?.conversationId;
+    if (conversationId) {
+      return `/messages/${conversationId}`;
+    }
+  }
+
   if (notification.postId) {
     if (notification.groupId) {
       return `/groups/${notification.groupId}/posts/${notification.postId}`;
@@ -105,6 +112,28 @@ export const getNotificationMessage = (
         </>
       );
     }
+
+    case "POST_MENTION":
+      return (
+        <>
+          <strong>{actorName}</strong> {t("pages.notifications.postMention")}
+        </>
+      );
+
+    case "COMMENT_MENTION":
+      return (
+        <>
+          <strong>{actorName}</strong> {t("pages.notifications.commentMention")}
+        </>
+      );
+
+    case "MESSAGE_MENTION":
+      return (
+        <>
+          <strong>{actorName}</strong> {t("pages.notifications.messageMention")}
+        </>
+      );
+
     case "GROUP_MEMBER_ADDED":
       return (
         <>

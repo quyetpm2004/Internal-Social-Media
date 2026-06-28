@@ -26,6 +26,7 @@ export default function AdminPostDetailPage() {
   const [post, setPost] = useState<AdminPostDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [index, setIndex] = useState(-1);
 
@@ -69,6 +70,28 @@ export default function AdminPostDetailPage() {
     }
   };
 
+  const handleReview = async (action: "approve" | "reject") => {
+    setReviewing(true);
+    try {
+      await adminApi.reviewPost(Number(postId), action);
+      toast.success(
+        action === "approve"
+          ? t("pages.admin.postApproved")
+          : t("pages.admin.postRejected"),
+      );
+      if (action === "reject") {
+        navigate("/admin/pending-posts");
+        return;
+      }
+      const res = await adminApi.getPostDetail(Number(postId));
+      setPost(res.data);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setReviewing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -92,14 +115,36 @@ export default function AdminPostDetailPage() {
             {t("pages.admin.postDetailTitle", { id: post.id })}
           </h1>
         </div>
-        <Button
-          variant="destructive"
-          size="sm"
-          disabled={deleting}
-          onClick={() => setShowDeleteConfirm(true)}
-        >
+        <div className="flex items-center gap-2">
+          {post.status === "PENDING_REVIEW" && (
+            <>
+              <Button
+                size="sm"
+                variant="unlocked"
+                disabled={reviewing}
+                onClick={() => handleReview("approve")}
+              >
+                {t("pages.admin.approve")}
+              </Button>
+              <Button
+                size="sm"
+                variant="locked"
+                disabled={reviewing}
+                onClick={() => handleReview("reject")}
+              >
+                {t("pages.admin.reject")}
+              </Button>
+            </>
+          )}
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={deleting}
+            onClick={() => setShowDeleteConfirm(true)}
+          >
           {t("common.delete")}
         </Button>
+        </div>
       </div>
 
       <div className="grid gap-4">

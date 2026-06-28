@@ -40,6 +40,16 @@ export const messageInclude = {
   poll: {
     include: pollInclude,
   },
+  mentions: {
+    include: {
+      mentionedUser: {
+        select: {
+          id: true,
+          fullName: true,
+        },
+      },
+    },
+  },
 } satisfies Prisma.MessageInclude;
 
 export type MessageWithIncludes = Prisma.MessageGetPayload<{

@@ -1,11 +1,15 @@
 import { useState } from "react";
-import { Pencil, ThumbsUp, Trash2 } from "lucide-react";
+import { Pencil, Pin, ThumbsUp, Trash2 } from "lucide-react";
+import ConfirmModal from "@/components/common/ConfirmModal";
 import {
   CommentApi,
   type CommentReactionType,
 } from "@/features/new-feed/api/comment.api";
 import type { CommentItemType } from "@/features/new-feed/types/comment.type";
 import CommentInput from "@/features/new-feed/components/CommentInput";
+import MentionText from "@/features/mention/components/MentionText";
+import MentionTextarea from "@/features/mention/components/MentionTextarea";
+import { normalizeMentionRefs, textIncludesMentionAll, type MentionUser } from "@/features/mention/utils/mention";
 import { toast } from "sonner";
 import type { ReactionType } from "../api/reaction.api";
 import { getDefaultAvatarUrl } from "@/lib/utils";
@@ -61,8 +65,12 @@ type CommentItemProps = {
   comment: CommentItemType;
   isReply?: boolean;
   allowAnonymousComment?: boolean;
+  canPinComment?: boolean;
+  mentionCandidates?: MentionUser[];
+  excludeMentionUserId?: number;
   onDeleted: (commentId: number) => void;
   onUpdated: (commentId: number, content: string) => void;
+  onPinned?: (commentId: number, isPinned: boolean) => void;
   onReplyCreated?: (parentId: number, reply: CommentItemType) => void;
 };
 
@@ -70,14 +78,22 @@ const CommentItem = ({
   comment,
   isReply = false,
   allowAnonymousComment = false,
+  canPinComment = false,
+  mentionCandidates,
+  excludeMentionUserId,
   onDeleted,
   onUpdated,
+  onPinned,
   onReplyCreated,
 }: CommentItemProps) => {
   const { t } = useTranslation();
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
+  const [editMentionedUserIds, setEditMentionedUserIds] = useState<number[]>(
+    () => normalizeMentionRefs(comment.mentions).map((mention) => mention.id),
+  );
+  const [editMentionAll, setEditMentionAll] = useState(false);
 
   const [currentReaction, setCurrentReaction] =
     useState<CommentReactionType | null>(comment.currentReaction ?? null);
@@ -85,6 +101,10 @@ const CommentItem = ({
   const [reactionCount, setReactionCount] = useState(
     comment.reactionCount ?? 0,
   );
+  const [isPinned, setIsPinned] = useState(Boolean(comment.isPinned));
+  const [pinning, setPinning] = useState(false);
+  const [openConfirmDelete, setOpenConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const selectedReaction = reactionOptions.find(
     (item) => item.type === currentReaction,
@@ -111,8 +131,15 @@ const CommentItem = ({
     if (!editContent.trim()) return;
 
     try {
-      await CommentApi.updateComment(comment.id, editContent.trim());
-      onUpdated(comment.id, editContent.trim());
+      const trimmed = editContent.trim();
+      const mentionAll = editMentionAll || textIncludesMentionAll(trimmed);
+      await CommentApi.updateComment(
+        comment.id,
+        trimmed,
+        mentionAll ? [] : editMentionedUserIds,
+        mentionAll,
+      );
+      onUpdated(comment.id, trimmed);
       setEditing(false);
     } catch (error: any) {
       console.error("Update comment failed:", error);
@@ -126,7 +153,9 @@ const CommentItem = ({
 
   const handleDelete = async () => {
     try {
+      setDeleting(true);
       await CommentApi.deleteComment(comment.id);
+      setOpenConfirmDelete(false);
       onDeleted(comment.id);
     } catch (error: any) {
       console.error("Delete comment failed:", error);
@@ -135,15 +164,52 @@ const CommentItem = ({
         error?.message ||
         t("common.genericError");
       toast.error(message);
+    } finally {
+      setDeleting(false);
     }
   };
 
-  const handleReply = async (content: string, isAnonymous?: boolean) => {
+  const handlePin = async () => {
+    if (pinning) return;
+
+    try {
+      setPinning(true);
+      const nextPinned = !isPinned;
+      const res = await CommentApi.pinComment(comment.id, nextPinned);
+      const data = res.data;
+
+      setIsPinned(Boolean(data.isPinned));
+      onPinned?.(comment.id, Boolean(data.isPinned));
+      toast.success(
+        data.isPinned
+          ? t("pages.posts.pinCommentSuccess")
+          : t("pages.posts.unpinCommentSuccess"),
+      );
+    } catch (error: any) {
+      console.error("Pin comment failed:", error);
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        t("common.genericError");
+      toast.error(message);
+    } finally {
+      setPinning(false);
+    }
+  };
+
+  const handleReply = async (
+    content: string,
+    isAnonymous?: boolean,
+    mentionedUserIds?: number[],
+    mentionAll?: boolean,
+  ) => {
     try {
       const res = await CommentApi.replyComment(
         comment.id,
         content,
         isAnonymous,
+        mentionedUserIds,
+        mentionAll,
       );
       const newReply = res.data;
 
@@ -182,7 +248,18 @@ const CommentItem = ({
       </div>
 
       <div className="flex-1">
-        <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl px-4 py-2 flex">
+        {isPinned && !isReply && (
+          <div className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-blue-700">
+            <Pin size={12} className="fill-current" />
+            <span>{t("pages.posts.pinnedComment")}</span>
+          </div>
+        )}
+
+        <div
+          className={`bg-slate-100 dark:bg-slate-800 rounded-2xl px-4 py-2 flex ${
+            isPinned && !isReply ? "ring-1 ring-blue-200 dark:ring-blue-900/50" : ""
+          }`}
+        >
           <div className="flex-1">
             <div className="text-xs font-bold text-slate-900 dark:text-slate-100">
               {displayName}
@@ -190,9 +267,13 @@ const CommentItem = ({
 
             {editing ? (
               <div className="mt-2 flex gap-2">
-                <input
+                <MentionTextarea
                   value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
+                  onChange={setEditContent}
+                  onMentionedUserIdsChange={setEditMentionedUserIds}
+                  onMentionAllChange={setEditMentionAll}
+                  mentionCandidates={mentionCandidates}
+                  excludeMentionUserId={excludeMentionUserId}
                   className="flex-1 bg-white dark:bg-slate-900 rounded-lg px-3 py-2 text-sm outline-none text-slate-900 dark:text-slate-100"
                 />
 
@@ -217,7 +298,10 @@ const CommentItem = ({
               </div>
             ) : (
               <p className="text-sm text-slate-700 dark:text-slate-300 mt-1">
-                {comment.content}
+                <MentionText
+                  content={comment.content}
+                  mentions={comment.mentions}
+                />
               </p>
             )}
           </div>
@@ -286,6 +370,24 @@ const CommentItem = ({
             </button>
           )}
 
+          {canPinComment && !isReply && (
+            <button
+              type="button"
+              onClick={handlePin}
+              disabled={pinning}
+              className={`hover:text-blue-700 disabled:opacity-60 ${
+                isPinned ? "text-blue-700" : ""
+              }`}
+              title={
+                isPinned
+                  ? t("pages.posts.unpinComment")
+                  : t("pages.posts.pinComment")
+              }
+            >
+              <Pin size={13} className={isPinned ? "fill-current" : ""} />
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setEditing(true)}
@@ -296,12 +398,22 @@ const CommentItem = ({
 
           <button
             type="button"
-            onClick={handleDelete}
+            onClick={() => setOpenConfirmDelete(true)}
             className="hover:text-red-600"
           >
             <Trash2 size={13} />
           </button>
         </div>
+
+        <ConfirmModal
+          open={openConfirmDelete}
+          title={t("pages.posts.deleteCommentTitle")}
+          description={t("pages.posts.deleteCommentConfirm")}
+          confirmText={t("common.delete")}
+          loading={deleting}
+          onCancel={() => setOpenConfirmDelete(false)}
+          onConfirm={handleDelete}
+        />
 
         {showReplyInput && !isReply && (
           <div className="mt-2">
@@ -309,6 +421,8 @@ const CommentItem = ({
               autoFocus
               placeholder={t("pages.posts.writeReply")}
               allowAnonymous={allowAnonymousComment}
+              mentionCandidates={mentionCandidates}
+              excludeMentionUserId={excludeMentionUserId}
               onSubmit={handleReply}
             />
           </div>

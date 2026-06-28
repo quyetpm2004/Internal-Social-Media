@@ -59,7 +59,7 @@ const PostDetailPage = () => {
 
   return (
     <div className="max-w-3xl mx-auto py-8">
-      <div>
+      <div className="md:hidden">
         <button
           onClick={handleGoBack}
           className="text-sm text-slate-500 hover:text-slate-700 pb-4 dark:hover:text-slate-300 flex items-center gap-2 cursor-pointer"

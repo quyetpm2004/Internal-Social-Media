@@ -49,6 +49,11 @@ export const sendMessageSchema = z
       ])
       .default(MessageContentType.TEXT),
     attachmentIds: z.array(z.coerce.number().int().positive()).optional(),
+    mentionedUserIds: z
+      .array(z.coerce.number().int().positive())
+      .optional()
+      .default([]),
+    mentionAll: z.boolean().optional().default(false),
     poll: pollInputSchema.optional(),
   })
   .superRefine((data, ctx) => {

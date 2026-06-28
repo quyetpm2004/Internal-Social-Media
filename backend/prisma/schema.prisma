@@ -138,6 +138,9 @@ enum NotificationType {
   POST_COMMENT
   COMMENT_REPLY
   COMMENT_REACTION
+  POST_MENTION
+  COMMENT_MENTION
+  MESSAGE_MENTION
   GROUP_MEMBER_ADDED
   GROUP_MEMBER_ROLE_CHANGED
   GROUP_MEMBER_STATUS_CHANGED
@@ -171,6 +174,7 @@ model User {
 
   postMentions    PostMention[]    @relation("PostMentionedUser")
   commentMentions CommentMention[] @relation("CommentMentionedUser")
+  messageMentions MessageMention[] @relation("MessageMentionedUser")
 
   createdGroups   Group[]         @relation("GroupCreator")
   groupMembers    GroupMember[]
@@ -426,6 +430,7 @@ model Comment {
   content         String        @db.Text
   status          CommentStatus @default(ACTIVE)
   isAnonymous     Boolean       @default(false) @map("is_anonymous")
+  isPinned        Boolean       @default(false) @map("is_pinned")
 
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -472,6 +477,20 @@ model CommentMention {
   @@index([commentId])
   @@index([mentionedUserId])
   @@map("comment_mentions")
+}
+
+model MessageMention {
+  id              Int @id @default(autoincrement()) @map("mention_id")
+  messageId       Int @map("message_id")
+  mentionedUserId Int @map("mentioned_user_id")
+
+  message       Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  mentionedUser User    @relation("MessageMentionedUser", fields: [mentionedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, mentionedUserId])
+  @@index([messageId])
+  @@index([mentionedUserId])
+  @@map("message_mentions")
 }
 
 model PostAttachment {
@@ -565,6 +584,7 @@ model Message {
   sender       User                @relation(fields: [senderId], references: [id], onDelete: Cascade)
   attachments  MessageAttachment[]
   poll         Poll?
+  mentions     MessageMention[]
 
   @@index([conversationId, createdAt])
   @@index([senderId])

@@ -1,10 +1,12 @@
 import ConfirmModal from "@/components/common/ConfirmModal";
 import { getDefaultAvatarUrl } from "@/lib/utils";
-import { Camera, KeyRound, Trash2 } from "lucide-react";
+import { Camera, KeyRound, MessageCircle, Trash2 } from "lucide-react";
 import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 
 interface HeaderProps {
+  userId: string;
   isOwner: boolean;
   name: string;
   role: string | undefined;
@@ -22,6 +24,7 @@ interface HeaderProps {
 }
 
 const ProfileHeader: React.FC<HeaderProps> = ({
+  userId,
   isOwner,
   name,
   role,
@@ -40,6 +43,7 @@ const ProfileHeader: React.FC<HeaderProps> = ({
   const { t } = useTranslation();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const navigate = useNavigate();
 
   const handleSelectAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -110,7 +114,7 @@ const ProfileHeader: React.FC<HeaderProps> = ({
           </p>
         </div>
 
-        {isOwner && (
+        {isOwner ? (
           <div className="flex items-center gap-3 pb-2">
             {isOwner && (
               <button
@@ -146,6 +150,17 @@ const ProfileHeader: React.FC<HeaderProps> = ({
                 </button>
               </>
             )}
+          </div>
+        ) : (
+          <div>
+            <button
+              type="button"
+              onClick={() => navigate(`/messages/${userId}`)}
+              className="cursor-pointer flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-700 text-white font-semibold text-sm shadow-lg hover:bg-blue-800 transition-all"
+            >
+              <MessageCircle size={20} />
+              {t("profile.sendMessage")}
+            </button>
           </div>
         )}
       </div>

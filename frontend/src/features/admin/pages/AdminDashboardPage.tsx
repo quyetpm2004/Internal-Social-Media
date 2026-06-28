@@ -9,6 +9,11 @@ import {
   UsersRound,
 } from "lucide-react";
 import { adminApi } from "@/features/admin/api/admin.api";
+import {
+  AdminBarChart,
+  AdminDonutChart,
+  AdminHorizontalBarChart,
+} from "@/features/admin/components/AdminCharts";
 import type { DashboardData } from "@/features/admin/types/admin.type";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -104,7 +109,7 @@ export default function AdminDashboardPage() {
     {
       label: t("pages.admin.pendingPosts"),
       count: data.alerts.pendingReviewPosts,
-      to: "/admin/posts",
+      to: "/admin/pending-posts",
     },
     {
       label: t("pages.admin.lockedUsers"),
@@ -150,6 +155,106 @@ export default function AdminDashboardPage() {
               </div>
             </Link>
           ))}
+        </div>
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-3">
+        <div className={`${dashboardCardClass} xl:col-span-2`}>
+          <div
+            className={cn(
+              "border-b px-5 py-4",
+              dashboardDividerClass,
+            )}
+          >
+            <h2 className="text-base font-medium text-gray-900">
+              {t("pages.admin.growthChartTitle")}
+            </h2>
+            <p className="mt-1 text-sm text-gray-500">
+              {t("pages.admin.growthChartDescription")}
+            </p>
+          </div>
+          <div className="px-5 py-4">
+            <AdminBarChart
+              labels={data.charts.growth.labels}
+              series={[
+                {
+                  key: "users",
+                  label: t("pages.admin.chartUsers"),
+                  values: data.charts.growth.users,
+                  color: "#2563eb",
+                },
+                {
+                  key: "posts",
+                  label: t("pages.admin.chartPosts"),
+                  values: data.charts.growth.posts,
+                  color: "#16a34a",
+                },
+                {
+                  key: "comments",
+                  label: t("pages.admin.chartComments"),
+                  values: data.charts.growth.comments,
+                  color: "#9333ea",
+                },
+              ]}
+            />
+          </div>
+        </div>
+
+        <div className={dashboardCardClass}>
+          <div
+            className={cn(
+              "border-b px-5 py-4",
+              dashboardDividerClass,
+            )}
+          >
+            <h2 className="text-base font-medium text-gray-900">
+              {t("pages.admin.postVisibilityTitle")}
+            </h2>
+          </div>
+          <div className="px-5 py-4">
+            <AdminDonutChart
+              items={[
+                {
+                  label: t("pages.admin.publicPosts"),
+                  value: data.charts.postVisibility.public,
+                  color: "#2563eb",
+                },
+                {
+                  label: t("pages.admin.groupPosts"),
+                  value: data.charts.postVisibility.group,
+                  color: "#f59e0b",
+                },
+              ]}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className={dashboardCardClass}>
+        <div
+          className={cn(
+            "border-b px-5 py-4",
+            dashboardDividerClass,
+          )}
+        >
+          <h2 className="text-base font-medium text-gray-900">
+            {t("pages.admin.topGroupsTitle")}
+          </h2>
+        </div>
+        <div className="px-5 py-4">
+          {data.charts.topGroups.length === 0 ? (
+            <p className="text-sm text-gray-500">{t("pages.admin.noGroupsChart")}</p>
+          ) : (
+            <AdminHorizontalBarChart
+              items={data.charts.topGroups.map((group, index) => ({
+                label: group.name,
+                value: group.postCount,
+                color: ["#2563eb", "#16a34a", "#9333ea", "#f59e0b", "#ef4444"][
+                  index % 5
+                ],
+              }))}
+            />
+          )}
         </div>
       </div>
 

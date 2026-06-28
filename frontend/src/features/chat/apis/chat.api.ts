@@ -65,6 +65,8 @@ export const chatApi = {
       content: string;
       contentType?: MessageContentType;
       attachmentIds?: number[];
+      mentionedUserIds?: number[];
+      mentionAll?: boolean;
       poll?: PollInput;
     },
   ) {
@@ -74,6 +76,8 @@ export const chatApi = {
         content: data.content,
         contentType: data.contentType ?? "TEXT",
         attachmentIds: data.attachmentIds ?? [],
+        mentionedUserIds: data.mentionedUserIds ?? [],
+        ...(data.mentionAll ? { mentionAll: true } : {}),
         poll: data.poll,
       },
     );

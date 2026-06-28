@@ -3,14 +3,14 @@ import { toast } from "sonner";
 import { profileApi } from "@/features/profile/api/profile.api";
 import ProfileHeader from "@/features/profile/components/ProfileHeader";
 import InfoField from "@/features/profile/components/InfoField";
-import { BookUser, Shell, UserPen } from "lucide-react";
+import { ArrowLeft, BookUser, Shell, UserPen } from "lucide-react";
 import type {
   Department,
   Position,
   UserProfile,
 } from "@/features/profile/types/profile.type";
 import { uploadApi } from "@/features/uploads/api/upload.api";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import NotFoundPage from "@/features/not-found/pages/NotFoundPage";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { authApi } from "@/features/auth/api/auth.api";
@@ -21,7 +21,7 @@ export default function ProfilePage() {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const { t } = useTranslation();
-
+  const navigate = useNavigate();
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -253,8 +253,18 @@ export default function ProfilePage() {
 
   return (
     <div className="py-4 max-w-6xl mx-auto">
+      <div className="md:hidden">
+        <button
+          onClick={() => navigate(-1)}
+          className="text-sm text-slate-500 hover:text-slate-700 pb-4 dark:hover:text-slate-300 flex items-center gap-2 cursor-pointer"
+        >
+          <ArrowLeft size={16} />
+          <span className="font-medium">{t("common.back")}</span>
+        </button>
+      </div>
       <ProfileHeader
         isOwner={userId === String(user?.id)}
+        userId={userId}
         name={profile?.fullName}
         avatarUrl={profile?.avatarUrl}
         role={

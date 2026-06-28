@@ -1,10 +1,14 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import type { ReactionType } from "@/features/new-feed/api/reaction.api";
+import type {
+  ReactionSummary,
+  ReactionType,
+} from "@/features/new-feed/api/reaction.api";
 import type { PostContentFormat } from "@/features/new-feed/utils/rich-text";
 import type { GroupMemberRole } from "@/features/group/utils/group-member";
 import type { PollSummary } from "@/types/poll.type";
 import type { EventSummary } from "@/types/event.type";
+import type { MentionUser } from "@/features/mention/utils/mention";
 
 type SortType = "latest" | "trending";
 type PostStatus = "ACTIVE" | "PENDING_REVIEW" | "HIDDEN" | "DELETED";
@@ -35,6 +39,7 @@ interface Post {
   }[];
   stats: Stats;
   currentReaction: ReactionType | null;
+  reactionSummary?: ReactionSummary;
   isSaved?: boolean;
   poll?: PollSummary | null;
   event?: EventSummary | null;
@@ -65,6 +70,8 @@ interface PostCardProps extends Post {
   onSavedChanged?: (postId: number, isSaved: boolean) => void;
   allowAnonymousComment?: boolean;
   showComment?: boolean;
+  mentionCandidates?: MentionUser[];
+  excludeMentionUserId?: number;
 }
 
 interface RightSidebarWidgetProps {
@@ -110,6 +117,7 @@ type ApiPost = {
   reactions?: {
     reactionType: ReactionType;
   }[];
+  reactionSummary?: ReactionSummary;
   role?: GroupMemberRole;
   isSaved?: boolean;
   poll?: PollSummary | null;

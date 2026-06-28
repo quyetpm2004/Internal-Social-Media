@@ -320,6 +320,107 @@ export const notifyPostComment = async (
   });
 };
 
+export const notifyPostMentions = async (
+  postId: number,
+  actorId: number,
+  mentionedUserIds: number[],
+): Promise<void> => {
+  if (mentionedUserIds.length === 0) {
+    return;
+  }
+
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: {
+      content: true,
+      groupId: true,
+      status: true,
+    },
+  });
+
+  if (!post || post.status !== "ACTIVE") {
+    return;
+  }
+
+  for (const recipientId of mentionedUserIds) {
+    await createNotification({
+      recipientId,
+      actorId,
+      type: NotificationType.POST_MENTION,
+      postId,
+      groupId: post.groupId,
+      metadata: {
+        postSnippet: truncateContent(post.content),
+      },
+    });
+  }
+};
+
+export const notifyCommentMentions = async (
+  postId: number,
+  commentId: number,
+  actorId: number,
+  mentionedUserIds: number[],
+): Promise<void> => {
+  if (mentionedUserIds.length === 0) {
+    return;
+  }
+
+  const [post, comment] = await Promise.all([
+    prisma.post.findUnique({
+      where: { id: postId },
+      select: { groupId: true },
+    }),
+    prisma.comment.findUnique({
+      where: { id: commentId },
+      select: { content: true },
+    }),
+  ]);
+
+  if (!post || !comment) {
+    return;
+  }
+
+  for (const recipientId of mentionedUserIds) {
+    await createNotification({
+      recipientId,
+      actorId,
+      type: NotificationType.COMMENT_MENTION,
+      postId,
+      commentId,
+      groupId: post.groupId,
+      metadata: {
+        commentSnippet: truncateContent(comment.content),
+      },
+    });
+  }
+};
+
+export const notifyMessageMentions = async (
+  conversationId: number,
+  messageId: number,
+  actorId: number,
+  mentionedUserIds: number[],
+  content: string,
+): Promise<void> => {
+  if (mentionedUserIds.length === 0) {
+    return;
+  }
+
+  for (const recipientId of mentionedUserIds) {
+    await createNotification({
+      recipientId,
+      actorId,
+      type: NotificationType.MESSAGE_MENTION,
+      metadata: {
+        conversationId,
+        messageId,
+        messageSnippet: truncateContent(content),
+      },
+    });
+  }
+};
+
 export const notifyCommentReply = async (
   postId: number,
   commentId: number,

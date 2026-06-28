@@ -18,11 +18,30 @@ export type DashboardAlerts = {
   inactiveGroups: number;
 };
 
+export type DashboardCharts = {
+  growth: {
+    labels: string[];
+    users: number[];
+    posts: number[];
+    comments: number[];
+  };
+  postVisibility: {
+    public: number;
+    group: number;
+  };
+  topGroups: Array<{
+    id: number;
+    name: string;
+    postCount: number;
+  }>;
+};
+
 export type DashboardData = {
   stats: DashboardStats;
   alerts: DashboardAlerts;
   recentPosts: AdminPost[];
   recentUsers: AdminUser[];
+  charts: DashboardCharts;
 };
 
 export type AdminUser = {
@@ -86,4 +105,21 @@ export type AdminGroupMember = {
   joinedAt: string;
   status: "PENDING" | "ACTIVE" | "BLOCKED";
   user: { id: number; fullName: string; email: string };
+};
+
+export type AdminComment = {
+  id: number;
+  content: string;
+  status: "ACTIVE" | "HIDDEN" | "DELETED";
+  isAnonymous: boolean;
+  isPinned: boolean;
+  createdAt: string;
+  parentCommentId: number | null;
+  user: { id: number; fullName: string; email: string };
+  post: {
+    id: number;
+    content: string;
+    group: { id: number; groupName: string } | null;
+  };
+  _count: { replies: number; reactions: number };
 };
