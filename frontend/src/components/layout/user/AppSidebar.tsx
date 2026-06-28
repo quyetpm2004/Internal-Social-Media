@@ -111,8 +111,7 @@ export default function AppSidebar() {
                 </SidebarMenuItem>
               ))}
               <SidebarMenuItem>
-                <button
-                  type="button"
+                <div
                   onClick={() =>
                     i18n.changeLanguage(
                       i18n.language.startsWith("vi") ? "en" : "vi",
@@ -136,7 +135,7 @@ export default function AppSidebar() {
                         : t("languageName.en")}
                     </span>
                   </SidebarMenuButton>
-                </button>
+                </div>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>

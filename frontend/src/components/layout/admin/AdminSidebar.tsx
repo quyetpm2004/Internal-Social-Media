@@ -36,10 +36,19 @@ export default function AdminSidebar() {
   const isCollapsed = state === "collapsed";
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const navItems = [
-    { to: "/admin", label: t("admin.dashboard"), icon: LayoutDashboard, end: true },
+    {
+      to: "/admin",
+      label: t("admin.dashboard"),
+      icon: LayoutDashboard,
+      end: true,
+    },
     { to: "/admin/users", label: t("admin.users"), icon: Users },
     { to: "/admin/posts", label: t("admin.posts"), icon: FileText },
-    { to: "/admin/pending-posts", label: t("admin.pendingPosts"), icon: ClipboardCheck },
+    {
+      to: "/admin/pending-posts",
+      label: t("admin.pendingPosts"),
+      icon: ClipboardCheck,
+    },
     { to: "/admin/comments", label: t("admin.comments"), icon: MessageSquare },
     { to: "/admin/groups", label: t("admin.groups"), icon: UsersRound },
   ];
@@ -108,10 +117,11 @@ export default function AdminSidebar() {
                 </SidebarMenuItem>
               ))}
               <SidebarMenuItem>
-                <button
-                  type="button"
+                <div
                   onClick={() =>
-                    i18n.changeLanguage(i18n.language.startsWith("vi") ? "en" : "vi")
+                    i18n.changeLanguage(
+                      i18n.language.startsWith("vi") ? "en" : "vi",
+                    )
                   }
                   className="w-full justify-center flex"
                 >
@@ -123,13 +133,15 @@ export default function AdminSidebar() {
                     )}
                   >
                     <Languages className="size-4" />
-                    <span className={cn("transition-all", isCollapsed && "hidden")}>
+                    <span
+                      className={cn("transition-all", isCollapsed && "hidden")}
+                    >
                       {i18n.language.startsWith("vi")
                         ? t("languageName.vi")
                         : t("languageName.en")}
                     </span>
                   </SidebarMenuButton>
-                </button>
+                </div>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
