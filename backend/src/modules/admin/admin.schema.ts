@@ -7,7 +7,7 @@ export const paginationQuerySchema = z.object({
 
 export const adminUserListQuerySchema = paginationQuerySchema.extend({
   search: z.string().optional().default(""),
-  status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+  status: z.enum(["ACTIVE", "INACTIVE", "PENDING"]).optional(),
   role: z.enum(["EMPLOYEE", "MANAGER", "ADMIN"]).optional(),
 });
 

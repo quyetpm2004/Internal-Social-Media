@@ -99,6 +99,7 @@ export const getDashboardStats = async () => {
     totalGroups,
     activeUsers,
     pendingReviewPosts,
+    pendingUsers,
     inactiveUsers,
     inactiveGroups,
     recentPosts,
@@ -109,6 +110,7 @@ export const getDashboardStats = async () => {
     prisma.group.count({ where: { status: { not: GroupStatus.ARCHIVED } } }),
     prisma.user.count({ where: { status: Status.ACTIVE } }),
     prisma.post.count({ where: { status: PostStatus.PENDING_REVIEW } }),
+    prisma.user.count({ where: { status: Status.PENDING } }),
     prisma.user.count({ where: { status: Status.INACTIVE } }),
     prisma.group.count({ where: { status: GroupStatus.INACTIVE } }),
     prisma.post.findMany({
@@ -126,7 +128,7 @@ export const getDashboardStats = async () => {
 
   return {
     stats: { totalUsers, totalPosts, totalGroups, activeUsers },
-    alerts: { pendingReviewPosts, inactiveUsers, inactiveGroups },
+    alerts: { pendingReviewPosts, pendingUsers, inactiveUsers, inactiveGroups },
     recentPosts,
     recentUsers,
     charts: await getDashboardCharts(),

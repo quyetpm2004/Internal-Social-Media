@@ -7,13 +7,13 @@ export const userIdParamsSchema = z.object({
 export const updateProfileSchema = z.object({
   fullName: z.string().trim().min(1).optional(),
   email: z.string().trim().email().optional(),
-  bio: z.string().optional(),
-  phone: z.string().optional(),
-  gender: z.string().optional(),
-  address: z.string().optional(),
-  birthdate: z.union([z.string(), z.date()]).optional(),
-  departmentId: z.number().optional(),
-  positionId: z.number().optional(),
+  bio: z.string().nullish(),
+  phone: z.string().nullish(),
+  gender: z.string().nullish(),
+  address: z.string().nullish(),
+  birthdate: z.union([z.string(), z.date()]).nullish(),
+  departmentId: z.union([z.string(), z.number()]).nullish(),
+  positionId: z.union([z.string(), z.number()]).nullish(),
 });
 
 export type UserIdParams = z.infer<typeof userIdParamsSchema>;

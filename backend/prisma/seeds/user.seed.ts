@@ -25,7 +25,7 @@ export async function seedUsers(prisma: PrismaClient) {
   const users = [
     {
       email: "admin@company.com",
-      fullName: "Hệ thống Admin",
+      fullName: "Nguyễn Minh Đức",
       role: Role.ADMIN,
       password: hashPassword,
       profile: {
@@ -38,18 +38,22 @@ export async function seedUsers(prisma: PrismaClient) {
     },
     {
       email: "director@company.com",
-      fullName: "Phạm Văn Giám Đốc",
+      fullName: "Phạm Văn Hải",
       role: Role.MANAGER,
       password: hashPassword,
       departmentId: boardDept?.id,
       positionId: directorPos?.id,
       profile: {
-        create: { bio: "Giám đốc điều hành", phone: "0901000001", gender: "Nam" },
+        create: {
+          bio: "Giám đốc điều hành",
+          phone: "0901000001",
+          gender: "Nam",
+        },
       },
     },
     {
       email: "manager.it@company.com",
-      fullName: "Nguyễn Văn Quản Lý",
+      fullName: "Nguyễn Hoàng Long",
       role: Role.MANAGER,
       password: hashPassword,
       departmentId: itDept?.id,
@@ -64,29 +68,37 @@ export async function seedUsers(prisma: PrismaClient) {
     },
     {
       email: "manager.hr@company.com",
-      fullName: "Lê Thị Nhân Sự",
+      fullName: "Lê Thị Hồng Nhung",
       role: Role.MANAGER,
       password: hashPassword,
       departmentId: hrDept?.id,
       positionId: managerPos?.id,
       profile: {
-        create: { bio: "Trưởng phòng Nhân sự", phone: "0902000002", gender: "Nữ" },
+        create: {
+          bio: "Trưởng phòng Nhân sự",
+          phone: "0902000002",
+          gender: "Nữ",
+        },
       },
     },
     {
       email: "manager.mkt@company.com",
-      fullName: "Hoàng Văn Marketing",
+      fullName: "Hoàng Văn Tuấn",
       role: Role.MANAGER,
       password: hashPassword,
       departmentId: mktDept?.id,
       positionId: managerPos?.id,
       profile: {
-        create: { bio: "Trưởng phòng Marketing", phone: "0903000003", gender: "Nam" },
+        create: {
+          bio: "Trưởng phòng Marketing",
+          phone: "0903000003",
+          gender: "Nam",
+        },
       },
     },
     {
       email: "employee1@company.com",
-      fullName: "Trần Thị Nhân Viên",
+      fullName: "Trần Thị Mai Anh",
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: itDept?.id,
@@ -95,7 +107,7 @@ export async function seedUsers(prisma: PrismaClient) {
     },
     {
       email: "employee2@company.com",
-      fullName: "Nguyễn Văn Backend",
+      fullName: "Nguyễn Tiến Duy",
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: itDept?.id,
@@ -104,7 +116,7 @@ export async function seedUsers(prisma: PrismaClient) {
     },
     {
       email: "employee3@company.com",
-      fullName: "Phạm Thị Frontend",
+      fullName: "Phạm Thu Thảo",
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: itDept?.id,
@@ -113,7 +125,7 @@ export async function seedUsers(prisma: PrismaClient) {
     },
     {
       email: "employee4@company.com",
-      fullName: "Võ Văn DevOps",
+      fullName: "Võ Văn Hùng",
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: itDept?.id,
@@ -122,7 +134,7 @@ export async function seedUsers(prisma: PrismaClient) {
     },
     {
       email: "employee5@company.com",
-      fullName: "Đặng Thị QA",
+      fullName: "Đặng Thúy Quỳnh",
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: itDept?.id,
@@ -131,7 +143,7 @@ export async function seedUsers(prisma: PrismaClient) {
     },
     {
       email: "employee6@company.com",
-      fullName: "Bùi Văn Mobile",
+      fullName: "Bùi Thanh Lâm",
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: itDept?.id,
@@ -140,7 +152,7 @@ export async function seedUsers(prisma: PrismaClient) {
     },
     {
       email: "employee7@company.com",
-      fullName: "Trịnh Thị HR",
+      fullName: "Trịnh Thị Thu Hà",
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: hrDept?.id,
@@ -149,7 +161,7 @@ export async function seedUsers(prisma: PrismaClient) {
     },
     {
       email: "employee8@company.com",
-      fullName: "Lý Văn Đào Tạo",
+      fullName: "Lý Văn Nam",
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: hrDept?.id,
@@ -158,7 +170,7 @@ export async function seedUsers(prisma: PrismaClient) {
     },
     {
       email: "employee9@company.com",
-      fullName: "Mai Thị C&B",
+      fullName: "Mai Khánh Huyền",
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: hrDept?.id,
@@ -167,7 +179,7 @@ export async function seedUsers(prisma: PrismaClient) {
     },
     {
       email: "employee10@company.com",
-      fullName: "Đinh Văn Content",
+      fullName: "Đinh Xuân Bách",
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: mktDept?.id,
@@ -176,7 +188,7 @@ export async function seedUsers(prisma: PrismaClient) {
     },
     {
       email: "employee11@company.com",
-      fullName: "Hồ Thị Social",
+      fullName: "Hồ Phương Linh",
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: mktDept?.id,
@@ -185,7 +197,7 @@ export async function seedUsers(prisma: PrismaClient) {
     },
     {
       email: "employee12@company.com",
-      fullName: "Châu Văn Brand",
+      fullName: "Châu Vĩnh Phong",
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: mktDept?.id,
@@ -194,7 +206,7 @@ export async function seedUsers(prisma: PrismaClient) {
     },
     {
       email: "employee13@company.com",
-      fullName: "Vương Thị Designer",
+      fullName: "Vương Mỹ Tâm",
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: mktDept?.id,
@@ -203,7 +215,7 @@ export async function seedUsers(prisma: PrismaClient) {
     },
     {
       email: "employee14@company.com",
-      fullName: "Tạ Văn Kế Toán",
+      fullName: "Tạ Quốc Bảo",
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: boardDept?.id,
@@ -212,7 +224,7 @@ export async function seedUsers(prisma: PrismaClient) {
     },
     {
       email: "employee15@company.com",
-      fullName: "Phan Thị Hành Chính",
+      fullName: "Phan Ngọc Trâm",
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: boardDept?.id,

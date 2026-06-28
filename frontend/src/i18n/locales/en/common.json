@@ -16,7 +16,23 @@
     "showPassword": "Show password",
     "hidePassword": "Hide password",
     "leftTitle": "Future-ready design for sustainable workspaces.",
-    "leftDescription": "Project management and internal collaboration platform tailored for architecture teams."
+    "leftDescription": "Project management and internal collaboration platform tailored for architecture teams.",
+    "registerTitle": "Create account",
+    "registerDescription": "Sign up for a new account. An admin must approve your request before you can sign in.",
+    "registerButton": "Sign up",
+    "registerSubmitting": "Signing up...",
+    "registerSuccess": "Registration successful",
+    "registerFailed": "Registration failed",
+    "registerPendingMessage": "Your account has been created and is waiting for admin approval. You will be able to sign in once approved.",
+    "backToLogin": "Back to sign in",
+    "fullName": "Full name",
+    "fullNamePlaceholder": "Enter your full name",
+    "confirmPassword": "Confirm password",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?",
+    "registerLink": "Sign up",
+    "accountPendingApproval": "Account is pending admin approval",
+    "accountLocked": "Account has been locked"
   },
   "profile": {
     "loadFailed": "Failed to load profile",
@@ -80,6 +96,7 @@
     "status": "Status",
     "active": "Active",
     "locked": "Locked",
+    "pendingApproval": "Pending approval",
     "lock": "Lock",
     "unlock": "Unlock",
     "fullName": "Full name",
@@ -124,7 +141,9 @@
     "roles": {
       "member": "Member",
       "moderator": "Moderator",
-      "admin": "Administrator"
+      "admin": "Administrator",
+      "employee": "Employee",
+      "manager": "Manager"
     },
     "time": {
       "justNow": "Just now",
@@ -621,6 +640,7 @@
       "deleteGroupDescription": "Are you sure you want to delete this group? This action cannot be undone.",
       "dashboardLoadFailed": "Unable to load dashboard data.",
       "pendingPosts": "Pending review posts",
+      "pendingUsers": "Accounts pending approval",
       "lockedUsers": "Locked accounts",
       "lockedGroups": "Locked groups",
       "dashboardOverview": "System overview and recent activity",
@@ -679,7 +699,14 @@
       "changeRole": "Change role",
       "changeRoleTitle": "Change user role",
       "changeRoleDescription": "Select a new role for {{name}}.",
-      "roleUpdated": "User role updated"
+      "roleUpdated": "User role updated",
+      "allUserStatuses": "All statuses",
+      "approveUserTitle": "Approve account?",
+      "approveUserDescription": "Allow {{name}} to sign in and use the system.",
+      "rejectUserTitle": "Reject registration?",
+      "rejectUserDescription": "Reject {{name}}'s registration request. The account will be locked.",
+      "userApproved": "Account approved",
+      "userRejected": "Registration rejected"
     }
   }
 }

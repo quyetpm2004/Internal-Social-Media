@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
-import { Role } from "@prisma/client";
+import { Role, Status } from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
 import prisma from "@/shared/utils/prisma";
 import {
@@ -20,59 +20,71 @@ function generateTokens(payload: JwtPayload) {
   return { accessToken, refreshToken };
 }
 
+function assertUserCanAuthenticate(user: { status: Status }) {
+  if (user.status === Status.PENDING) {
+    throw new AppError(403, "Tài khoản đang chờ admin duyệt");
+  }
+
+  if (user.status === Status.INACTIVE) {
+    throw new AppError(403, "Tài khoản đã bị khóa");
+  }
+}
+
 export async function register(
   fullName: string,
   email: string,
   password: string,
-  role?: Role,
+  profile: { phone: string; gender: string; birthdate: string },
 ) {
   const existingUser = await prisma.user.findUnique({
     where: { email },
   });
 
   if (existingUser) {
+    if (existingUser.status === Status.PENDING) {
+      throw new AppError(400, "Email đã được đăng ký và đang chờ admin duyệt");
+    }
+
     throw new AppError(400, "Email đã tồn tại");
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
+  const birthdate = new Date(profile.birthdate);
 
   const user = await prisma.user.create({
     data: {
       fullName,
       email,
       password: hashedPassword,
-      role: role || Role.EMPLOYEE,
+      role: Role.EMPLOYEE,
+      status: Status.PENDING,
+      profile: {
+        create: {
+          phone: profile.phone,
+          gender: profile.gender,
+          birthdate,
+        },
+      },
     },
-  });
-
-  const payload: JwtPayload = {
-    id: user.id,
-    email: user.email,
-    role: user.role,
-    fullName: user.fullName,
-  };
-
-  const tokens = generateTokens(payload);
-
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 7);
-
-  await prisma.refreshToken.create({
-    data: {
-      token: tokens.refreshToken,
-      expiresAt,
-      userId: user.id,
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      status: true,
+      createdAt: true,
+      profile: {
+        select: {
+          phone: true,
+          gender: true,
+          birthdate: true,
+        },
+      },
     },
   });
 
   return {
-    user: {
-      id: user.id,
-      fullName: user.fullName,
-      email: user.email,
-      role: user.role,
-    },
-    ...tokens,
+    user,
+    requiresApproval: true,
   };
 }
 
@@ -90,6 +102,8 @@ export async function login(email: string, password: string) {
   if (!isMatch) {
     throw new AppError(401, "Email hoặc mật khẩu không đúng");
   }
+
+  assertUserCanAuthenticate(user);
 
   const payload: JwtPayload = {
     id: user.id,
@@ -146,6 +160,8 @@ export async function refresh(refreshToken: string) {
   } catch {
     throw new AppError(401, "Refresh token không hợp lệ");
   }
+
+  assertUserCanAuthenticate(storedToken.user);
 
   const payload: JwtPayload = {
     id: decoded.id,

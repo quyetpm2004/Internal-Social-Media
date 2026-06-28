@@ -14,6 +14,7 @@ export type DashboardStats = {
 
 export type DashboardAlerts = {
   pendingReviewPosts: number;
+  pendingUsers: number;
   inactiveUsers: number;
   inactiveGroups: number;
 };
@@ -49,7 +50,7 @@ export type AdminUser = {
   fullName: string;
   email: string;
   role: "EMPLOYEE" | "MANAGER" | "ADMIN";
-  status: "ACTIVE" | "INACTIVE";
+  status: "ACTIVE" | "INACTIVE" | "PENDING";
   createdAt: string;
   department: { id: number; name: string } | null;
   position: { id: number; name: string } | null;

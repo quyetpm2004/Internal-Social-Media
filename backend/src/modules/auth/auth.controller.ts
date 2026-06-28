@@ -18,17 +18,18 @@ const getRefreshTokenFromRequest = (req: Request): string | undefined =>
   req.cookies?.refreshToken || req.body?.refreshToken;
 
 export async function register(req: Request, res: Response) {
-  const { fullName, email, password, role } = req.validated as RegisterInput;
+  const { fullName, email, password, phone, gender, birthdate } =
+    req.validated as RegisterInput;
 
-  const result = await authService.register(fullName, email, password, role);
-
-  setRefreshTokenCookie(res, result.refreshToken);
-
-  const { refreshToken: _, ...responseData } = result;
+  const result = await authService.register(fullName, email, password, {
+    phone,
+    gender,
+    birthdate,
+  });
 
   res.status(201).json({
-    message: "Đăng ký thành công",
-    data: responseData,
+    message: "Đăng ký thành công. Tài khoản đang chờ admin duyệt.",
+    data: result,
   });
 }
 

@@ -22,9 +22,12 @@ export const useNotificationSocket = (
     handlersRef.current = handlers;
   });
 
-  const handleNotificationNew = useCallback((payload: NotificationNewPayload) => {
-    handlersRef.current.onNotificationNew?.(payload);
-  }, []);
+  const handleNotificationNew = useCallback(
+    (payload: NotificationNewPayload) => {
+      handlersRef.current.onNotificationNew?.(payload);
+    },
+    [],
+  );
 
   const handleUnreadCount = useCallback(
     (payload: NotificationUnreadCountPayload) => {

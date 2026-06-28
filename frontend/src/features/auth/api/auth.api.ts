@@ -3,6 +3,8 @@ import type {
   LoginPayload,
   LoginResponse,
   RefreshTokenResponse,
+  RegisterPayload,
+  RegisterResponse,
   UserPublicInfo,
 } from "@/features/auth/types/auth.type";
 import type { ApiResponse } from "@/types/api.type";
@@ -12,6 +14,14 @@ const skipRefreshConfig = {
 } as unknown as Parameters<typeof axiosClient.post>[2];
 
 export const authApi = {
+  register(payload: RegisterPayload) {
+    return axiosClient.post<ApiResponse<RegisterResponse>>(
+      "/auth/register",
+      payload,
+      skipRefreshConfig,
+    );
+  },
+
   login(payload: LoginPayload) {
     return axiosClient.post<ApiResponse<LoginResponse>>("/auth/login", payload);
   },

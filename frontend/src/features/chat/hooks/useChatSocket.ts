@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { useAuthStore } from "@/features/auth/store/auth.store";
-import {
-  connectSocket,
-  disconnectSocket,
-  getSocket,
-} from "@/lib/socket";
+import { connectSocket, disconnectSocket, getSocket } from "@/lib/socket";
 import type {
   MembersUpdatedPayload,
   MessageDeletedPayload,

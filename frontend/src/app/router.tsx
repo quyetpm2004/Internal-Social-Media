@@ -36,6 +36,7 @@ import AdminGroupsPage from "@/features/admin/pages/AdminGroupsPage";
 import AdminGroupDetailPage from "@/features/admin/pages/AdminGroupDetailPage";
 import ResetPasswordPage from "@/features/auth/pages/ResetPasswordPage";
 import ForgotPasswordPage from "@/features/auth/pages/ForgotPasswordPage";
+import RegisterPage from "@/features/auth/pages/RegisterPage";
 
 export const router = createBrowserRouter([
   {
@@ -52,6 +53,10 @@ export const router = createBrowserRouter([
       {
         path: "/forgot-password",
         element: <ForgotPasswordPage />,
+      },
+      {
+        path: "/register",
+        element: <RegisterPage />,
       },
     ],
   },

@@ -112,9 +112,14 @@ export default function AdminDashboardPage() {
       to: "/admin/pending-posts",
     },
     {
+      label: t("pages.admin.pendingUsers"),
+      count: data.alerts.pendingUsers,
+      to: "/admin/users?status=PENDING",
+    },
+    {
       label: t("pages.admin.lockedUsers"),
       count: data.alerts.inactiveUsers,
-      to: "/admin/users",
+      to: "/admin/users?status=INACTIVE",
     },
     {
       label: t("pages.admin.lockedGroups"),
@@ -414,10 +419,18 @@ export default function AdminDashboardPage() {
                     <TableCell className="pr-5">
                       <Badge
                         variant={
-                          user.status === "ACTIVE" ? "active" : "inactive"
+                          user.status === "ACTIVE"
+                            ? "active"
+                            : user.status === "PENDING"
+                              ? "department"
+                              : "inactive"
                         }
                       >
-                        {user.status === "ACTIVE" ? t("common.active") : t("common.locked")}
+                        {user.status === "ACTIVE"
+                          ? t("common.active")
+                          : user.status === "PENDING"
+                            ? t("common.pendingApproval")
+                            : t("common.locked")}
                       </Badge>
                     </TableCell>
                   </TableRow>

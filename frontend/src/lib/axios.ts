@@ -86,6 +86,7 @@ axiosClient.interceptors.response.use(
     const shouldSkip =
       originalRequest.skipAuthRefresh ||
       originalRequest.url?.includes("/auth/login") ||
+      originalRequest.url?.includes("/auth/register") ||
       originalRequest.url?.includes("/auth/refresh") ||
       originalRequest.url?.includes("/auth/logout");
 

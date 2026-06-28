@@ -29,7 +29,7 @@ export const adminApi = {
     >("/admin/users", { params });
   },
 
-  updateUserStatus(userId: number, status: "ACTIVE" | "INACTIVE") {
+  updateUserStatus(userId: number, status: "ACTIVE" | "INACTIVE" | "PENDING") {
     return axiosClient.patch<ApiResponse<AdminUser>>(
       `/admin/users/${userId}/status`,
       { status },

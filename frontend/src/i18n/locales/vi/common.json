@@ -16,7 +16,23 @@
     "showPassword": "Hiện mật khẩu",
     "hidePassword": "Ẩn mật khẩu",
     "leftTitle": "Thiết kế tương lai cho các không gian bền vững.",
-    "leftDescription": "Nền tảng quản lý dự án và hợp tác nội bộ dành riêng cho đội ngũ chuyên gia kiến trúc."
+    "leftDescription": "Nền tảng quản lý dự án và hợp tác nội bộ dành riêng cho đội ngũ chuyên gia kiến trúc.",
+    "registerTitle": "Đăng ký tài khoản",
+    "registerDescription": "Tạo tài khoản mới. Sau khi đăng ký, admin sẽ duyệt trước khi bạn có thể đăng nhập.",
+    "registerButton": "Đăng ký",
+    "registerSubmitting": "Đang đăng ký...",
+    "registerSuccess": "Đăng ký thành công",
+    "registerFailed": "Đăng ký thất bại",
+    "registerPendingMessage": "Tài khoản của bạn đã được tạo và đang chờ admin duyệt. Bạn sẽ nhận được quyền truy cập sau khi được phê duyệt.",
+    "backToLogin": "Quay lại đăng nhập",
+    "fullName": "Họ và tên",
+    "fullNamePlaceholder": "Nhập họ và tên",
+    "confirmPassword": "Xác nhận mật khẩu",
+    "noAccount": "Chưa có tài khoản?",
+    "haveAccount": "Đã có tài khoản?",
+    "registerLink": "Đăng ký ngay",
+    "accountPendingApproval": "Tài khoản đang chờ admin duyệt",
+    "accountLocked": "Tài khoản đã bị khóa"
   },
   "profile": {
     "loadFailed": "Không tải được hồ sơ",
@@ -80,6 +96,7 @@
     "status": "Trạng thái",
     "active": "Hoạt động",
     "locked": "Đã khóa",
+    "pendingApproval": "Chờ duyệt",
     "lock": "Khóa",
     "unlock": "Mở khóa",
     "fullName": "Họ tên",
@@ -125,7 +142,9 @@
     "roles": {
       "member": "Thành viên",
       "moderator": "Kiểm duyệt viên",
-      "admin": "Quản trị viên"
+      "admin": "Quản trị viên",
+      "employee": "Nhân viên",
+      "manager": "Quản lý"
     },
     "time": {
       "justNow": "Vừa xong",
@@ -619,6 +638,7 @@
       "deleteGroupDescription": "Bạn có chắc muốn xóa nhóm này? Hành động này không thể hoàn tác.",
       "dashboardLoadFailed": "Không thể tải dữ liệu dashboard.",
       "pendingPosts": "Bài viết chờ duyệt",
+      "pendingUsers": "Tài khoản chờ duyệt",
       "lockedUsers": "Tài khoản bị khóa",
       "lockedGroups": "Nhóm bị khóa",
       "dashboardOverview": "Tổng quan hệ thống và hoạt động gần đây",
@@ -677,7 +697,14 @@
       "changeRole": "Đổi vai trò",
       "changeRoleTitle": "Đổi vai trò người dùng",
       "changeRoleDescription": "Chọn vai trò mới cho {{name}}.",
-      "roleUpdated": "Đã cập nhật vai trò người dùng"
+      "roleUpdated": "Đã cập nhật vai trò người dùng",
+      "allUserStatuses": "Tất cả trạng thái",
+      "approveUserTitle": "Duyệt tài khoản?",
+      "approveUserDescription": "Cho phép {{name}} đăng nhập và sử dụng hệ thống.",
+      "rejectUserTitle": "Từ chối đăng ký?",
+      "rejectUserDescription": "Từ chối yêu cầu đăng ký của {{name}}. Tài khoản sẽ bị khóa.",
+      "userApproved": "Đã duyệt tài khoản",
+      "userRejected": "Đã từ chối đăng ký"
     }
   }
 }

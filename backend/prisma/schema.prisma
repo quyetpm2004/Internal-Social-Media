@@ -15,6 +15,7 @@ enum Role {
 enum Status {
   ACTIVE
   INACTIVE
+  PENDING
 }
 
 enum GroupType {

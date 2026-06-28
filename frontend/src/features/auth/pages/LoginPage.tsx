@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Eye, EyeOff, HelpCircle, Lock, Mail } from "lucide-react";
@@ -14,6 +14,21 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+function getErrorMessage(error: unknown): string {
+  if (error && typeof error === "object") {
+    const axiosError = error as {
+      response?: { data?: { message?: string } };
+      message?: string;
+    };
+    return (
+      axiosError.response?.data?.message ||
+      axiosError.message ||
+      ""
+    );
+  }
+  return "";
+}
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -41,8 +56,8 @@ export default function LoginPage() {
       await login(values);
       toast.success(t("auth.loginSuccess"));
       navigate("/news-feed");
-    } catch {
-      toast.error(t("auth.loginFailed"));
+    } catch (error) {
+      toast.error(getErrorMessage(error) || t("auth.loginFailed"));
     } finally {
       setLoading(false);
     }
@@ -187,6 +202,17 @@ export default function LoginPage() {
                 {loading ? t("auth.loginSubmitting") : t("auth.loginButton")}
               </Button>
             </form>
+
+            <p className="mt-6 text-center text-sm text-slate-500">
+              {t("auth.noAccount")}{" "}
+              <button
+                type="button"
+                className="font-semibold text-blue-700 transition-colors hover:text-blue-800"
+                onClick={() => navigate("/register")}
+              >
+                {t("auth.registerLink")}
+              </button>
+            </p>
 
             <div className="mt-10 space-y-6">
               <p className="text-center text-xs leading-relaxed text-slate-500">

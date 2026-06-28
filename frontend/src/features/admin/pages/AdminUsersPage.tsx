@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import ConfirmModal from "@/components/common/ConfirmModal";
 import { adminApi } from "@/features/admin/api/admin.api";
@@ -27,18 +28,25 @@ function getErrorMessage(error: unknown): string {
 }
 
 type RoleFilter = "" | "EMPLOYEE" | "MANAGER" | "ADMIN";
+type StatusFilter = "" | "ACTIVE" | "INACTIVE" | "PENDING";
 
 export default function AdminUsersPage() {
   const { t } = useTranslation();
   const currentUser = useAuthStore((state) => state.user);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(
+    (searchParams.get("status") as StatusFilter) || "",
+  );
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<number | null>(null);
   const [confirmUser, setConfirmUser] = useState<AdminUser | null>(null);
+  const [approveUser, setApproveUser] = useState<AdminUser | null>(null);
+  const [rejectUser, setRejectUser] = useState<AdminUser | null>(null);
   const [roleUser, setRoleUser] = useState<AdminUser | null>(null);
   const [nextRole, setNextRole] = useState<AdminUser["role"]>("EMPLOYEE");
 
@@ -49,6 +57,7 @@ export default function AdminUsersPage() {
         page: targetPage,
         search,
         role: roleFilter || undefined,
+        status: statusFilter || undefined,
       });
       setUsers(res.data.users);
       setPagination(res.data.pagination);
@@ -61,12 +70,22 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     fetchUsers();
-  }, [page, roleFilter]);
+  }, [page, roleFilter, statusFilter]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
     fetchUsers(1);
+  };
+
+  const handleStatusFilterChange = (value: StatusFilter) => {
+    setPage(1);
+    setStatusFilter(value);
+    if (value) {
+      setSearchParams({ status: value });
+    } else {
+      setSearchParams({});
+    }
   };
 
   const handleConfirmToggleStatus = async () => {
@@ -81,6 +100,38 @@ export default function AdminUsersPage() {
           : t("pages.admin.userLocked"),
       );
       setConfirmUser(null);
+      fetchUsers();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const handleApproveUser = async () => {
+    if (!approveUser) return;
+
+    setActionId(approveUser.id);
+    try {
+      await adminApi.updateUserStatus(approveUser.id, "ACTIVE");
+      toast.success(t("pages.admin.userApproved"));
+      setApproveUser(null);
+      fetchUsers();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const handleRejectUser = async () => {
+    if (!rejectUser) return;
+
+    setActionId(rejectUser.id);
+    try {
+      await adminApi.updateUserStatus(rejectUser.id, "INACTIVE");
+      toast.success(t("pages.admin.userRejected"));
+      setRejectUser(null);
       fetchUsers();
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -116,6 +167,18 @@ export default function AdminUsersPage() {
     return t("common.roles.employee");
   };
 
+  const getStatusLabel = (status: AdminUser["status"]) => {
+    if (status === "ACTIVE") return t("common.active");
+    if (status === "PENDING") return t("common.pendingApproval");
+    return t("common.locked");
+  };
+
+  const getStatusVariant = (status: AdminUser["status"]) => {
+    if (status === "ACTIVE") return "active" as const;
+    if (status === "PENDING") return "department" as const;
+    return "inactive" as const;
+  };
+
   return (
     <div>
       <h1 className="mb-6 text-2xl font-semibold">{t("pages.admin.usersTitle")}</h1>
@@ -135,6 +198,19 @@ export default function AdminUsersPage() {
             {t("common.search")}
           </Button>
         </form>
+
+        <select
+          value={statusFilter}
+          onChange={(e) =>
+            handleStatusFilterChange(e.target.value as StatusFilter)
+          }
+          className="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 outline-none"
+        >
+          <option value="">{t("pages.admin.allUserStatuses")}</option>
+          <option value="ACTIVE">{t("common.active")}</option>
+          <option value="PENDING">{t("common.pendingApproval")}</option>
+          <option value="INACTIVE">{t("common.locked")}</option>
+        </select>
 
         <select
           value={roleFilter}
@@ -176,34 +252,61 @@ export default function AdminUsersPage() {
                     <Badge variant="outline">{getRoleLabel(user.role)}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      variant={user.status === "ACTIVE" ? "active" : "inactive"}
-                    >
-                      {user.status === "ACTIVE"
-                        ? t("common.active")
-                        : t("common.locked")}
+                    <Badge variant={getStatusVariant(user.status)}>
+                      {getStatusLabel(user.status)}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={user.id === currentUser?.id}
-                        onClick={() => openRoleModal(user)}
-                      >
-                        {t("pages.admin.changeRole")}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={user.status === "ACTIVE" ? "locked" : "unlocked"}
-                        disabled={actionId === user.id || user.id === currentUser?.id}
-                        onClick={() => setConfirmUser(user)}
-                      >
-                        {user.status === "ACTIVE"
-                          ? t("common.lock")
-                          : t("common.unlock")}
-                      </Button>
+                      {user.status === "PENDING" ? (
+                        <>
+                          <Button
+                            size="sm"
+                            className="text-white bg-primary hover:bg-primary/90"
+                            disabled={
+                              actionId === user.id || user.id === currentUser?.id
+                            }
+                            onClick={() => setApproveUser(user)}
+                          >
+                            {t("pages.admin.approve")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="locked"
+                            disabled={
+                              actionId === user.id || user.id === currentUser?.id
+                            }
+                            onClick={() => setRejectUser(user)}
+                          >
+                            {t("pages.admin.reject")}
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={user.id === currentUser?.id}
+                            onClick={() => openRoleModal(user)}
+                          >
+                            {t("pages.admin.changeRole")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={
+                              user.status === "ACTIVE" ? "locked" : "unlocked"
+                            }
+                            disabled={
+                              actionId === user.id || user.id === currentUser?.id
+                            }
+                            onClick={() => setConfirmUser(user)}
+                          >
+                            {user.status === "ACTIVE"
+                              ? t("common.lock")
+                              : t("common.unlock")}
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -236,6 +339,32 @@ export default function AdminUsersPage() {
         variant={confirmUser?.status === "ACTIVE" ? "danger" : "primary"}
         onCancel={() => setConfirmUser(null)}
         onConfirm={handleConfirmToggleStatus}
+      />
+
+      <ConfirmModal
+        open={approveUser !== null}
+        title={t("pages.admin.approveUserTitle")}
+        description={t("pages.admin.approveUserDescription", {
+          name: approveUser?.fullName,
+        })}
+        confirmText={t("pages.admin.approve")}
+        loading={actionId !== null}
+        variant="primary"
+        onCancel={() => setApproveUser(null)}
+        onConfirm={handleApproveUser}
+      />
+
+      <ConfirmModal
+        open={rejectUser !== null}
+        title={t("pages.admin.rejectUserTitle")}
+        description={t("pages.admin.rejectUserDescription", {
+          name: rejectUser?.fullName,
+        })}
+        confirmText={t("pages.admin.reject")}
+        loading={actionId !== null}
+        variant="danger"
+        onCancel={() => setRejectUser(null)}
+        onConfirm={handleRejectUser}
       />
 
       <ConfirmModal
