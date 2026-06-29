@@ -79,8 +79,10 @@ export async function updateProfile(userId: number, data: UpdateProfileInput) {
     data: {
       fullName: data.fullName,
       email: data.email,
-      departmentId: data.departmentId ? parseInt(data.departmentId) : undefined,
-      positionId: data.positionId ? parseInt(data.positionId) : undefined,
+      departmentId:
+        data.departmentId != null ? Number(data.departmentId) : undefined,
+      positionId:
+        data.positionId != null ? Number(data.positionId) : undefined,
       profile: {
         upsert: {
           create: {

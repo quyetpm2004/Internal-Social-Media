@@ -5,7 +5,7 @@ import { seedGroups } from "./seeds/group.seed";
 import { seedPosts } from "./seeds/post.seed";
 import { seedChat } from "./seeds/chat.seed";
 
-import prisma from "../src/utils/prisma";
+import prisma from "../src/shared/utils/prisma";
 
 async function main() {
   console.log("🚀 Start seeding...");

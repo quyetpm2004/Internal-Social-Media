@@ -16,7 +16,7 @@ type AuthState = {
 
   setUser: (user: UserPublicInfo | null) => void;
   setAccessToken: (token: string) => void;
-  login: (payload: LoginPayload) => Promise<void>;
+  login: (payload: LoginPayload) => Promise<UserPublicInfo>;
   logout: () => Promise<void>;
   clearAuth: () => void;
 };
@@ -57,6 +57,7 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
             isLoading: false,
           });
+          return res.data.user;
         } catch (error) {
           set({
             user: null,

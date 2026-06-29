@@ -21,11 +21,7 @@ function getErrorMessage(error: unknown): string {
       response?: { data?: { message?: string } };
       message?: string;
     };
-    return (
-      axiosError.response?.data?.message ||
-      axiosError.message ||
-      ""
-    );
+    return axiosError.response?.data?.message || axiosError.message || "";
   }
   return "";
 }
@@ -53,9 +49,13 @@ export default function LoginPage() {
   const onSubmit = async (values: LoginFormValues) => {
     try {
       setLoading(true);
-      await login(values);
+      const user = await login(values);
       toast.success(t("auth.loginSuccess"));
-      navigate("/news-feed");
+      if (user.role === "ADMIN") {
+        navigate("/admin");
+      } else {
+        navigate("/news-feed");
+      }
     } catch (error) {
       toast.error(getErrorMessage(error) || t("auth.loginFailed"));
     } finally {

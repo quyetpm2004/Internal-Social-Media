@@ -1,0 +1,13 @@
+# Dependencies & build
+node_modules/
+dist/
+
+# Environment (gửi riêng trong file zip nộp bài)
+.env
+backend/.env
+frontend/.env
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log

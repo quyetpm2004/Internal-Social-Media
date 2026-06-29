@@ -25,7 +25,7 @@ export async function seedUsers(prisma: PrismaClient) {
   const users = [
     {
       email: "admin@company.com",
-      fullName: "Nguyễn Minh Đức",
+      fullName: "Admin",
       role: Role.ADMIN,
       password: hashPassword,
       profile: {
