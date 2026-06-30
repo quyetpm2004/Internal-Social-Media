@@ -1,4 +1,4 @@
-# CollabNet — Đồ án mạng xã hội nội bộ
+# CollabNet — Mạng xã hội công ty nội bộ
 
 
 ### Yêu cầu
