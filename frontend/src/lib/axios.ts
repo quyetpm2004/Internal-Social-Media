@@ -111,7 +111,8 @@ axiosClient.interceptors.response.use(
             if (!originalRequest.headers) {
               originalRequest.headers = {};
             }
-            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+            originalRequest.headers["Authorization"] =
+              `Bearer ${newAccessToken}`;
             resolve(axiosClient(originalRequest));
           },
           reject,
@@ -125,10 +126,11 @@ axiosClient.interceptors.response.use(
 
     // Thử gọi API refresh token
     try {
-      const response = await axios.post(
-        `${APP_CONFIG.apiUrl}/auth/refresh-token`,
+      const response = await axiosClient.post(
+        "/auth/refresh-token",
         {},
         {
+          skipAuthRefresh: true,
           withCredentials: true,
           headers: {
             "Content-Type": "application/json",
@@ -149,7 +151,7 @@ axiosClient.interceptors.response.use(
       if (!originalRequest.headers) {
         originalRequest.headers = {};
       }
-      originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+      originalRequest.headers["Authorization"] = `Bearer ${newAccessToken}`;
 
       // Gửi lại request gốc với token mới
       return axiosClient(originalRequest);
