@@ -38,7 +38,7 @@ const getErrorMessage = (error: unknown) => {
 const DetailsPanel = ({
   conversation,
   currentUserId,
-  onMuteChanged,
+  // onMuteChanged,
   onConversationUpdated,
   onGroupCreated,
   onLeftGroup,

@@ -41,8 +41,8 @@ const CommentSection = ({
     Record<number, boolean>
   >({});
 
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  // const [page, setPage] = useState(1);
+  // const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
 
@@ -58,15 +58,15 @@ const CommentSection = ({
       const payload = res.data;
 
       const data = payload.comments ?? [];
-      const hasMoreValue = payload.hasMore ?? false;
+      // const hasMoreValue = payload.hasMore ?? false;
 
       setComments((prev) => {
         if (nextPage === 1) return sortComments(data);
         return sortComments([...prev, ...data]);
       });
 
-      setPage(payload.page ?? nextPage);
-      setHasMore(hasMoreValue);
+      // setPage(payload.page ?? nextPage);
+      // setHasMore(hasMoreValue);
     } catch (error: any) {
       console.error("Load comments failed:", error);
       const message =
@@ -218,8 +218,8 @@ const CommentSection = ({
     setRepliesMap({});
     setReplyPageMap({});
     setReplyHasMoreMap({});
-    setPage(1);
-    setHasMore(true);
+    // setPage(1);
+    // setHasMore(true);
 
     loadComments(1);
   }, [postId]);

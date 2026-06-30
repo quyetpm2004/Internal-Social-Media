@@ -1,4 +1,4 @@
-import { Minus, Phone, Users, Video, X } from "lucide-react";
+import { Minus, Users, X } from "lucide-react";
 import MessageInput from "@/features/chat/components/chat-window/MessageInput";
 import MessageThread from "@/features/chat/components/chat-window/MessageThread";
 import type { ConversationDetail } from "@/features/chat/types/chat.type";
@@ -160,7 +160,7 @@ const FloatingChatWindow = ({
   return (
     <div
       className={`flex flex-col bg-white rounded-t-xl shadow-2xl border border-[#e5e5e5] border-b-0 overflow-hidden transition-all duration-200 ${
-        minimized ? "w-[328px] h-11" : "w-[328px] h-[455px]"
+        minimized ? "w-82 h-11" : "w-82 h-113.75"
       }`}
       data-messenger-dock
     >
@@ -208,7 +208,9 @@ const FloatingChatWindow = ({
               onTypingStop={onTypingStop}
               compact
               currentUserId={currentUserId}
-              mentionCandidates={conversation.members.map((member) => member.user)}
+              mentionCandidates={conversation.members.map(
+                (member) => member.user,
+              )}
             />
           </div>
         </>

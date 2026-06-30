@@ -1,12 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Loader2,
-  Maximize2,
-  MoreHorizontal,
-  PenLine,
-  Search,
-} from "lucide-react";
+import { Loader2, Maximize2, Search } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { useMessenger } from "@/features/chat/context/MessengerContext";
 import type { ConversationFilter } from "@/features/chat/types/chat.type";
@@ -115,7 +109,7 @@ const MessengerDropdown = () => {
         ))}
       </div>
 
-      <div className="max-h-[380px] overflow-y-auto messenger-scrollbar">
+      <div className="max-h-95 overflow-y-auto messenger-scrollbar">
         {loadingConversations ? (
           <div className="flex items-center justify-center py-12 text-[#65676b]">
             <Loader2 size={22} className="animate-spin" />

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Post } from "@/features/new-feed/types/post.type";
 import PostCreator from "@/features/new-feed/components/PostCreator";
 import PostCard from "@/features/new-feed/components/PostCard";
-import { Bell, Cake, Calendar, Users2 } from "lucide-react";
+import { Bell, Calendar, Users2 } from "lucide-react";
 import RightSidebarWidget from "@/features/new-feed/components/RightSidebarWidget";
 import GroupItem from "@/features/new-feed/components/GroupItem";
 import { PostsApi } from "@/features/new-feed/api/post.api";

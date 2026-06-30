@@ -1,4 +1,4 @@
-import { ArrowLeft, Info, Phone, Users, Video } from "lucide-react";
+import { ArrowLeft, Info, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { Conversation } from "@/features/chat/types/chat.type";
 import { getDefaultAvatarUrl } from "@/lib/utils";

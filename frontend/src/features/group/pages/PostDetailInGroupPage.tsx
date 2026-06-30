@@ -1,4 +1,4 @@
-import { useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { useOutletContext, useParams } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import PostCard from "@/features/new-feed/components/PostCard";
 import { toast } from "sonner";
@@ -16,7 +16,6 @@ const PostDetailInGroupPage = () => {
   const { groupId, postId } = useParams<{ groupId: string; postId: string }>();
   const [post, setPost] = useState<Post>();
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
   const { groupDetail } = useOutletContext<{
     isMember: boolean;
     groupDetail: GroupDetail | null;
@@ -51,10 +50,6 @@ const PostDetailInGroupPage = () => {
     };
     fetchData();
   }, [groupId, postId]);
-
-  const handleGoBack = () => {
-    navigate(-1);
-  };
 
   if (loading) {
     return (

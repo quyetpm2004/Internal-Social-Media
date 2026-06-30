@@ -8,9 +8,9 @@ interface PrivacySettingsProps {
 }
 
 const PrivacySettings = ({
-  muteNotifications,
-  submitting,
-  onToggleMute,
+  // muteNotifications,
+  // submitting,
+  // onToggleMute,
   onBlockContact,
 }: PrivacySettingsProps) => {
   const { t } = useTranslation();

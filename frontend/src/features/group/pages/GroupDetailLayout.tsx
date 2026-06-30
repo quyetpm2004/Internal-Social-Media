@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import GroupHeader from "@/features/group/components/group-detail/main-detail/GroupHeader";
-import { ArrowLeft, Clock, Lock, Plus, Users } from "lucide-react";
+import { ArrowLeft, Clock, Lock, Users } from "lucide-react";
 import { Outlet, useNavigate, useParams } from "react-router-dom";
 import type {
   GroupDetail,
