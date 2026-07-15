@@ -1,11 +1,11 @@
 import { GroupMemberStatus, GroupType } from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
-import prisma from "@/shared/utils/prisma";
 import { getFileUrl } from "@/modules/file/file.service";
 import {
   notifyGroupMemberAdded,
   notifyGroupMemberRejected,
 } from "@/modules/notification/notification.service";
+import * as groupRepo from "@/modules/group/group.repository";
 import {
   checkCanApproveJoinRequest,
   checkGroupExists,
@@ -32,23 +32,8 @@ export const getJoinRequests = async (
   };
 
   const [requests, total] = await Promise.all([
-    prisma.groupMember.findMany({
-      where,
-      include: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-            profile: { select: { avatarKey: true } },
-          },
-        },
-      },
-      orderBy: { joinedAt: "desc" },
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
-    prisma.groupMember.count({ where }),
+    groupRepo.listJoinRequests(where, (page - 1) * limit, limit),
+    groupRepo.countMembers(where),
   ]);
 
   return {
@@ -90,17 +75,7 @@ export const approveJoinRequest = async (
     throw new AppError(404, "Không tìm thấy yêu cầu tham gia");
   }
 
-  const updated = await prisma.groupMember.update({
-    where: {
-      groupId_userId: { groupId, userId: targetUserId },
-    },
-    data: { status: GroupMemberStatus.ACTIVE },
-    include: {
-      user: {
-        select: { id: true, fullName: true, email: true },
-      },
-    },
-  });
+  const updated = await groupRepo.approveMember(groupId, targetUserId);
 
   await notifyGroupMemberAdded(groupId, currentUserId, targetUserId);
   return updated;
@@ -124,11 +99,7 @@ export const rejectJoinRequest = async (
     throw new AppError(404, "Không tìm thấy yêu cầu tham gia");
   }
 
-  await prisma.groupMember.delete({
-    where: {
-      groupId_userId: { groupId, userId: targetUserId },
-    },
-  });
+  await groupRepo.deleteMember(groupId, targetUserId);
 
   await notifyGroupMemberRejected(groupId, currentUserId, targetUserId);
   return true;

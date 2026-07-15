@@ -6,7 +6,6 @@ import {
   PostVisibility,
 } from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
-import prisma from "@/shared/utils/prisma";
 import { getFileUrl } from "@/modules/file/file.service";
 import {
   assertGroupAllowsAnonymousContent,
@@ -16,6 +15,7 @@ import {
   notifyPostApproved,
   notifyPostRejected,
 } from "@/modules/notification/notification.service";
+import * as groupRepo from "@/modules/group/group.repository";
 import {
   checkCanManageMember,
   checkCanPostInGroup,
@@ -47,32 +47,13 @@ export const createGroupPost = async (
     ? PostStatus.PENDING_REVIEW
     : PostStatus.ACTIVE;
 
-  const post = await prisma.post.create({
-    data: {
-      userId,
-      groupId,
-      content,
-      visibility: PostVisibility.GROUP,
-      status: postStatus,
-      isAnonymous,
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-          profile: { select: { avatarKey: true } },
-        },
-      },
-      group: true,
-      attachments: true,
-      reactions: true,
-      comments: true,
-      _count: {
-        select: { comments: true, reactions: true },
-      },
-    },
+  const post = await groupRepo.insertGroupPost({
+    userId,
+    groupId,
+    content,
+    visibility: PostVisibility.GROUP,
+    status: postStatus,
+    isAnonymous,
   });
 
   return post;
@@ -81,42 +62,7 @@ export const createGroupPost = async (
 export const getGroupPosts = async (groupId: number) => {
   await checkGroupExists(groupId);
 
-  const posts = await prisma.post.findMany({
-    where: {
-      groupId,
-      visibility: PostVisibility.GROUP,
-      status: PostStatus.ACTIVE,
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-          profile: { select: { avatarKey: true } },
-        },
-      },
-      attachments: true,
-      comments: {
-        where: { status: "ACTIVE" },
-        include: {
-          user: {
-            select: {
-              id: true,
-              fullName: true,
-              profile: { select: { avatarKey: true } },
-            },
-          },
-        },
-        orderBy: { createdAt: "asc" },
-      },
-      reactions: true,
-      _count: {
-        select: { comments: true, reactions: true },
-      },
-    },
-    orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
-  });
+  const posts = await groupRepo.listGroupPosts(groupId);
 
   return posts;
 };
@@ -138,30 +84,7 @@ export const getGroupPostDetail = async (
     throw new AppError(400, "Nhóm riêng tư không thể xem chi tiết bài viết");
   }
 
-  const existingPost = await prisma.post.findUnique({
-    where: { id: postId },
-    include: {
-      user: {
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-          profile: { select: { avatarKey: true } },
-        },
-      },
-      group: {
-        select: { id: true, groupName: true },
-      },
-      reactions: {
-        where: { userId },
-        select: { reactionType: true },
-      },
-      attachments: true,
-      _count: {
-        select: { comments: true, reactions: true },
-      },
-    },
-  });
+  const existingPost = await groupRepo.loadGroupPost(postId, userId);
 
   if (!existingPost) {
     throw new AppError(404, "Post không tồn tại");
@@ -230,24 +153,8 @@ export const getPendingGroupPosts = async (
   };
 
   const [posts, total] = await Promise.all([
-    prisma.post.findMany({
-      where,
-      include: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-            profile: { select: { avatarKey: true } },
-          },
-        },
-        _count: { select: { attachments: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
-    prisma.post.count({ where }),
+    groupRepo.listPendingPosts(where, (page - 1) * limit, limit),
+    groupRepo.countPosts(where),
   ]);
 
   return {
@@ -273,28 +180,13 @@ export const approveGroupPost = async (
     throw new AppError(400, "Nhóm này không bật phê duyệt bài viết");
   }
 
-  const post = await prisma.post.findFirst({
-    where: {
-      id: postId,
-      groupId,
-      status: PostStatus.PENDING_REVIEW,
-      visibility: PostVisibility.GROUP,
-    },
-  });
+  const post = await groupRepo.findPendingPost(groupId, postId);
 
   if (!post) {
     throw new AppError(404, "Không tìm thấy bài viết chờ duyệt");
   }
 
-  const updated = await prisma.post.update({
-    where: { id: postId },
-    data: { status: PostStatus.ACTIVE },
-    include: {
-      user: {
-        select: { id: true, fullName: true, email: true },
-      },
-    },
-  });
+  const updated = await groupRepo.approvePost(postId);
 
   await notifyPostApproved(postId, groupId, currentUserId);
   return updated;
@@ -312,23 +204,13 @@ export const rejectGroupPost = async (
     throw new AppError(400, "Nhóm này không bật phê duyệt bài viết");
   }
 
-  const post = await prisma.post.findFirst({
-    where: {
-      id: postId,
-      groupId,
-      status: PostStatus.PENDING_REVIEW,
-      visibility: PostVisibility.GROUP,
-    },
-  });
+  const post = await groupRepo.findPendingPost(groupId, postId);
 
   if (!post) {
     throw new AppError(404, "Không tìm thấy bài viết chờ duyệt");
   }
 
-  const updated = await prisma.post.update({
-    where: { id: postId },
-    data: { status: PostStatus.DELETED },
-  });
+  const updated = await groupRepo.rejectPost(postId);
 
   await notifyPostRejected(postId, groupId, currentUserId);
   return updated;

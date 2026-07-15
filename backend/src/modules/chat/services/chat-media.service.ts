@@ -1,9 +1,8 @@
-import { AttachmentType, MessageStatus, Prisma } from "@prisma/client";
 import {
   assertConversationMember,
   mapAttachment,
 } from "@/modules/chat/services/chat-access.service";
-import prisma from "@/shared/utils/prisma";
+import * as chatRepo from "@/modules/chat/chat.repository";
 
 export const getSharedMediaService = async ({
   conversationId,
@@ -20,22 +19,9 @@ export const getSharedMediaService = async ({
 
   const skip = (page - 1) * limit;
 
-  const where: Prisma.MessageAttachmentWhereInput = {
-    attachmentType: { in: [AttachmentType.IMAGE, AttachmentType.VIDEO] },
-    message: {
-      conversationId,
-      status: { not: MessageStatus.DELETED },
-    },
-  };
-
   const [total, attachments] = await Promise.all([
-    prisma.messageAttachment.count({ where }),
-    prisma.messageAttachment.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: { uploadedAt: "desc" },
-    }),
+    chatRepo.countSharedMedia(conversationId),
+    chatRepo.listSharedMedia(conversationId, skip, limit),
   ]);
 
   const items = await Promise.all(attachments.map(mapAttachment));
@@ -66,22 +52,9 @@ export const getSharedFilesService = async ({
 
   const skip = (page - 1) * limit;
 
-  const where: Prisma.MessageAttachmentWhereInput = {
-    attachmentType: AttachmentType.FILE,
-    message: {
-      conversationId,
-      status: { not: MessageStatus.DELETED },
-    },
-  };
-
   const [total, attachments] = await Promise.all([
-    prisma.messageAttachment.count({ where }),
-    prisma.messageAttachment.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: { uploadedAt: "desc" },
-    }),
+    chatRepo.countSharedFiles(conversationId),
+    chatRepo.listSharedFiles(conversationId, skip, limit),
   ]);
 
   const items = await Promise.all(attachments.map(mapAttachment));

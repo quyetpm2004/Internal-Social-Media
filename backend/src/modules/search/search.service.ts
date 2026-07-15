@@ -1,20 +1,8 @@
-import { GroupMemberStatus, GroupStatus, Status } from "@prisma/client";
+import { GroupMemberStatus } from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
 import { getFileUrl } from "@/modules/file/file.service";
 import type { SearchQuery } from "@/modules/search/search.schema";
-import prisma from "@/shared/utils/prisma";
-
-const findGroupMember = async (groupId: number, userId: number) => {
-  return prisma.groupMember.findUnique({
-    where: { groupId_userId: { groupId, userId } },
-  });
-};
-
-const countActiveMembers = async (groupId: number) => {
-  return prisma.groupMember.count({
-    where: { groupId, status: GroupMemberStatus.ACTIVE },
-  });
-};
+import * as searchRepo from "@/modules/search/search.repository";
 
 const MAX_HISTORY = 20;
 const DEFAULT_LIMIT = 10;
@@ -47,29 +35,11 @@ export const searchUsers = async (
   limit = DEFAULT_LIMIT,
 ) => {
   const { currentPage, take, skip } = parsePagination(page, limit);
-
-  const where = {
-    status: Status.ACTIVE,
-    id: { not: userId },
-    OR: [{ fullName: { contains: query } }, { email: { contains: query } }],
-  };
+  const where = searchRepo.buildUserSearchWhere(userId, query);
 
   const [users, total] = await Promise.all([
-    prisma.user.findMany({
-      where,
-      skip,
-      take,
-      select: {
-        id: true,
-        fullName: true,
-        email: true,
-        department: { select: { name: true } },
-        position: { select: { name: true } },
-        profile: { select: { avatarKey: true } },
-      },
-      orderBy: { fullName: "asc" },
-    }),
-    prisma.user.count({ where }),
+    searchRepo.findUsers(where, skip, take),
+    searchRepo.countUsers(where),
   ]);
 
   const usersWithAvatar = await Promise.all(
@@ -102,32 +72,19 @@ export const searchGroups = async (
   limit = DEFAULT_LIMIT,
 ) => {
   const { currentPage, take, skip } = parsePagination(page, limit);
-
-  const where = {
-    status: GroupStatus.ACTIVE,
-    OR: [
-      { groupName: { contains: query } },
-      { description: { contains: query } },
-    ],
-  };
+  const where = searchRepo.buildGroupSearchWhere(query);
 
   const [groups, total] = await Promise.all([
-    prisma.group.findMany({
-      where,
-      skip,
-      take,
-      include: {
-        _count: { select: { members: true, posts: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.group.count({ where }),
+    searchRepo.findGroups(where, skip, take),
+    searchRepo.countGroups(where),
   ]);
 
   const groupsWithMeta = await Promise.all(
     groups.map(async (group) => {
-      const membership = await findGroupMember(group.id, userId);
-      const activeMemberCount = await countActiveMembers(group.id);
+      const [membership, activeMemberCount] = await Promise.all([
+        searchRepo.findGroupMember(group.id, userId),
+        searchRepo.countActiveMembers(group.id),
+      ]);
 
       const coverUrl = group.coverKey
         ? await getFileUrl(group.coverKey, 24 * 60 * 60)
@@ -214,17 +171,7 @@ export const performSearch = async (userId: number, params: SearchQuery) => {
 
 export const getSearchHistory = async (userId: number, limit = 10) => {
   const take = Math.min(Math.max(Number(limit) || 10, 1), MAX_HISTORY);
-
-  return prisma.searchHistory.findMany({
-    where: { userId },
-    orderBy: { searchedAt: "desc" },
-    take,
-    select: {
-      id: true,
-      query: true,
-      searchedAt: true,
-    },
-  });
+  return searchRepo.findSearchHistory(userId, take);
 };
 
 export const addSearchHistory = async (userId: number, query: string) => {
@@ -234,27 +181,17 @@ export const addSearchHistory = async (userId: number, query: string) => {
     throw new AppError(400, "Từ khóa tìm kiếm không hợp lệ");
   }
 
-  await prisma.searchHistory.upsert({
-    where: {
-      userId_query: { userId, query: normalized },
-    },
-    create: { userId, query: normalized },
-    update: { searchedAt: new Date() },
-  });
+  await searchRepo.upsertSearchHistory(userId, normalized);
 
-  const count = await prisma.searchHistory.count({ where: { userId } });
+  const count = await searchRepo.countSearchHistory(userId);
 
   if (count > MAX_HISTORY) {
-    const oldest = await prisma.searchHistory.findMany({
-      where: { userId },
-      orderBy: { searchedAt: "asc" },
-      take: count - MAX_HISTORY,
-      select: { id: true },
-    });
+    const oldest = await searchRepo.findOldestSearchHistoryIds(
+      userId,
+      count - MAX_HISTORY,
+    );
 
-    await prisma.searchHistory.deleteMany({
-      where: { id: { in: oldest.map((h) => h.id) } },
-    });
+    await searchRepo.deleteSearchHistoryByIds(oldest.map((h) => h.id));
   }
 
   return getSearchHistory(userId);
@@ -264,9 +201,7 @@ export const deleteSearchHistoryItem = async (
   userId: number,
   historyId: number,
 ) => {
-  const deleted = await prisma.searchHistory.deleteMany({
-    where: { id: historyId, userId },
-  });
+  const deleted = await searchRepo.deleteSearchHistoryItem(userId, historyId);
 
   if (deleted.count === 0) {
     throw new AppError(404, "Không tìm thấy lịch sử tìm kiếm");
@@ -274,5 +209,5 @@ export const deleteSearchHistoryItem = async (
 };
 
 export const clearSearchHistory = async (userId: number) => {
-  await prisma.searchHistory.deleteMany({ where: { userId } });
+  await searchRepo.clearSearchHistory(userId);
 };

@@ -1,7 +1,7 @@
 import { Status } from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
 import { getFileUrl } from "@/modules/file/file.service";
-import prisma from "@/shared/utils/prisma";
+import * as chatRepo from "@/modules/chat/chat.repository";
 
 const MAX_HISTORY = 20;
 const DEFAULT_LIMIT = 20;
@@ -56,18 +56,8 @@ export const searchChatUsers = async (
   };
 
   const [users, total] = await Promise.all([
-    prisma.user.findMany({
-      where,
-      skip,
-      take,
-      select: {
-        id: true,
-        fullName: true,
-        profile: { select: { avatarKey: true } },
-      },
-      orderBy: { fullName: "asc" },
-    }),
-    prisma.user.count({ where }),
+    chatRepo.listUsersForSearch(where, skip, take),
+    chatRepo.countUsersForSearch(where),
   ]);
 
   const items = await Promise.all(users.map(mapUserWithAvatar));
@@ -81,22 +71,7 @@ export const searchChatUsers = async (
 export const getChatSearchHistory = async (userId: number, limit = 10) => {
   const take = Math.min(Math.max(Number(limit) || 10, 1), MAX_HISTORY);
 
-  const histories = await prisma.chatSearchHistory.findMany({
-    where: { userId },
-    orderBy: { searchedAt: "desc" },
-    take,
-    select: {
-      id: true,
-      searchedAt: true,
-      targetUser: {
-        select: {
-          id: true,
-          fullName: true,
-          profile: { select: { avatarKey: true } },
-        },
-      },
-    },
-  });
+  const histories = await chatRepo.listSearchHistory(userId, take);
 
   return Promise.all(
     histories.map(async (item) => ({
@@ -115,36 +90,23 @@ export const addChatSearchHistory = async (
     throw new AppError(400, "Không thể lưu lịch sử với chính bạn");
   }
 
-  const targetUser = await prisma.user.findFirst({
-    where: { id: targetUserId, status: Status.ACTIVE },
-    select: { id: true },
-  });
+  const targetUser = await chatRepo.findActiveUserId(targetUserId);
 
   if (!targetUser) {
     throw new AppError(404, "Không tìm thấy người dùng");
   }
 
-  await prisma.chatSearchHistory.upsert({
-    where: {
-      userId_targetUserId: { userId, targetUserId },
-    },
-    create: { userId, targetUserId },
-    update: { searchedAt: new Date() },
-  });
+  await chatRepo.saveSearchHistory(userId, targetUserId);
 
-  const count = await prisma.chatSearchHistory.count({ where: { userId } });
+  const count = await chatRepo.countSearchHistory(userId);
 
   if (count > MAX_HISTORY) {
-    const oldest = await prisma.chatSearchHistory.findMany({
-      where: { userId },
-      orderBy: { searchedAt: "asc" },
-      take: count - MAX_HISTORY,
-      select: { id: true },
-    });
+    const oldest = await chatRepo.listOldestSearchHistory(
+      userId,
+      count - MAX_HISTORY,
+    );
 
-    await prisma.chatSearchHistory.deleteMany({
-      where: { id: { in: oldest.map((h) => h.id) } },
-    });
+    await chatRepo.deleteSearchHistoryRows(oldest.map((h) => h.id));
   }
 
   return getChatSearchHistory(userId);
@@ -154,9 +116,7 @@ export const deleteChatSearchHistoryItem = async (
   userId: number,
   historyId: number,
 ) => {
-  const deleted = await prisma.chatSearchHistory.deleteMany({
-    where: { id: historyId, userId },
-  });
+  const deleted = await chatRepo.deleteSearchHistoryItem(userId, historyId);
 
   if (deleted.count === 0) {
     throw new AppError(404, "Không tìm thấy lịch sử tìm kiếm");

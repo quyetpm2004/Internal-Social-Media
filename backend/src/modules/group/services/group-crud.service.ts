@@ -4,12 +4,10 @@ import {
   GroupPermission,
   GroupStatus,
   GroupType,
-  PostStatus,
-  PostVisibility,
 } from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
-import prisma from "@/shared/utils/prisma";
 import { getFileUrl } from "@/modules/file/file.service";
+import * as groupRepo from "@/modules/group/group.repository";
 import {
   checkGroupExists,
   checkIsGroupAdmin,
@@ -25,41 +23,19 @@ export const createGroup = async (userId: number, data: any) => {
   }
 
   if (departmentId) {
-    const department = await prisma.department.findUnique({
-      where: { id: Number(departmentId) },
-    });
+    const department = await groupRepo.findDepartment(Number(departmentId));
 
     if (!department) {
       throw new AppError(404, "Phòng ban không tồn tại");
     }
   }
 
-  const group = await prisma.group.create({
-    data: {
-      groupName,
-      description,
-      groupType: groupType || GroupType.PUBLIC,
-      departmentId: departmentId ? Number(departmentId) : null,
-      createdBy: userId,
-      members: {
-        create: {
-          userId,
-          memberRole: GroupMemberRole.ADMIN,
-          status: GroupMemberStatus.ACTIVE,
-        },
-      },
-    },
-    include: {
-      creator: {
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-        },
-      },
-      department: true,
-      members: true,
-    },
+  const group = await groupRepo.insertGroup({
+    groupName,
+    description,
+    groupType: groupType || GroupType.PUBLIC,
+    departmentId: departmentId ? Number(departmentId) : null,
+    createdBy: userId,
   });
 
   return group;
@@ -125,34 +101,9 @@ export const getGroups = async (query: any, userId: number) => {
     ...(departmentId && { departmentId: Number(departmentId) }),
   };
 
-  const totalGroups = await prisma.group.count({
-    where: whereCondition,
-  });
+  const totalGroups = await groupRepo.countGroups(whereCondition);
 
-  const groups = await prisma.group.findMany({
-    where: whereCondition,
-    skip,
-    take,
-    include: {
-      creator: {
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-        },
-      },
-      department: true,
-      _count: {
-        select: {
-          members: true,
-          posts: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+  const groups = await groupRepo.listGroups(whereCondition, skip, take);
 
   const groupWithMembership = await Promise.all(
     groups.map(async (group) => {
@@ -190,42 +141,7 @@ export const getGroups = async (query: any, userId: number) => {
 };
 
 export const getGroupById = async (groupId: number, userId: number) => {
-  const group = await prisma.group.findUnique({
-    where: { id: groupId },
-    include: {
-      creator: {
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-        },
-      },
-      department: true,
-      members: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              fullName: true,
-              email: true,
-              role: true,
-              profile: {
-                select: {
-                  avatarKey: true,
-                },
-              },
-            },
-          },
-        },
-      },
-      _count: {
-        select: {
-          members: true,
-          posts: true,
-        },
-      },
-    },
-  });
+  const group = await groupRepo.loadGroupDetail(groupId);
 
   if (!group) {
     throw new AppError(404, "Không tìm thấy nhóm");
@@ -252,23 +168,12 @@ export const getGroupById = async (groupId: number, userId: number) => {
     (group.joinApprovalPolicy === GroupPermission.ANY_MEMBER || canManage);
 
   if (canApproveJoin) {
-    pendingRequestCount = await prisma.groupMember.count({
-      where: {
-        groupId,
-        status: GroupMemberStatus.PENDING,
-      },
-    });
+    pendingRequestCount = await groupRepo.countPendingMembers(groupId);
   }
 
   let pendingPostCount = 0;
   if (canManage && group.postApprovalRequired) {
-    pendingPostCount = await prisma.post.count({
-      where: {
-        groupId,
-        status: PostStatus.PENDING_REVIEW,
-        visibility: PostVisibility.GROUP,
-      },
-    });
+    pendingPostCount = await groupRepo.countPendingPosts(groupId);
   }
 
   const activeMembers = await Promise.all(
@@ -313,22 +218,9 @@ export const updateGroup = async (
 
   const { groupName, description } = data;
 
-  const group = await prisma.group.update({
-    where: { id: groupId },
-    data: {
-      ...(groupName !== undefined && { groupName }),
-      ...(description !== undefined && { description }),
-    },
-    include: {
-      creator: {
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-        },
-      },
-      department: true,
-    },
+  const group = await groupRepo.saveGroup(groupId, {
+    ...(groupName !== undefined && { groupName }),
+    ...(description !== undefined && { description }),
   });
 
   return group;
@@ -338,12 +230,7 @@ export const deleteGroup = async (groupId: number, currentUserId: number) => {
   await checkGroupExists(groupId);
   await checkIsGroupAdmin(groupId, currentUserId);
 
-  await prisma.group.update({
-    where: { id: groupId },
-    data: {
-      status: GroupStatus.ARCHIVED,
-    },
-  });
+  await groupRepo.archiveGroup(groupId);
 
   return true;
 };

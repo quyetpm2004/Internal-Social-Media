@@ -75,7 +75,8 @@
     "confirmNewPassword": "Xác nhận mật khẩu mới",
     "cancel": "Hủy",
     "confirm": "Xác nhận",
-    "bioPlaceholder": "Giới thiệu bản thân..."
+    "bioPlaceholder": "Giới thiệu bản thân...",
+    "sendMessage": "Nhắn tin"
   },
   "languageName": {
     "vi": "Tiếng Việt",
@@ -153,7 +154,8 @@
       "daysAgo": "{{count}} ngày trước"
     },
     "anonymous": "Ẩn danh",
-    "anonymousUser": "Người dùng ẩn danh"
+    "anonymousUser": "Người dùng ẩn danh",
+    "save": "Lưu"
   },
   "nav": {
     "home": "Trang chủ",

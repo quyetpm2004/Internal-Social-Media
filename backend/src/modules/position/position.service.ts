@@ -1,16 +1,5 @@
-import { AppError } from "@/shared/errors/app-error";
-import prisma from "@/shared/utils/prisma";
+import * as positionRepo from "@/modules/position/position.repository";
 
 export async function getAllPositions() {
-  const positions = await prisma.position.findMany({
-    select: {
-      id: true,
-      name: true,
-      level: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-    orderBy: { level: "asc" },
-  });
-  return positions;
+  return positionRepo.findAllPositions();
 }

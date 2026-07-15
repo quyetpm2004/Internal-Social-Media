@@ -1,14 +1,5 @@
-import prisma from "@/shared/utils/prisma";
+import * as departmentRepo from "@/modules/department/department.repository";
 
 export async function getAllDepartments() {
-  return prisma.department.findMany({
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-    orderBy: { name: "asc" },
-  });
+  return departmentRepo.findAllDepartments();
 }

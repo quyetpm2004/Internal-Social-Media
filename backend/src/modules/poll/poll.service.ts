@@ -5,15 +5,12 @@ import {
   Prisma,
 } from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
-import prisma from "@/shared/utils/prisma";
 import type { PollInput, PollUpdateInput } from "@/modules/poll/poll.schema";
-import {
-  pollInclude,
-  type PollSummary,
-} from "@/modules/poll/poll.types";
+import type { PollSummary } from "@/modules/poll/poll.types";
 import { assertConversationMember } from "@/modules/chat/services/chat-access.service";
+import * as pollRepo from "@/modules/poll/poll.repository";
 
-type PollForSummary = {
+type PollRow = {
   id: number;
   question: string;
   allowMultiple: boolean;
@@ -28,10 +25,7 @@ type PollForSummary = {
   }>;
 };
 
-export const mapPollSummary = (
-  poll: PollForSummary,
-  userId: number,
-): PollSummary => {
+export const mapPollSummary = (poll: PollRow, userId: number): PollSummary => {
   const myVotes = poll.votes
     .filter((v) => v.userId === userId)
     .map((v) => v.optionId);
@@ -49,7 +43,10 @@ export const mapPollSummary = (
       })),
   }));
 
-  const totalVotes = options.reduce((sum, opt) => sum + opt.voteCount, 0);
+  let totalVotes = 0;
+  for (const opt of options) {
+    totalVotes += opt.voteCount;
+  }
 
   return {
     id: poll.id,
@@ -63,27 +60,12 @@ export const mapPollSummary = (
   };
 };
 
+// gọi từ post/chat khi đang trong transaction
 export const createPollInTransaction = async (
   tx: Prisma.TransactionClient,
   input: PollInput & { postId?: number; messageId?: number },
 ) => {
-  const poll = await tx.poll.create({
-    data: {
-      question: input.question,
-      allowMultiple: input.allowMultiple ?? false,
-      postId: input.postId ?? null,
-      messageId: input.messageId ?? null,
-      options: {
-        create: input.options.map((label, index) => ({
-          label,
-          sortOrder: index,
-        })),
-      },
-    },
-    include: pollInclude,
-  });
-
-  return poll;
+  return pollRepo.insertPoll(tx, input);
 };
 
 export const updatePollForPost = async (
@@ -92,63 +74,13 @@ export const updatePollForPost = async (
   input: PollUpdateInput,
   existingOptions: Array<{ id: number; _count: { votes: number } }>,
 ) => {
-  await tx.poll.update({
-    where: { id: pollId },
-    data: {
-      question: input.question,
-      allowMultiple: input.allowMultiple ?? false,
-    },
-  });
-
-  const existingById = new Map(
-    existingOptions.map((option) => [option.id, option]),
-  );
-  const keptOptionIds = new Set<number>();
-
-  for (let index = 0; index < input.options.length; index++) {
-    const option = input.options[index];
-
-    if (option.id) {
-      const existing = existingById.get(option.id);
-      if (!existing) {
-        throw new AppError(400, "Lựa chọn không hợp lệ");
-      }
-
-      await tx.pollOption.update({
-        where: { id: option.id },
-        data: {
-          label: option.label,
-          sortOrder: index,
-        },
-      });
-      keptOptionIds.add(option.id);
-      continue;
-    }
-
-    const created = await tx.pollOption.create({
-      data: {
-        pollId,
-        label: option.label,
-        sortOrder: index,
-      },
-    });
-    keptOptionIds.add(created.id);
-  }
-
-  for (const existing of existingOptions) {
-    if (keptOptionIds.has(existing.id)) continue;
-
-    if (existing._count.votes > 0) {
-      throw new AppError(400, "Không thể xóa lựa chọn đã có người bình chọn");
-    }
-
-    await tx.pollOption.delete({
-      where: { id: existing.id },
-    });
-  }
+  return pollRepo.applyPollEdit(tx, pollId, input, existingOptions);
 };
 
-const assertPollActive = (poll: { status: PollStatus; endsAt: Date | null }) => {
+const ensurePollStillOpen = (poll: {
+  status: PollStatus;
+  endsAt: Date | null;
+}) => {
   if (poll.status !== PollStatus.ACTIVE) {
     throw new AppError(400, "Bình chọn đã đóng");
   }
@@ -158,33 +90,14 @@ const assertPollActive = (poll: { status: PollStatus; endsAt: Date | null }) => 
   }
 };
 
-const assertCanVoteOnPoll = async (pollId: number, userId: number) => {
-  const poll = await prisma.poll.findUnique({
-    where: { id: pollId },
-    include: {
-      post: {
-        select: {
-          id: true,
-          status: true,
-          visibility: true,
-          groupId: true,
-        },
-      },
-      message: {
-        select: {
-          id: true,
-          conversationId: true,
-          status: true,
-        },
-      },
-    },
-  });
+const checkCanVote = async (pollId: number, userId: number) => {
+  const poll = await pollRepo.findPollToVote(pollId);
 
   if (!poll) {
     throw new AppError(404, "Không tìm thấy bình chọn");
   }
 
-  assertPollActive(poll);
+  ensurePollStillOpen(poll);
 
   if (poll.post) {
     if (poll.post.status !== PostStatus.ACTIVE) {
@@ -192,14 +105,13 @@ const assertCanVoteOnPoll = async (pollId: number, userId: number) => {
     }
 
     if (poll.post.groupId) {
-      const membership = await prisma.groupMember.findUnique({
-        where: {
-          groupId_userId: { groupId: poll.post.groupId, userId },
-        },
-      });
+      const member = await pollRepo.findGroupMember(poll.post.groupId, userId);
 
-      if (!membership || membership.status !== GroupMemberStatus.ACTIVE) {
-        throw new AppError(403, "Bạn không có quyền bình chọn trong bài viết này");
+      if (!member || member.status !== GroupMemberStatus.ACTIVE) {
+        throw new AppError(
+          403,
+          "Bạn không có quyền bình chọn trong bài viết này",
+        );
       }
     }
   } else if (poll.message) {
@@ -220,55 +132,36 @@ export const votePollService = async ({
   userId: number;
   optionIds: number[];
 }) => {
-  const poll = await assertCanVoteOnPoll(pollId, userId);
+  const poll = await checkCanVote(pollId, userId);
+  const detail = await pollRepo.loadPollDetail(pollId);
 
-  const fullPoll = await prisma.poll.findUnique({
-    where: { id: pollId },
-    include: pollInclude,
-  });
-
-  if (!fullPoll) {
+  if (!detail) {
     throw new AppError(404, "Không tìm thấy bình chọn");
   }
 
-  const validOptionIds = new Set(fullPoll.options.map((o) => o.id));
-  for (const optionId of optionIds) {
-    if (!validOptionIds.has(optionId)) {
+  const allowed = new Set(detail.options.map((o) => o.id));
+  for (const id of optionIds) {
+    if (!allowed.has(id)) {
       throw new AppError(400, "Lựa chọn không hợp lệ");
     }
   }
 
-  if (!fullPoll.allowMultiple && optionIds.length > 1) {
+  if (!detail.allowMultiple && optionIds.length > 1) {
     throw new AppError(400, "Chỉ được chọn một lựa chọn");
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.pollVote.deleteMany({
-      where: { pollId, userId },
-    });
+  await pollRepo.saveVotes(pollId, userId, optionIds);
 
-    await tx.pollVote.createMany({
-      data: optionIds.map((optionId) => ({
-        pollId,
-        optionId,
-        userId,
-      })),
-    });
-  });
-
-  const updated = await prisma.poll.findUniqueOrThrow({
-    where: { id: pollId },
-    include: pollInclude,
-  });
+  const afterVote = await pollRepo.loadPollDetailOrFail(pollId);
 
   return {
-    poll: mapPollSummary(updated, userId),
+    poll: mapPollSummary(afterVote, userId),
     conversationId: poll.message?.conversationId ?? null,
   };
 };
 
 export const attachPollSummaryToPosts = async (
-  posts: Array<{ poll?: PollForSummary | null } & Record<string, unknown>>,
+  posts: Array<{ poll?: PollRow | null } & Record<string, unknown>>,
   userId: number,
 ) => {
   return posts.map((post) => ({

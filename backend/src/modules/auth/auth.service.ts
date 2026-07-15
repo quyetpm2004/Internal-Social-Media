@@ -1,9 +1,8 @@
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
-import { Role, Status } from "@prisma/client";
+import { Status } from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
-import prisma from "@/shared/utils/prisma";
 import {
   JwtPayload,
   signAccessToken,
@@ -12,6 +11,8 @@ import {
 } from "@/shared/utils/jwt";
 import { getFileUrl } from "@/modules/file/file.service";
 import { sendResetPasswordEmail } from "./email.service";
+import * as authRepo from "@/modules/auth/auth.repository";
+
 dotenv.config();
 
 function generateTokens(payload: JwtPayload) {
@@ -36,9 +37,7 @@ export async function register(
   password: string,
   profile: { phone: string; gender: string; birthdate: string },
 ) {
-  const existingUser = await prisma.user.findUnique({
-    where: { email },
-  });
+  const existingUser = await authRepo.findUserByEmail(email);
 
   if (existingUser) {
     if (existingUser.status === Status.PENDING) {
@@ -51,34 +50,14 @@ export async function register(
   const hashedPassword = await bcrypt.hash(password, 10);
   const birthdate = new Date(profile.birthdate);
 
-  const user = await prisma.user.create({
-    data: {
-      fullName,
-      email,
-      password: hashedPassword,
-      role: Role.EMPLOYEE,
-      status: Status.PENDING,
-      profile: {
-        create: {
-          phone: profile.phone,
-          gender: profile.gender,
-          birthdate,
-        },
-      },
-    },
-    select: {
-      id: true,
-      fullName: true,
-      email: true,
-      status: true,
-      createdAt: true,
-      profile: {
-        select: {
-          phone: true,
-          gender: true,
-          birthdate: true,
-        },
-      },
+  const user = await authRepo.createUser({
+    fullName,
+    email,
+    password: hashedPassword,
+    profile: {
+      phone: profile.phone,
+      gender: profile.gender,
+      birthdate,
     },
   });
 
@@ -89,9 +68,7 @@ export async function register(
 }
 
 export async function login(email: string, password: string) {
-  const user = await prisma.user.findUnique({
-    where: { email },
-  });
+  const user = await authRepo.findUserByEmail(email);
 
   if (!user) {
     throw new AppError(401, "Email hoặc mật khẩu không đúng");
@@ -117,12 +94,10 @@ export async function login(email: string, password: string) {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 7);
 
-  await prisma.refreshToken.create({
-    data: {
-      token: tokens.refreshToken,
-      expiresAt,
-      userId: user.id,
-    },
+  await authRepo.createRefreshToken({
+    token: tokens.refreshToken,
+    expiresAt,
+    userId: user.id,
   });
 
   return {
@@ -141,10 +116,7 @@ export async function refresh(refreshToken: string) {
     throw new AppError(401, "Refresh token không tồn tại");
   }
 
-  const storedToken = await prisma.refreshToken.findFirst({
-    where: { token: refreshToken },
-    include: { user: true },
-  });
+  const storedToken = await authRepo.findRefreshTokenWithUser(refreshToken);
 
   if (!storedToken) {
     throw new AppError(401, "Refresh token không hợp lệ");
@@ -175,16 +147,12 @@ export async function refresh(refreshToken: string) {
   const newExpiresAt = new Date();
   newExpiresAt.setDate(newExpiresAt.getDate() + 7);
 
-  await prisma.refreshToken.delete({
-    where: { id: storedToken.id },
-  });
+  await authRepo.deleteRefreshTokenById(storedToken.id);
 
-  await prisma.refreshToken.create({
-    data: {
-      token: tokens.refreshToken,
-      expiresAt: newExpiresAt,
-      userId: storedToken.user.id,
-    },
+  await authRepo.createRefreshToken({
+    token: tokens.refreshToken,
+    expiresAt: newExpiresAt,
+    userId: storedToken.user.id,
   });
 
   return {
@@ -203,24 +171,13 @@ export async function logout(refreshToken: string) {
     throw new AppError(400, "Refresh token không tồn tại");
   }
 
-  await prisma.refreshToken.deleteMany({
-    where: { token: refreshToken },
-  });
+  await authRepo.deleteRefreshTokensByToken(refreshToken);
 
   return true;
 }
 
 export async function getMe(userId: number) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    include: {
-      profile: {
-        select: {
-          avatarKey: true,
-        },
-      },
-    },
-  });
+  const user = await authRepo.findUserByIdWithAvatar(userId);
 
   if (!user) {
     throw new AppError(404, "Người dùng không tồn tại");
@@ -244,13 +201,7 @@ export async function changePassword(
   currentPassword: string,
   newPassword: string,
 ) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      password: true,
-    },
-  });
+  const user = await authRepo.findUserPasswordById(userId);
 
   if (!user) {
     throw new AppError(404, "Người dùng không tồn tại");
@@ -268,27 +219,14 @@ export async function changePassword(
 
   const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-  await prisma.$transaction(async (tx) => {
-    await tx.user.update({
-      where: { id: userId },
-      data: { password: hashedPassword },
-    });
-
-    await tx.refreshToken.deleteMany({
-      where: { userId },
-    });
-  });
+  await authRepo.changePasswordAndRevokeTokens(userId, hashedPassword);
 
   return true;
 }
 
 export async function forgotPassword(email: string) {
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true, email: true },
-  });
+  const user = await authRepo.findUserEmailByEmail(email);
 
-  // Trả cùng message để tránh lộ thông tin email tồn tại/không tồn tại.
   if (!user) {
     return { ok: true };
   }
@@ -297,20 +235,16 @@ export async function forgotPassword(email: string) {
   const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-  await prisma.passwordResetToken.create({
-    data: {
-      userId: user.id,
-      tokenHash,
-      expiresAt,
-    },
+  await authRepo.createPasswordResetToken({
+    userId: user.id,
+    tokenHash,
+    expiresAt,
   });
 
-  // Link frontend
   const resetLink = `${process.env.URL_FRONTEND}/reset-password/${rawToken}`;
 
   await sendResetPasswordEmail(email, resetLink);
 
-  // TODO: gửi email thật. Hiện trả token để FE/demo sử dụng.
   return {
     ok: true,
     resetToken: rawToken,
@@ -322,21 +256,7 @@ export async function verifyTokenPasswordReset(token: string) {
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
   const now = new Date();
 
-  const resetToken = await prisma.passwordResetToken.findFirst({
-    where: {
-      tokenHash,
-      usedAt: null,
-      expiresAt: { gt: now },
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          password: true,
-        },
-      },
-    },
-  });
+  const resetToken = await authRepo.findValidPasswordResetToken(tokenHash, now);
 
   if (!resetToken) {
     throw new AppError(
@@ -355,21 +275,7 @@ export async function resetPassword(token: string, newPassword: string) {
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
   const now = new Date();
 
-  const resetToken = await prisma.passwordResetToken.findFirst({
-    where: {
-      tokenHash,
-      usedAt: null,
-      expiresAt: { gt: now },
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          password: true,
-        },
-      },
-    },
-  });
+  const resetToken = await authRepo.findValidPasswordResetToken(tokenHash, now);
 
   if (!resetToken) {
     throw new AppError(
@@ -388,20 +294,11 @@ export async function resetPassword(token: string, newPassword: string) {
 
   const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-  await prisma.$transaction(async (tx) => {
-    await tx.user.update({
-      where: { id: resetToken.user.id },
-      data: { password: hashedPassword },
-    });
-
-    await tx.passwordResetToken.update({
-      where: { id: resetToken.id },
-      data: { usedAt: now },
-    });
-
-    await tx.refreshToken.deleteMany({
-      where: { userId: resetToken.user.id },
-    });
+  await authRepo.resetPasswordAndMarkTokenUsed({
+    userId: resetToken.user.id,
+    resetTokenId: resetToken.id,
+    hashedPassword,
+    usedAt: now,
   });
 
   return true;

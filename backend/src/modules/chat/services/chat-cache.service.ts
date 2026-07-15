@@ -1,5 +1,5 @@
 import { getRedis, isRedisEnabled } from "@/shared/utils/redis";
-import prisma from "@/shared/utils/prisma";
+import * as chatRepo from "@/modules/chat/chat.repository";
 
 export const CHAT_CACHE_TTL = {
   CONVERSATIONS: 60,
@@ -159,9 +159,6 @@ export const invalidateConversationForMembers = async (
 export const getConversationMemberUserIds = async (
   conversationId: number,
 ): Promise<number[]> => {
-  const members = await prisma.conversationMember.findMany({
-    where: { conversationId, leftAt: null },
-    select: { userId: true },
-  });
+  const members = await chatRepo.listMemberUserIds(conversationId);
   return members.map((member) => member.userId);
 };

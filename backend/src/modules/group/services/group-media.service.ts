@@ -6,13 +6,13 @@ import {
   PostVisibility,
 } from "@prisma/client";
 import { getFileUrl } from "@/modules/file/file.service";
-import prisma from "@/shared/utils/prisma";
 import {
   getGroupViewerContext,
   maskUserForGroupDisplay,
   shouldHideAnonymousAuthor,
 } from "@/shared/utils/group-anonymous";
 import type { GroupAttachmentCategory } from "@/modules/group/group.types";
+import * as groupRepo from "@/modules/group/group.repository";
 import {
   checkGroupExists,
   checkIsGroupMember,
@@ -58,33 +58,8 @@ export const getGroupAttachments = async (
   };
 
   const [attachments, total] = await Promise.all([
-    prisma.postAttachment.findMany({
-      where,
-      include: {
-        post: {
-          select: {
-            id: true,
-            content: true,
-            createdAt: true,
-            isAnonymous: true,
-            userId: true,
-            user: {
-              select: {
-                id: true,
-                fullName: true,
-                profile: {
-                  select: { avatarKey: true },
-                },
-              },
-            },
-          },
-        },
-      },
-      orderBy: { uploadedAt: "desc" },
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
-    prisma.postAttachment.count({ where }),
+    groupRepo.listGroupAttachments(where, (page - 1) * limit, limit),
+    groupRepo.countGroupAttachments(where),
   ]);
 
   const viewer = await getGroupViewerContext(groupId, userId);

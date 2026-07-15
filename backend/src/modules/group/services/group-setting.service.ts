@@ -1,7 +1,7 @@
 import { GroupPermission } from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
-import prisma from "@/shared/utils/prisma";
 import type { UpdateGroupSettingInput } from "@/modules/group/group.types";
+import * as groupRepo from "@/modules/group/group.repository";
 import {
   checkIsGroupAdmin,
   mapGroupToSettings,
@@ -10,18 +10,7 @@ import {
 export const getGroupSetting = async (groupId: number, userId: number) => {
   await checkIsGroupAdmin(groupId, userId);
 
-  const group = await prisma.group.findUnique({
-    where: { id: groupId },
-    select: {
-      groupName: true,
-      description: true,
-      isHidden: true,
-      joinApprovalPolicy: true,
-      allowAnonymousJoin: true,
-      postPermission: true,
-      postApprovalRequired: true,
-    },
-  });
+  const group = await groupRepo.loadGroupSettings(groupId);
 
   if (!group) {
     throw new AppError(404, "Không tìm thấy nhóm");
@@ -65,26 +54,14 @@ export const updateGroupSetting = async (
     throw new AppError(400, "Quyền đăng bài không hợp lệ");
   }
 
-  const group = await prisma.group.update({
-    where: { id: groupId },
-    data: {
-      ...(groupName !== undefined && { groupName: groupName.trim() }),
-      ...(description !== undefined && { description }),
-      ...(isHidden !== undefined && { isHidden }),
-      ...(joinApprovalPolicy !== undefined && { joinApprovalPolicy }),
-      ...(allowAnonymousJoin !== undefined && { allowAnonymousJoin }),
-      ...(postPermission !== undefined && { postPermission }),
-      ...(postApprovalRequired !== undefined && { postApprovalRequired }),
-    },
-    select: {
-      groupName: true,
-      description: true,
-      isHidden: true,
-      joinApprovalPolicy: true,
-      allowAnonymousJoin: true,
-      postPermission: true,
-      postApprovalRequired: true,
-    },
+  const group = await groupRepo.saveGroupSettings(groupId, {
+    ...(groupName !== undefined && { groupName: groupName.trim() }),
+    ...(description !== undefined && { description }),
+    ...(isHidden !== undefined && { isHidden }),
+    ...(joinApprovalPolicy !== undefined && { joinApprovalPolicy }),
+    ...(allowAnonymousJoin !== undefined && { allowAnonymousJoin }),
+    ...(postPermission !== undefined && { postPermission }),
+    ...(postApprovalRequired !== undefined && { postApprovalRequired }),
   });
 
   return mapGroupToSettings(group);

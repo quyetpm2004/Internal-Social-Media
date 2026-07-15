@@ -2,7 +2,6 @@ import { HeadObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { AppError } from "@/shared/errors/app-error";
 import { s3 } from "@/shared/lib/s3";
-import prisma from "@/shared/utils/prisma";
 import type {
   ConfirmUploadInput,
   CreateUploadUrlInput,
@@ -12,6 +11,7 @@ import {
   getConversationMemberUserIds,
   invalidateConversationForMembers,
 } from "@/modules/chat/services/chat-cache.service";
+import * as uploadRepo from "@/modules/upload/upload.repository";
 
 interface UploadRule {
   maxSize: number;
@@ -28,6 +28,15 @@ type ConfirmUploadsParams = {
   userId: number;
   items: ConfirmUploadInput["items"];
 };
+
+function getAttachmentType(
+  purpose: string,
+  prefix: "post" | "message",
+): "IMAGE" | "VIDEO" | "FILE" {
+  if (purpose === `${prefix}-image`) return "IMAGE";
+  if (purpose === `${prefix}-video`) return "VIDEO";
+  return "FILE";
+}
 
 export async function createUploadUrls(input: CreateUploadUrlsParams) {
   const { userId, files } = input;
@@ -123,44 +132,26 @@ export async function createUploadUrls(input: CreateUploadUrlsParams) {
       let attachmentId: number | null = null;
 
       if (file.purpose.startsWith("post-")) {
-        const attachment = await prisma.postAttachment.create({
-          data: {
-            fileName: file.fileName,
-            fileKey: key,
-            attachmentType:
-              file.purpose === "post-image"
-                ? "IMAGE"
-                : file.purpose === "post-video"
-                  ? "VIDEO"
-                  : "FILE",
-            mimeType: file.fileType,
-            uploadedById: userId,
-            fileSize: file.fileSize,
-            status: "PENDING",
-          },
+        const attachment = await uploadRepo.createPendingPostAttachment({
+          fileName: file.fileName,
+          fileKey: key,
+          attachmentType: getAttachmentType(file.purpose, "post"),
+          mimeType: file.fileType,
+          uploadedById: userId,
+          fileSize: file.fileSize,
         });
-
         attachmentId = attachment.id;
       }
 
       if (file.purpose.startsWith("message-")) {
-        const attachment = await prisma.messageAttachment.create({
-          data: {
-            fileName: file.fileName,
-            fileKey: key,
-            attachmentType:
-              file.purpose === "message-image"
-                ? "IMAGE"
-                : file.purpose === "message-video"
-                  ? "VIDEO"
-                  : "FILE",
-            mimeType: file.fileType,
-            uploadedById: userId,
-            fileSize: file.fileSize,
-            status: "PENDING",
-          },
+        const attachment = await uploadRepo.createPendingMessageAttachment({
+          fileName: file.fileName,
+          fileKey: key,
+          attachmentType: getAttachmentType(file.purpose, "message"),
+          mimeType: file.fileType,
+          uploadedById: userId,
+          fileSize: file.fileSize,
         });
-
         attachmentId = attachment.id;
       }
 
@@ -208,12 +199,7 @@ export async function confirmUploads(input: ConfirmUploadsParams) {
     }
 
     if (purpose === "avatar") {
-      await prisma.profile.upsert({
-        where: { userId },
-        update: { avatarKey: key },
-        create: { userId, avatarKey: key },
-      });
-
+      await uploadRepo.upsertAvatarKey(userId, key);
       results.push({ type: "avatar", key });
       continue;
     }
@@ -223,33 +209,22 @@ export async function confirmUploads(input: ConfirmUploadsParams) {
         throw new AppError(400, "Conversation ID is required");
       }
 
-      const conversation = await prisma.conversation.findUnique({
-        where: { id: conversationId },
-        select: { type: true },
-      });
+      const conversation = await uploadRepo.getConversationType(conversationId);
 
       if (!conversation || conversation.type !== "GROUP") {
         throw new AppError(404, "Conversation not found");
       }
 
-      const member = await prisma.conversationMember.findUnique({
-        where: {
-          conversationId_userId: {
-            conversationId,
-            userId,
-          },
-        },
-        select: { role: true, leftAt: true },
-      });
+      const member = await uploadRepo.getConversationMember(
+        conversationId,
+        userId,
+      );
 
       if (!member || member.leftAt || member.role !== "ADMIN") {
         throw new AppError(403, "Forbidden");
       }
 
-      await prisma.conversation.update({
-        where: { id: conversationId },
-        data: { avatarKey: key },
-      });
+      await uploadRepo.updateConversationAvatar(conversationId, key);
 
       const memberUserIds = await getConversationMemberUserIds(conversationId);
       await invalidateConversationForMembers(conversationId, memberUserIds);
@@ -267,11 +242,7 @@ export async function confirmUploads(input: ConfirmUploadsParams) {
         throw new AppError(400, "Group ID is required");
       }
 
-      await prisma.group.update({
-        where: { id: groupId },
-        data: { coverKey: key },
-      });
-
+      await uploadRepo.updateGroupCover(groupId, key);
       results.push({ type: "group-cover", key });
       continue;
     }
@@ -281,22 +252,18 @@ export async function confirmUploads(input: ConfirmUploadsParams) {
         throw new AppError(400, "Attachment ID is required");
       }
 
-      const attachment = await prisma.messageAttachment.findFirst({
-        where: { id: attachmentId, status: "PENDING" },
-      });
+      const attachment =
+        await uploadRepo.getPendingMessageAttachment(attachmentId);
 
       if (!attachment) {
         throw new AppError(404, "Attachment not found");
       }
 
-      const updatedAttachment = await prisma.messageAttachment.update({
-        where: { id: attachment.id },
-        data: {
-          mimeType: headObject.ContentType,
-          fileSize: headObject.ContentLength,
-          status: "READY",
-        },
-      });
+      const updatedAttachment = await uploadRepo.markMessageAttachmentReady(
+        attachment.id,
+        headObject.ContentType,
+        headObject.ContentLength,
+      );
 
       results.push({
         type: "message-attachment",
@@ -305,26 +272,22 @@ export async function confirmUploads(input: ConfirmUploadsParams) {
       continue;
     }
 
+    // mặc định: post attachment
     if (!attachmentId) {
       throw new AppError(400, "Attachment ID is required");
     }
 
-    const attachment = await prisma.postAttachment.findFirst({
-      where: { id: attachmentId, status: "PENDING" },
-    });
+    const attachment = await uploadRepo.getPendingPostAttachment(attachmentId);
 
     if (!attachment) {
       throw new AppError(404, "Attachment not found");
     }
 
-    const updatedAttachment = await prisma.postAttachment.update({
-      where: { id: attachment.id },
-      data: {
-        mimeType: headObject.ContentType,
-        fileSize: headObject.ContentLength,
-        status: "READY",
-      },
-    });
+    const updatedAttachment = await uploadRepo.markPostAttachmentReady(
+      attachment.id,
+      headObject.ContentType,
+      headObject.ContentLength,
+    );
 
     results.push({
       type: "post-attachment",

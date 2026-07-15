@@ -6,7 +6,6 @@ import {
   ReactionType,
 } from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
-import prisma from "@/shared/utils/prisma";
 import { getFileUrl } from "@/modules/file/file.service";
 import {
   getGroupViewerContext,
@@ -18,43 +17,8 @@ import {
   emitNotificationUnreadCount,
 } from "@/socket/notification.socket";
 import { htmlToText } from "html-to-text";
-
-const NOTIFICATION_INCLUDE = {
-  actor: {
-    select: {
-      id: true,
-      fullName: true,
-      profile: {
-        select: {
-          avatarKey: true,
-        },
-      },
-    },
-  },
-  post: {
-    select: {
-      id: true,
-      content: true,
-      groupId: true,
-      isAnonymous: true,
-      userId: true,
-    },
-  },
-  comment: {
-    select: {
-      id: true,
-      content: true,
-      isAnonymous: true,
-      userId: true,
-    },
-  },
-  group: {
-    select: {
-      id: true,
-      groupName: true,
-    },
-  },
-} satisfies Prisma.NotificationInclude;
+import * as notificationRepo from "@/modules/notification/notification.repository";
+import type { NotificationWithInclude } from "@/modules/notification/notification.repository";
 
 type CreateNotificationInput = {
   recipientId: number;
@@ -94,18 +58,7 @@ export const createNotification = async (
     return;
   }
 
-  const notification = await prisma.notification.create({
-    data: {
-      recipientId: input.recipientId,
-      actorId: input.actorId ?? null,
-      type: input.type,
-      postId: input.postId ?? null,
-      commentId: input.commentId ?? null,
-      groupId: input.groupId ?? null,
-      metadata: input.metadata ?? undefined,
-    },
-    include: NOTIFICATION_INCLUDE,
-  });
+  const notification = await notificationRepo.createNotificationRecord(input);
 
   const formatted = await formatNotification(notification, input.recipientId);
   const unreadCount = await getUnreadCount(input.recipientId);
@@ -134,15 +87,7 @@ export const notifyPostApproved = async (
   groupId: number,
   actorId: number,
 ): Promise<void> => {
-  const post = await prisma.post.findUnique({
-    where: { id: postId },
-    select: {
-      userId: true,
-      content: true,
-      group: { select: { groupName: true } },
-    },
-  });
-
+  const post = await notificationRepo.getPostOwnerContent(postId);
   if (!post) return;
 
   await createNotification({
@@ -163,15 +108,7 @@ export const notifyPostRejected = async (
   groupId: number,
   actorId: number,
 ): Promise<void> => {
-  const post = await prisma.post.findUnique({
-    where: { id: postId },
-    select: {
-      userId: true,
-      content: true,
-      group: { select: { groupName: true } },
-    },
-  });
-
+  const post = await notificationRepo.getPostOwnerContent(postId);
   if (!post) return;
 
   await createNotification({
@@ -192,16 +129,7 @@ export const notifyPostPinned = async (
   actorId: number,
   isPinned: boolean,
 ): Promise<void> => {
-  const post = await prisma.post.findUnique({
-    where: { id: postId },
-    select: {
-      userId: true,
-      content: true,
-      groupId: true,
-      group: { select: { groupName: true } },
-    },
-  });
-
+  const post = await notificationRepo.getPostOwnerContent(postId);
   if (!post) return;
 
   await createNotification({
@@ -225,17 +153,7 @@ export const notifyPostReaction = async (
   actorId: number,
   reactionType: ReactionType,
 ): Promise<void> => {
-  const post = await prisma.post.findUnique({
-    where: { id: postId },
-    select: {
-      userId: true,
-      content: true,
-      groupId: true,
-      isAnonymous: true,
-      group: { select: { groupName: true } },
-    },
-  });
-
+  const post = await notificationRepo.getPostOwnerContent(postId);
   if (!post) return;
 
   await createNotification({
@@ -257,14 +175,7 @@ export const notifyCommentReaction = async (
   actorId: number,
   reactionType: ReactionType,
 ): Promise<void> => {
-  const comment = await prisma.comment.findUnique({
-    where: { id: commentId },
-    select: {
-      userId: true,
-      content: true,
-    },
-  });
-
+  const comment = await notificationRepo.getCommentOwnerContent(commentId);
   if (!comment) return;
 
   await createNotification({
@@ -284,23 +195,10 @@ export const notifyPostComment = async (
   commentId: number,
   actorId: number,
 ): Promise<void> => {
-  const post = await prisma.post.findUnique({
-    where: { id: postId },
-    select: {
-      userId: true,
-      content: true,
-      groupId: true,
-      group: { select: { groupName: true } },
-    },
-  });
-
-  const comment = await prisma.comment.findUnique({
-    where: { id: commentId },
-    select: {
-      content: true,
-      isAnonymous: true,
-    },
-  });
+  const [post, comment] = await Promise.all([
+    notificationRepo.getPostOwnerContent(postId),
+    notificationRepo.getCommentSnippet(commentId),
+  ]);
 
   if (!post || !comment) return;
 
@@ -329,14 +227,7 @@ export const notifyPostMentions = async (
     return;
   }
 
-  const post = await prisma.post.findUnique({
-    where: { id: postId },
-    select: {
-      content: true,
-      groupId: true,
-      status: true,
-    },
-  });
+  const post = await notificationRepo.getPostOwnerContent(postId);
 
   if (!post || post.status !== "ACTIVE") {
     return;
@@ -367,14 +258,8 @@ export const notifyCommentMentions = async (
   }
 
   const [post, comment] = await Promise.all([
-    prisma.post.findUnique({
-      where: { id: postId },
-      select: { groupId: true },
-    }),
-    prisma.comment.findUnique({
-      where: { id: commentId },
-      select: { content: true },
-    }),
+    notificationRepo.getPostGroupId(postId),
+    notificationRepo.getCommentSnippet(commentId),
   ]);
 
   if (!post || !comment) {
@@ -428,26 +313,9 @@ export const notifyCommentReply = async (
   actorId: number,
 ): Promise<void> => {
   const [post, parentComment, reply] = await Promise.all([
-    prisma.post.findUnique({
-      where: { id: postId },
-      select: {
-        userId: true,
-        content: true,
-        groupId: true,
-        group: { select: { groupName: true } },
-      },
-    }),
-    prisma.comment.findUnique({
-      where: { id: parentCommentId },
-      select: { userId: true },
-    }),
-    prisma.comment.findUnique({
-      where: { id: commentId },
-      select: {
-        content: true,
-        isAnonymous: true,
-      },
-    }),
+    notificationRepo.getPostOwnerContent(postId),
+    notificationRepo.getCommentAuthor(parentCommentId),
+    notificationRepo.getCommentSnippet(commentId),
   ]);
 
   if (!post || !parentComment || !reply) return;
@@ -475,20 +343,9 @@ export const notifyGroupMemberAdded = async (
   actorId: number,
   memberId: number,
 ): Promise<void> => {
-  const member = await prisma.groupMember.findUnique({
-    where: {
-      groupId_userId: {
-        groupId,
-        userId: memberId,
-      },
-    },
-    select: {
-      userId: true,
-      group: { select: { groupName: true } },
-    },
-  });
-
+  const member = await notificationRepo.getMemberWithGroup(groupId, memberId);
   if (!member) return;
+
   await createNotification({
     recipientId: member.userId,
     actorId,
@@ -505,10 +362,7 @@ export const notifyGroupMemberKicked = async (
   actorId: number,
   memberId: number,
 ): Promise<void> => {
-  const group = await prisma.group.findUnique({
-    where: { id: groupId },
-    select: { groupName: true },
-  });
+  const group = await notificationRepo.getGroupName(groupId);
 
   await createNotification({
     recipientId: memberId,
@@ -527,19 +381,9 @@ export const notifyGroupMemberRoleChanged = async (
   memberId: number,
   newRole: GroupMemberRole,
 ): Promise<void> => {
-  const member = await prisma.groupMember.findUnique({
-    where: {
-      groupId_userId: {
-        groupId,
-        userId: memberId,
-      },
-    },
-    select: {
-      userId: true,
-      group: { select: { groupName: true } },
-    },
-  });
+  const member = await notificationRepo.getMemberWithGroup(groupId, memberId);
   if (!member) return;
+
   await createNotification({
     recipientId: member.userId,
     actorId,
@@ -558,20 +402,9 @@ export const notifyGroupMemberStatusChanged = async (
   memberId: number,
   newStatus: GroupMemberStatus,
 ): Promise<void> => {
-  const member = await prisma.groupMember.findUnique({
-    where: {
-      groupId_userId: {
-        groupId,
-        userId: memberId,
-      },
-    },
-    select: {
-      userId: true,
-      group: { select: { groupName: true } },
-    },
-  });
-
+  const member = await notificationRepo.getMemberWithGroup(groupId, memberId);
   if (!member) return;
+
   await createNotification({
     recipientId: member.userId,
     actorId,
@@ -589,14 +422,9 @@ export const notifyGroupMemberRejected = async (
   actorId: number,
   memberId: number,
 ): Promise<void> => {
-  const member = await prisma.groupMember.findUnique({
-    where: { groupId_userId: { groupId, userId: memberId } },
-    select: {
-      userId: true,
-      group: { select: { groupName: true } },
-    },
-  });
+  const member = await notificationRepo.getMemberWithGroup(groupId, memberId);
   if (!member) return;
+
   await createNotification({
     recipientId: member.userId,
     actorId,
@@ -609,9 +437,7 @@ export const notifyGroupMemberRejected = async (
 };
 
 const resolveActorDisplay = async (
-  notification: Prisma.NotificationGetPayload<{
-    include: typeof NOTIFICATION_INCLUDE;
-  }>,
+  notification: NotificationWithInclude,
   viewerId: number,
 ) => {
   if (!notification.actor) {
@@ -658,9 +484,7 @@ const resolveActorDisplay = async (
 };
 
 export const formatNotification = async (
-  notification: Prisma.NotificationGetPayload<{
-    include: typeof NOTIFICATION_INCLUDE;
-  }>,
+  notification: NotificationWithInclude,
   viewerId: number,
 ) => {
   const actor = await resolveActorDisplay(notification, viewerId);
@@ -697,12 +521,7 @@ export const formatNotification = async (
 };
 
 export const getUnreadCount = async (userId: number): Promise<number> => {
-  return prisma.notification.count({
-    where: {
-      recipientId: userId,
-      readAt: null,
-    },
-  });
+  return notificationRepo.countUnread(userId);
 };
 
 export const listNotifications = async (
@@ -713,14 +532,8 @@ export const listNotifications = async (
   const skip = (page - 1) * limit;
 
   const [items, total, unreadCount] = await Promise.all([
-    prisma.notification.findMany({
-      where: { recipientId: userId },
-      orderBy: { createdAt: "desc" },
-      skip,
-      take: limit,
-      include: NOTIFICATION_INCLUDE,
-    }),
-    prisma.notification.count({ where: { recipientId: userId } }),
+    notificationRepo.listByUser(userId, skip, limit),
+    notificationRepo.countByUser(userId),
     getUnreadCount(userId),
   ]);
 
@@ -744,12 +557,10 @@ export const markNotificationRead = async (
   userId: number,
   notificationId: number,
 ) => {
-  const existing = await prisma.notification.findFirst({
-    where: {
-      id: notificationId,
-      recipientId: userId,
-    },
-  });
+  const existing = await notificationRepo.getOwnedNotification(
+    notificationId,
+    userId,
+  );
 
   if (!existing) {
     throw new AppError(404, "Không tìm thấy thông báo");
@@ -759,10 +570,7 @@ export const markNotificationRead = async (
     return { unreadCount: await getUnreadCount(userId) };
   }
 
-  await prisma.notification.update({
-    where: { id: notificationId },
-    data: { readAt: new Date() },
-  });
+  await notificationRepo.markRead(notificationId);
 
   const unreadCount = await getUnreadCount(userId);
   emitNotificationUnreadCount(userId, unreadCount);
@@ -771,13 +579,7 @@ export const markNotificationRead = async (
 };
 
 export const markAllNotificationsRead = async (userId: number) => {
-  await prisma.notification.updateMany({
-    where: {
-      recipientId: userId,
-      readAt: null,
-    },
-    data: { readAt: new Date() },
-  });
+  await notificationRepo.markAllRead(userId);
 
   emitNotificationUnreadCount(userId, 0);
   return { unreadCount: 0 };

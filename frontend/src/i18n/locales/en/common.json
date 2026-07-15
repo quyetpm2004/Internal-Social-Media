@@ -75,7 +75,8 @@
     "confirmNewPassword": "Confirm new password",
     "cancel": "Cancel",
     "confirm": "Confirm",
-    "bioPlaceholder": "Tell something about yourself..."
+    "bioPlaceholder": "Tell something about yourself...",
+    "sendMessage": "Send message"
   },
   "languageName": {
     "vi": "Tiếng Việt",
@@ -155,7 +156,8 @@
       "daysAgo_other": "{{count}} days ago"
     },
     "anonymous": "Anonymous",
-    "anonymousUser": "Anonymous user"
+    "anonymousUser": "Anonymous user",
+    "save": "Save"
   },
   "nav": {
     "home": "Home",

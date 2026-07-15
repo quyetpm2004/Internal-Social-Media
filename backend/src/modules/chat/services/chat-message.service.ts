@@ -1,15 +1,14 @@
 import {
-  MediaStatus,
   MessageContentType,
   MessageStatus,
 } from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
 import { CHAT_DEFAULTS } from "@/modules/chat/chat.types";
+import * as chatRepo from "@/modules/chat/chat.repository";
 import {
   assertConversationMember,
   invalidateConversationCaches,
   mapMessage,
-  messageInclude,
 } from "@/modules/chat/services/chat-access.service";
 import {
   getCachedMessages,
@@ -25,7 +24,6 @@ import {
   assertMentionedUsersInConversation,
   resolveMentionTargets,
 } from "@/shared/utils/mentions";
-import prisma from "@/shared/utils/prisma";
 
 export const getMessagesService = async ({
   conversationId,
@@ -57,18 +55,11 @@ export const getMessagesService = async ({
     return cached;
   }
 
-  const messages = await prisma.message.findMany({
-    where: { conversationId },
-    take: take + 1,
-    ...(cursor
-      ? {
-          cursor: { id: cursor },
-          skip: 1,
-        }
-      : {}),
-    orderBy: { id: "desc" },
-    include: messageInclude,
-  });
+  const messages = await chatRepo.listMessages(
+    conversationId,
+    take + 1,
+    cursor,
+  );
 
   const hasMore = messages.length > take;
   const sliced = hasMore ? messages.slice(0, take) : messages;
@@ -128,14 +119,10 @@ export const sendMessageService = async ({
   }
 
   if (attachmentIds.length > 0) {
-    const attachments = await prisma.messageAttachment.findMany({
-      where: {
-        id: { in: attachmentIds },
-        uploadedById: userId,
-        messageId: null,
-      },
-      select: { id: true },
-    });
+    const attachments = await chatRepo.listPendingAttachments(
+      attachmentIds,
+      userId,
+    );
 
     if (attachments.length !== attachmentIds.length) {
       throw new AppError(400, "Một số tệp đính kèm không hợp lệ");
@@ -156,27 +143,26 @@ export const sendMessageService = async ({
 
   const now = new Date();
 
-  const message = await prisma.$transaction(async (tx) => {
+  const message = await chatRepo.runInTx(async (tx) => {
     const messageContent =
       contentType === MessageContentType.POLL
         ? poll!.question
         : trimmed;
 
-    const created = await tx.message.create({
-      data: {
-        conversationId,
-        senderId: userId,
-        contentType,
-        content: messageContent,
-      },
-      include: messageInclude,
+    const created = await chatRepo.insertMessage(tx, {
+      conversationId,
+      senderId: userId,
+      contentType,
+      content: messageContent,
     });
 
     if (attachmentIds.length > 0) {
-      await tx.messageAttachment.updateMany({
-        where: { id: { in: attachmentIds }, uploadedById: userId },
-        data: { messageId: created.id, status: MediaStatus.ACTIVE },
-      });
+      await chatRepo.linkAttachmentsToMessage(
+        tx,
+        attachmentIds,
+        userId,
+        created.id,
+      );
     }
 
     if (contentType === MessageContentType.POLL && poll) {
@@ -187,29 +173,13 @@ export const sendMessageService = async ({
     }
 
     if (uniqueMentionedUserIds.length > 0) {
-      await tx.messageMention.createMany({
-        data: uniqueMentionedUserIds.map((mentionedUserId) => ({
-          messageId: created.id,
-          mentionedUserId,
-        })),
-        skipDuplicates: true,
-      });
+      await chatRepo.insertMentions(tx, created.id, uniqueMentionedUserIds);
     }
 
-    await tx.conversation.update({
-      where: { id: conversationId },
-      data: { lastMessageAt: now },
-    });
+    await chatRepo.saveLastMessageAt(conversationId, now, tx);
+    await chatRepo.saveMemberLastRead(conversationId, userId, now, tx);
 
-    await tx.conversationMember.update({
-      where: { conversationId_userId: { conversationId, userId } },
-      data: { lastReadAt: now },
-    });
-
-    return tx.message.findUniqueOrThrow({
-      where: { id: created.id },
-      include: messageInclude,
-    });
+    return chatRepo.loadMessage(tx, created.id);
   });
 
   const mapped = await mapMessage(message, userId);
@@ -237,10 +207,7 @@ export const markConversationReadService = async ({
 
   const now = new Date();
 
-  await prisma.conversationMember.update({
-    where: { conversationId_userId: { conversationId, userId } },
-    data: { lastReadAt: now },
-  });
+  await chatRepo.saveMemberLastRead(conversationId, userId, now);
 
   await invalidateUserConversations(userId);
 
@@ -258,10 +225,7 @@ export const setConversationMutedService = async ({
 }) => {
   await assertConversationMember(conversationId, userId);
 
-  await prisma.conversationMember.update({
-    where: { conversationId_userId: { conversationId, userId } },
-    data: { isMuted: muted },
-  });
+  await chatRepo.saveMemberMuted(conversationId, userId, muted);
 
   await invalidateUserConversations(userId);
   await invalidateConversationDetail(conversationId);
@@ -278,9 +242,7 @@ export const editMessageService = async ({
   userId: number;
   content: string;
 }) => {
-  const message = await prisma.message.findUnique({
-    where: { id: messageId },
-  });
+  const message = await chatRepo.findMessage(messageId);
 
   if (!message || message.status === MessageStatus.DELETED) {
     throw new AppError(404, "Không tìm thấy tin nhắn");
@@ -306,15 +268,7 @@ export const editMessageService = async ({
     );
   }
 
-  const updated = await prisma.message.update({
-    where: { id: messageId },
-    data: {
-      content: trimmed,
-      status: MessageStatus.EDITED,
-      editedAt: new Date(),
-    },
-    include: messageInclude,
-  });
+  const updated = await chatRepo.saveMessageEdit(messageId, trimmed);
 
   await invalidateConversationCaches(message.conversationId);
   return mapMessage(updated, userId);
@@ -327,9 +281,7 @@ export const deleteMessageService = async ({
   messageId: number;
   userId: number;
 }) => {
-  const message = await prisma.message.findUnique({
-    where: { id: messageId },
-  });
+  const message = await chatRepo.findMessage(messageId);
 
   if (!message || message.status === MessageStatus.DELETED) {
     throw new AppError(404, "Không tìm thấy tin nhắn");
@@ -339,13 +291,7 @@ export const deleteMessageService = async ({
     throw new AppError(403, "Bạn không có quyền xóa tin nhắn này");
   }
 
-  await prisma.message.update({
-    where: { id: messageId },
-    data: {
-      content: "",
-      status: MessageStatus.DELETED,
-    },
-  });
+  await chatRepo.saveMessageDeleted(messageId);
 
   await invalidateConversationCaches(message.conversationId);
   return { messageId, conversationId: message.conversationId };
@@ -369,21 +315,15 @@ export const createSystemMessageService = async ({
 
   const now = new Date();
 
-  const message = await prisma.$transaction(async (tx) => {
-    const created = await tx.message.create({
-      data: {
-        conversationId,
-        senderId: actorUserId,
-        contentType: MessageContentType.SYSTEM,
-        content: trimmed,
-      },
-      include: messageInclude,
+  const message = await chatRepo.runInTx(async (tx) => {
+    const created = await chatRepo.insertMessage(tx, {
+      conversationId,
+      senderId: actorUserId,
+      contentType: MessageContentType.SYSTEM,
+      content: trimmed,
     });
 
-    await tx.conversation.update({
-      where: { id: conversationId },
-      data: { lastMessageAt: now },
-    });
+    await chatRepo.saveLastMessageAt(conversationId, now, tx);
 
     return created;
   });

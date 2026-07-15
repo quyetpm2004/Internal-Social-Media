@@ -1,6 +1,5 @@
-import { GroupStatus, PostStatus, PostVisibility, Status } from "@prisma/client";
+import { GroupStatus, PostStatus, Status } from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
-import prisma from "@/shared/utils/prisma";
 import { getFileUrl } from "@/modules/file/file.service";
 import {
   notifyPostApproved,
@@ -17,6 +16,7 @@ import type {
   UpdateUserRoleInput,
   UpdateUserStatusInput,
 } from "@/modules/admin/admin.schema";
+import * as adminRepo from "@/modules/admin/admin.repository";
 
 const paginate = (page: number, limit: number) => {
   const take = Math.max(limit, 1);
@@ -68,30 +68,6 @@ const buildDailySeries = (
   return buckets;
 };
 
-const recentPostSelect = {
-  id: true,
-  content: true,
-  status: true,
-  visibility: true,
-  isPinned: true,
-  isAnonymous: true,
-  createdAt: true,
-  user: { select: { id: true, fullName: true, email: true } },
-  group: { select: { id: true, groupName: true } },
-  _count: { select: { comments: true, reactions: true } },
-} as const;
-
-const recentUserSelect = {
-  id: true,
-  fullName: true,
-  email: true,
-  role: true,
-  status: true,
-  createdAt: true,
-  department: { select: { id: true, name: true } },
-  position: { select: { id: true, name: true } },
-} as const;
-
 export const getDashboardStats = async () => {
   const [
     totalUsers,
@@ -105,25 +81,16 @@ export const getDashboardStats = async () => {
     recentPosts,
     recentUsers,
   ] = await Promise.all([
-    prisma.user.count(),
-    prisma.post.count({ where: { status: { not: PostStatus.DELETED } } }),
-    prisma.group.count({ where: { status: { not: GroupStatus.ARCHIVED } } }),
-    prisma.user.count({ where: { status: Status.ACTIVE } }),
-    prisma.post.count({ where: { status: PostStatus.PENDING_REVIEW } }),
-    prisma.user.count({ where: { status: Status.PENDING } }),
-    prisma.user.count({ where: { status: Status.INACTIVE } }),
-    prisma.group.count({ where: { status: GroupStatus.INACTIVE } }),
-    prisma.post.findMany({
-      where: { status: { not: PostStatus.DELETED } },
-      take: RECENT_ACTIVITY_LIMIT,
-      orderBy: { createdAt: "desc" },
-      select: recentPostSelect,
-    }),
-    prisma.user.findMany({
-      take: RECENT_ACTIVITY_LIMIT,
-      orderBy: { createdAt: "desc" },
-      select: recentUserSelect,
-    }),
+    adminRepo.countUsers(),
+    adminRepo.countPosts({ status: { not: PostStatus.DELETED } }),
+    adminRepo.countGroups({ status: { not: GroupStatus.ARCHIVED } }),
+    adminRepo.countUsers({ status: Status.ACTIVE }),
+    adminRepo.countPosts({ status: PostStatus.PENDING_REVIEW }),
+    adminRepo.countUsers({ status: Status.PENDING }),
+    adminRepo.countUsers({ status: Status.INACTIVE }),
+    adminRepo.countGroups({ status: GroupStatus.INACTIVE }),
+    adminRepo.findRecentPosts(RECENT_ACTIVITY_LIMIT),
+    adminRepo.findRecentUsers(RECENT_ACTIVITY_LIMIT),
   ]);
 
   return {
@@ -148,44 +115,12 @@ const getDashboardCharts = async () => {
     groupPosts,
     topGroupsRaw,
   ] = await Promise.all([
-    prisma.user.findMany({
-      where: { createdAt: { gte: since } },
-      select: { createdAt: true },
-    }),
-    prisma.post.findMany({
-      where: {
-        createdAt: { gte: since },
-        status: { not: PostStatus.DELETED },
-      },
-      select: { createdAt: true },
-    }),
-    prisma.comment.findMany({
-      where: { createdAt: { gte: since } },
-      select: { createdAt: true },
-    }),
-    prisma.post.count({
-      where: {
-        status: { not: PostStatus.DELETED },
-        OR: [{ groupId: null }, { visibility: PostVisibility.PUBLIC }],
-      },
-    }),
-    prisma.post.count({
-      where: {
-        status: { not: PostStatus.DELETED },
-        groupId: { not: null },
-        visibility: PostVisibility.GROUP,
-      },
-    }),
-    prisma.group.findMany({
-      where: { status: { not: GroupStatus.ARCHIVED } },
-      take: TOP_GROUPS_LIMIT,
-      orderBy: { posts: { _count: "desc" } },
-      select: {
-        id: true,
-        groupName: true,
-        _count: { select: { posts: true } },
-      },
-    }),
+    adminRepo.findUserCreatedAtSince(since),
+    adminRepo.findPostCreatedAtSince(since),
+    adminRepo.findCommentCreatedAtSince(since),
+    adminRepo.countPublicPosts(),
+    adminRepo.countGroupVisibilityPosts(),
+    adminRepo.findTopGroupsByPostCount(TOP_GROUPS_LIMIT),
   ]);
 
   const userGrowth = buildDailySeries(usersCreated, CHART_DAYS);
@@ -229,23 +164,8 @@ export const listUsers = async (query: AdminUserListQuery) => {
   };
 
   const [users, total] = await Promise.all([
-    prisma.user.findMany({
-      where,
-      skip,
-      take,
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        fullName: true,
-        email: true,
-        role: true,
-        status: true,
-        createdAt: true,
-        department: { select: { id: true, name: true } },
-        position: { select: { id: true, name: true } },
-      },
-    }),
-    prisma.user.count({ where }),
+    adminRepo.findUsers(where, skip, take),
+    adminRepo.countUsers(where),
   ]);
 
   return {
@@ -268,24 +188,12 @@ export const updateUserStatus = async (
     throw new AppError(400, "Không thể thay đổi trạng thái tài khoản của chính bạn");
   }
 
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const user = await adminRepo.findUserById(userId);
   if (!user) {
     throw new AppError(404, "Người dùng không tồn tại");
   }
 
-  const updated = await prisma.user.update({
-    where: { id: userId },
-    data: { status: data.status },
-    select: {
-      id: true,
-      fullName: true,
-      email: true,
-      role: true,
-      status: true,
-    },
-  });
-
-  return updated;
+  return adminRepo.updateUserStatus(userId, data.status);
 };
 
 export const updateUserRole = async (
@@ -297,24 +205,12 @@ export const updateUserRole = async (
     throw new AppError(400, "Không thể thay đổi vai trò của chính bạn");
   }
 
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const user = await adminRepo.findUserById(userId);
   if (!user) {
     throw new AppError(404, "Người dùng không tồn tại");
   }
 
-  const updated = await prisma.user.update({
-    where: { id: userId },
-    data: { role: data.role },
-    select: {
-      id: true,
-      fullName: true,
-      email: true,
-      role: true,
-      status: true,
-    },
-  });
-
-  return updated;
+  return adminRepo.updateUserRole(userId, data.role);
 };
 
 export const listPosts = async (query: AdminPostListQuery) => {
@@ -335,25 +231,8 @@ export const listPosts = async (query: AdminPostListQuery) => {
   };
 
   const [posts, total] = await Promise.all([
-    prisma.post.findMany({
-      where,
-      skip,
-      take,
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        content: true,
-        status: true,
-        visibility: true,
-        isPinned: true,
-        isAnonymous: true,
-        createdAt: true,
-        user: { select: { id: true, fullName: true, email: true } },
-        group: { select: { id: true, groupName: true } },
-        _count: { select: { comments: true, reactions: true } },
-      },
-    }),
-    prisma.post.count({ where }),
+    adminRepo.findPosts(where, skip, take),
+    adminRepo.countPosts(where),
   ]);
 
   return {
@@ -368,22 +247,7 @@ export const listPosts = async (query: AdminPostListQuery) => {
 };
 
 export const getPostDetail = async (postId: number) => {
-  const post = await prisma.post.findUnique({
-    where: { id: postId },
-    include: {
-      user: {
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-          profile: { select: { avatarKey: true } },
-        },
-      },
-      group: { select: { id: true, groupName: true } },
-      attachments: true,
-      _count: { select: { comments: true, reactions: true } },
-    },
-  });
+  const post = await adminRepo.findPostDetail(postId);
 
   if (!post) {
     throw new AppError(404, "Bài viết không tồn tại");
@@ -400,7 +264,7 @@ export const getPostDetail = async (postId: number) => {
 };
 
 export const deletePost = async (postId: number) => {
-  const post = await prisma.post.findUnique({ where: { id: postId } });
+  const post = await adminRepo.findPostById(postId);
   if (!post) {
     throw new AppError(404, "Bài viết không tồn tại");
   }
@@ -409,11 +273,7 @@ export const deletePost = async (postId: number) => {
     throw new AppError(400, "Bài viết đã bị xóa");
   }
 
-  await prisma.post.update({
-    where: { id: postId },
-    data: { status: PostStatus.DELETED },
-  });
-
+  await adminRepo.updatePostStatus(postId, PostStatus.DELETED);
   return true;
 };
 
@@ -422,14 +282,7 @@ export const reviewPost = async (
   postId: number,
   data: ReviewPostInput,
 ) => {
-  const post = await prisma.post.findUnique({
-    where: { id: postId },
-    select: {
-      id: true,
-      status: true,
-      groupId: true,
-    },
-  });
+  const post = await adminRepo.findPostForReview(postId);
 
   if (!post) {
     throw new AppError(404, "Bài viết không tồn tại");
@@ -440,11 +293,10 @@ export const reviewPost = async (
   }
 
   if (data.action === "approve") {
-    const updated = await prisma.post.update({
-      where: { id: postId },
-      data: { status: PostStatus.ACTIVE },
-      select: recentPostSelect,
-    });
+    const updated = await adminRepo.updatePostStatusWithSelect(
+      postId,
+      PostStatus.ACTIVE,
+    );
 
     if (post.groupId) {
       await notifyPostApproved(postId, post.groupId, adminId);
@@ -453,10 +305,7 @@ export const reviewPost = async (
     return updated;
   }
 
-  await prisma.post.update({
-    where: { id: postId },
-    data: { status: PostStatus.DELETED },
-  });
+  await adminRepo.updatePostStatus(postId, PostStatus.DELETED);
 
   if (post.groupId) {
     await notifyPostRejected(postId, post.groupId, adminId);
@@ -464,25 +313,6 @@ export const reviewPost = async (
 
   return { id: postId, status: PostStatus.DELETED };
 };
-
-const adminCommentSelect = {
-  id: true,
-  content: true,
-  status: true,
-  isAnonymous: true,
-  isPinned: true,
-  createdAt: true,
-  parentCommentId: true,
-  user: { select: { id: true, fullName: true, email: true } },
-  post: {
-    select: {
-      id: true,
-      content: true,
-      group: { select: { id: true, groupName: true } },
-    },
-  },
-  _count: { select: { replies: true, reactions: true } },
-} as const;
 
 export const listComments = async (query: AdminCommentListQuery) => {
   const { search, status, page, limit } = query;
@@ -503,14 +333,8 @@ export const listComments = async (query: AdminCommentListQuery) => {
   };
 
   const [comments, total] = await Promise.all([
-    prisma.comment.findMany({
-      where,
-      skip,
-      take,
-      orderBy: { createdAt: "desc" },
-      select: adminCommentSelect,
-    }),
-    prisma.comment.count({ where }),
+    adminRepo.findComments(where, skip, take),
+    adminRepo.countComments(where),
   ]);
 
   return {
@@ -528,22 +352,13 @@ export const updateCommentStatus = async (
   commentId: number,
   data: UpdateCommentStatusInput,
 ) => {
-  const comment = await prisma.comment.findUnique({
-    where: { id: commentId },
-    select: { id: true, status: true },
-  });
+  const comment = await adminRepo.findCommentById(commentId);
 
   if (!comment) {
     throw new AppError(404, "Comment không tồn tại");
   }
 
-  const updated = await prisma.comment.update({
-    where: { id: commentId },
-    data: { status: data.status },
-    select: adminCommentSelect,
-  });
-
-  return updated;
+  return adminRepo.updateCommentStatus(commentId, data.status);
 };
 
 export const listGroups = async (query: AdminGroupListQuery) => {
@@ -563,24 +378,8 @@ export const listGroups = async (query: AdminGroupListQuery) => {
   };
 
   const [groups, total] = await Promise.all([
-    prisma.group.findMany({
-      where,
-      skip,
-      take,
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        groupName: true,
-        description: true,
-        groupType: true,
-        status: true,
-        createdAt: true,
-        creator: { select: { id: true, fullName: true, email: true } },
-        department: { select: { id: true, name: true } },
-        _count: { select: { members: true, posts: true } },
-      },
-    }),
-    prisma.group.count({ where }),
+    adminRepo.findGroups(where, skip, take),
+    adminRepo.countGroups(where),
   ]);
 
   return {
@@ -595,14 +394,7 @@ export const listGroups = async (query: AdminGroupListQuery) => {
 };
 
 export const getGroupDetail = async (groupId: number) => {
-  const group = await prisma.group.findUnique({
-    where: { id: groupId },
-    include: {
-      creator: { select: { id: true, fullName: true, email: true } },
-      department: { select: { id: true, name: true } },
-      _count: { select: { members: true, posts: true } },
-    },
-  });
+  const group = await adminRepo.findGroupDetail(groupId);
 
   if (!group) {
     throw new AppError(404, "Nhóm không tồn tại");
@@ -620,7 +412,7 @@ export const listGroupMembers = async (
   groupId: number,
   query: AdminGroupMembersQuery,
 ) => {
-  const group = await prisma.group.findUnique({ where: { id: groupId } });
+  const group = await adminRepo.findGroupById(groupId);
   if (!group) {
     throw new AppError(404, "Nhóm không tồn tại");
   }
@@ -629,26 +421,8 @@ export const listGroupMembers = async (
   const { take, skip } = paginate(page, limit);
 
   const [members, total] = await Promise.all([
-    prisma.groupMember.findMany({
-      where: { groupId },
-      skip,
-      take,
-      orderBy: { joinedAt: "asc" },
-      select: {
-        id: true,
-        memberRole: true,
-        joinedAt: true,
-        status: true,
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-          },
-        },
-      },
-    }),
-    prisma.groupMember.count({ where: { groupId } }),
+    adminRepo.findGroupMembers(groupId, skip, take),
+    adminRepo.countGroupMembers(groupId),
   ]);
 
   return {
@@ -669,7 +443,7 @@ export const listGroupMembers = async (
 };
 
 export const deleteGroup = async (groupId: number) => {
-  const group = await prisma.group.findUnique({ where: { id: groupId } });
+  const group = await adminRepo.findGroupById(groupId);
   if (!group) {
     throw new AppError(404, "Nhóm không tồn tại");
   }
@@ -678,10 +452,6 @@ export const deleteGroup = async (groupId: number) => {
     throw new AppError(400, "Nhóm đã bị xóa");
   }
 
-  await prisma.group.update({
-    where: { id: groupId },
-    data: { status: GroupStatus.ARCHIVED },
-  });
-
+  await adminRepo.updateGroupStatus(groupId, GroupStatus.ARCHIVED);
   return true;
 };

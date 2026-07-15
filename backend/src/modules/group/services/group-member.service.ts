@@ -5,7 +5,6 @@ import {
   GroupType,
 } from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
-import prisma from "@/shared/utils/prisma";
 import { getFileUrl } from "@/modules/file/file.service";
 import {
   notifyGroupMemberAdded,
@@ -13,6 +12,7 @@ import {
   notifyGroupMemberRoleChanged,
   notifyGroupMemberStatusChanged,
 } from "@/modules/notification/notification.service";
+import * as groupRepo from "@/modules/group/group.repository";
 import {
   assertCanManageTargetRole,
   assertNotLastAdmin,
@@ -37,10 +37,8 @@ export const addMemberToGroup = async (
   await checkCanManageMember(groupId, currentUserId);
 
   const user = userId
-    ? await prisma.user.findUnique({ where: { id: Number(userId) } })
-    : await prisma.user.findUnique({
-        where: { email: String(email).trim() },
-      });
+    ? await groupRepo.findUserById(Number(userId))
+    : await groupRepo.findUserByEmail(String(email).trim());
 
   if (!user) {
     throw new AppError(404, "Không tìm thấy người dùng với email này");
@@ -48,28 +46,15 @@ export const addMemberToGroup = async (
 
   const targetUserId = user.id;
 
-  const existingMember = await prisma.groupMember.findUnique({
-    where: {
-      groupId_userId: { groupId, userId: targetUserId },
-    },
-  });
+  const existingMember = await groupRepo.findMember(groupId, targetUserId);
 
   if (existingMember) {
     if (existingMember.status === GroupMemberStatus.PENDING) {
-      const member = await prisma.groupMember.update({
-        where: {
-          groupId_userId: { groupId, userId: targetUserId },
-        },
-        data: {
-          status: GroupMemberStatus.ACTIVE,
-          memberRole: memberRole || GroupMemberRole.MEMBER,
-        },
-        include: {
-          user: {
-            select: { id: true, fullName: true, email: true, role: true },
-          },
-        },
-      });
+      const member = await groupRepo.activateMember(
+        groupId,
+        targetUserId,
+        memberRole || GroupMemberRole.MEMBER,
+      );
       await notifyGroupMemberStatusChanged(
         groupId,
         currentUserId,
@@ -81,18 +66,11 @@ export const addMemberToGroup = async (
     throw new AppError(400, "User đã là thành viên của nhóm");
   }
 
-  const member = await prisma.groupMember.create({
-    data: {
-      groupId,
-      userId: targetUserId,
-      memberRole: memberRole || GroupMemberRole.MEMBER,
-      status: GroupMemberStatus.ACTIVE,
-    },
-    include: {
-      user: {
-        select: { id: true, fullName: true, email: true, role: true },
-      },
-    },
+  const member = await groupRepo.insertMember({
+    groupId,
+    userId: targetUserId,
+    memberRole: memberRole || GroupMemberRole.MEMBER,
+    status: GroupMemberStatus.ACTIVE,
   });
 
   await notifyGroupMemberAdded(groupId, currentUserId, targetUserId);
@@ -143,24 +121,8 @@ export const getGroupMembers = async (
   };
 
   const [members, total] = await Promise.all([
-    prisma.groupMember.findMany({
-      where,
-      include: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-            role: true,
-            profile: { select: { avatarKey: true } },
-          },
-        },
-      },
-      orderBy: { joinedAt: "asc" },
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
-    prisma.groupMember.count({ where }),
+    groupRepo.listMembers(where, (page - 1) * limit, limit),
+    groupRepo.countMembers(where),
   ]);
 
   return {
@@ -198,9 +160,7 @@ export const removeMemberFromGroup = async (
     throw new AppError(400, "Bạn không thể tự xóa mình khỏi nhóm tại đây");
   }
 
-  const member = await prisma.groupMember.findUnique({
-    where: { groupId_userId: { groupId, userId } },
-  });
+  const member = await groupRepo.findMember(groupId, userId);
 
   if (!member || member.status !== GroupMemberStatus.ACTIVE) {
     throw new AppError(400, "User không phải thành viên của nhóm");
@@ -209,9 +169,7 @@ export const removeMemberFromGroup = async (
   assertCanManageTargetRole(actor.memberRole, member.memberRole);
   await assertNotLastAdmin(groupId, member.memberRole);
 
-  await prisma.groupMember.delete({
-    where: { groupId_userId: { groupId, userId } },
-  });
+  await groupRepo.deleteMember(groupId, userId);
 
   await notifyGroupMemberKicked(groupId, currentUserId, userId);
   return true;
@@ -238,9 +196,7 @@ export const updateMemberRole = async (
     throw new AppError(400, "Bạn không thể tự thay đổi quyền của mình");
   }
 
-  const member = await prisma.groupMember.findUnique({
-    where: { groupId_userId: { groupId, userId } },
-  });
+  const member = await groupRepo.findMember(groupId, userId);
 
   if (!member || member.status !== GroupMemberStatus.ACTIVE) {
     throw new AppError(400, "User không phải thành viên của nhóm");
@@ -256,13 +212,11 @@ export const updateMemberRole = async (
     await assertNotLastAdmin(groupId, GroupMemberRole.ADMIN);
   }
 
-  const updatedMember = await prisma.groupMember.update({
-    where: { groupId_userId: { groupId, userId } },
-    data: { memberRole },
-    include: {
-      user: { select: { id: true, fullName: true, email: true } },
-    },
-  });
+  const updatedMember = await groupRepo.saveMemberRole(
+    groupId,
+    userId,
+    memberRole,
+  );
 
   await notifyGroupMemberRoleChanged(
     groupId,
@@ -297,19 +251,11 @@ export const joinGroup = async (groupId: number, userId: number) => {
 
   const isPrivate = group.groupType === GroupType.PRIVATE;
 
-  const member = await prisma.groupMember.create({
-    data: {
-      groupId,
-      userId,
-      memberRole: GroupMemberRole.MEMBER,
-      status: isPrivate ? GroupMemberStatus.PENDING : GroupMemberStatus.ACTIVE,
-    },
-    include: {
-      group: true,
-      user: {
-        select: { id: true, fullName: true, email: true },
-      },
-    },
+  const member = await groupRepo.insertJoin({
+    groupId,
+    userId,
+    memberRole: GroupMemberRole.MEMBER,
+    status: isPrivate ? GroupMemberStatus.PENDING : GroupMemberStatus.ACTIVE,
   });
 
   return {
@@ -328,9 +274,7 @@ export const leaveGroup = async (groupId: number, userId: number) => {
   }
 
   if (member.status === GroupMemberStatus.PENDING) {
-    await prisma.groupMember.delete({
-      where: { groupId_userId: { groupId, userId } },
-    });
+    await groupRepo.deleteMember(groupId, userId);
     return { action: "cancelled_request" as const };
   }
 
@@ -339,22 +283,14 @@ export const leaveGroup = async (groupId: number, userId: number) => {
   }
 
   if (member.memberRole === GroupMemberRole.ADMIN) {
-    const adminCount = await prisma.groupMember.count({
-      where: {
-        groupId,
-        memberRole: GroupMemberRole.ADMIN,
-        status: GroupMemberStatus.ACTIVE,
-      },
-    });
+    const adminCount = await groupRepo.countAdmins(groupId);
 
     if (adminCount <= 1) {
       throw new AppError(400, "Admin cuối cùng không thể rời nhóm");
     }
   }
 
-  await prisma.groupMember.delete({
-    where: { groupId_userId: { groupId, userId } },
-  });
+  await groupRepo.deleteMember(groupId, userId);
 
   return { action: "left" as const };
 };

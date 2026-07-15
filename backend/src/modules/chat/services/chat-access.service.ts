@@ -13,12 +13,12 @@ import {
   type MemberWithUser,
   type MessageWithIncludes,
 } from "@/modules/chat/chat.types";
+import * as chatRepo from "@/modules/chat/chat.repository";
 import {
   getConversationMemberUserIds,
   invalidateConversationForMembers,
 } from "@/modules/chat/services/chat-cache.service";
 import { mapPollSummary } from "@/modules/poll/poll.service";
-import prisma from "@/shared/utils/prisma";
 
 export const resolveAvatarUrl = async (avatarKey?: string | null) => {
   if (!avatarKey) return null;
@@ -88,11 +88,7 @@ export const assertConversationMember = async (
   conversationId: number,
   userId: number,
 ) => {
-  const member = await prisma.conversationMember.findUnique({
-    where: {
-      conversationId_userId: { conversationId, userId },
-    },
-  });
+  const member = await chatRepo.findMember(conversationId, userId);
 
   if (!member || member.leftAt) {
     throw new AppError(
@@ -105,9 +101,7 @@ export const assertConversationMember = async (
 };
 
 export const findConversationOrThrow = async (conversationId: number) => {
-  const conversation = await prisma.conversation.findUnique({
-    where: { id: conversationId },
-  });
+  const conversation = await chatRepo.findConversation(conversationId);
 
   if (!conversation) {
     throw new AppError(404, "Không tìm thấy cuộc trò chuyện");
@@ -199,14 +193,7 @@ export const countUnreadMessages = async (
   userId: number,
   lastReadAt: Date | null,
 ) => {
-  return prisma.message.count({
-    where: {
-      conversationId,
-      status: { not: MessageStatus.DELETED },
-      senderId: { not: userId },
-      ...(lastReadAt ? { createdAt: { gt: lastReadAt } } : {}),
-    },
-  });
+  return chatRepo.countUnread(conversationId, userId, lastReadAt);
 };
 
 export const invalidateConversationCaches = async (conversationId: number) => {
@@ -217,10 +204,7 @@ export const invalidateConversationCaches = async (conversationId: number) => {
 export const getUserDisplayNames = async (userIds: number[]) => {
   if (userIds.length === 0) return [];
 
-  const users = await prisma.user.findMany({
-    where: { id: { in: userIds } },
-    select: { id: true, fullName: true },
-  });
+  const users = await chatRepo.listUserNames(userIds);
 
   const nameById = new Map(users.map((u) => [u.id, u.fullName]));
   return userIds.map((id) => nameById.get(id) ?? "Người dùng");
@@ -246,32 +230,22 @@ export const promoteNextAdminIfNeeded = async (
   conversationId: number,
   excludingUserId: number,
 ) => {
-  const remainingAdmins = await prisma.conversationMember.count({
-    where: {
-      conversationId,
-      leftAt: null,
-      role: ConversationMemberRole.ADMIN,
-      userId: { not: excludingUserId },
-    },
+  const remainingAdmins = await chatRepo.countAdmins(conversationId, {
+    excludingUserId,
   });
 
   if (remainingAdmins > 0) return;
 
-  const nextAdmin = await prisma.conversationMember.findFirst({
-    where: {
-      conversationId,
-      leftAt: null,
-      userId: { not: excludingUserId },
-      role: ConversationMemberRole.MEMBER,
-    },
-    orderBy: { joinedAt: "asc" },
-  });
+  const nextAdmin = await chatRepo.findOldestMember(
+    conversationId,
+    excludingUserId,
+  );
 
   if (nextAdmin) {
-    await prisma.conversationMember.update({
-      where: { id: nextAdmin.id },
-      data: { role: ConversationMemberRole.ADMIN },
-    });
+    await chatRepo.saveMemberRole(
+      nextAdmin.id,
+      ConversationMemberRole.ADMIN,
+    );
   }
 };
 

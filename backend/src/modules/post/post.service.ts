@@ -14,7 +14,6 @@ import { PostContentFormat } from "@/shared/constants/post-content-format";
 import type { PostContentFormat as PostContentFormatType } from "@/shared/constants/post-content-format";
 
 import { AppError } from "@/shared/errors/app-error";
-import prisma from "@/shared/utils/prisma";
 import { getFileUrl } from "@/modules/file/file.service";
 import { processPostContent } from "@/shared/utils/sanitize-html";
 import {
@@ -29,7 +28,6 @@ import {
 import {
   assertMentionedUsersExist,
   assertMentionedUsersInGroup,
-  normalizeMentionedUserIds,
   resolveMentionTargets,
   syncPostMentions,
 } from "@/shared/utils/mentions";
@@ -40,7 +38,7 @@ import {
   updatePollForPost,
 } from "@/modules/poll/poll.service";
 import type { PollUpdateInput } from "@/modules/poll/poll.schema";
-import { getPollInclude } from "@/modules/poll/poll.types";
+import * as postRepo from "@/modules/post/post.repository";
 
 type EventInput = {
   title: string;
@@ -64,10 +62,7 @@ type EventForSummary = {
 };
 
 const attachEventSummaryToPosts = async <
-  T extends { event?: EventForSummary | null } & Record<
-    string,
-    unknown
-  >,
+  T extends { event?: EventForSummary | null } & Record<string, unknown>,
 >(
   posts: T[],
   userId: number,
@@ -81,23 +76,26 @@ const attachEventSummaryToPosts = async <
             ...eventBase,
             startAt: eventBase.startAt.toISOString(),
             endAt: eventBase.endAt ? eventBase.endAt.toISOString() : null,
-          attendeeSummary: {
-            going:
-              attendees?.filter(
-                (attendee) => attendee.status === EventAttendanceStatus.GOING,
-              ).length ?? 0,
-            maybe:
-              attendees?.filter(
-                (attendee) => attendee.status === EventAttendanceStatus.MAYBE,
-              ).length ?? 0,
-            declined:
-              attendees?.filter(
-                (attendee) => attendee.status === EventAttendanceStatus.DECLINED,
-              ).length ?? 0,
-          },
-          myResponse:
-            attendees?.find((attendee) => attendee.userId === userId)
-              ?.status ?? null,
+            attendeeSummary: {
+              going:
+                attendees?.filter(
+                  (attendee) =>
+                    attendee.status === EventAttendanceStatus.GOING,
+                ).length ?? 0,
+              maybe:
+                attendees?.filter(
+                  (attendee) =>
+                    attendee.status === EventAttendanceStatus.MAYBE,
+                ).length ?? 0,
+              declined:
+                attendees?.filter(
+                  (attendee) =>
+                    attendee.status === EventAttendanceStatus.DECLINED,
+                ).length ?? 0,
+            },
+            myResponse:
+              attendees?.find((attendee) => attendee.userId === userId)
+                ?.status ?? null,
           };
         })()
       : null,
@@ -113,23 +111,13 @@ const defaultReactionSummary = (): Record<ReactionType, number> => ({
   ANGRY: 0,
 });
 
-const attachReactionSummariesToPosts = async <
-  T extends { id: number },
->(
+const attachReactionSummariesToPosts = async <T extends { id: number }>(
   posts: T[],
 ): Promise<Array<T & { reactionSummary: Record<ReactionType, number> }>> => {
   if (posts.length === 0) return [];
 
   const postIds = posts.map((post) => post.id);
-  const rows = await prisma.reaction.groupBy({
-    by: ["postId", "reactionType"],
-    where: {
-      postId: { in: postIds },
-    },
-    _count: {
-      reactionType: true,
-    },
-  });
+  const rows = await postRepo.getReactionSummaryForPosts(postIds);
 
   const summaryByPostId: Record<number, Partial<Record<ReactionType, number>>> =
     {};
@@ -156,10 +144,7 @@ const attachPostEnhancements = async <
     poll?: unknown;
     event?: EventForSummary | null;
     savedBy?: Array<{ id: number }>;
-  } & Record<
-    string,
-    unknown
-  >,
+  } & Record<string, unknown>,
 >(
   posts: T[],
   userId: number,
@@ -178,64 +163,29 @@ const attachPostEnhancements = async <
   }));
 };
 
+const attachUrlsToPostAttachments = async <
+  T extends { attachments: Array<{ fileKey: string } & Record<string, any>> },
+>(
+  posts: T[],
+) =>
+  Promise.all(
+    posts.map(async (post) => {
+      const attachmentsWithUrl = await Promise.all(
+        post.attachments.map(async (attachment) => {
+          const url = await getFileUrl(attachment.fileKey, 7 * 24 * 60 * 60);
+          return { ...attachment, fileUrl: url };
+        }),
+      );
+      return { ...post, attachments: attachmentsWithUrl };
+    }),
+  );
+
 type GetPostListParams = {
   page?: number;
   limit?: number;
   sort?: "latest" | "trending";
   groupId?: number;
 };
-
-const buildPostInclude = (userId: number) => ({
-  user: {
-    select: {
-      id: true,
-      fullName: true,
-      email: true,
-      role: true,
-      profile: {
-        select: {
-          avatarKey: true,
-        },
-      },
-    },
-  },
-  group: {
-    select: {
-      id: true,
-      groupName: true,
-    },
-  },
-  reactions: {
-    where: {
-      userId,
-    },
-    select: {
-      reactionType: true,
-    },
-  },
-  attachments: true,
-  poll: getPollInclude(userId),
-  event: {
-    include: {
-      attendees: {
-        select: {
-          userId: true,
-          status: true,
-        },
-      },
-    },
-  },
-  savedBy: {
-    where: { userId },
-    select: { id: true },
-  },
-  _count: {
-    select: {
-      comments: true,
-      reactions: true,
-    },
-  },
-});
 
 export const getPostListService = async ({
   page = 1,
@@ -263,87 +213,34 @@ export const getPostListService = async ({
     where.groupId = null;
     where.visibility = "PUBLIC";
   }
-  /**
-   * pinnedPosts:
-   * - chỉ lấy ở page=1 để tránh lặp lại khi infinite scroll
-   * - tách riêng khỏi posts
-   */
-  let pinnedPosts: any[] = [];
+
+  let pinnedPosts: Awaited<ReturnType<typeof postRepo.getPinnedPosts>> = [];
 
   if (page === 1) {
-    pinnedPosts = await prisma.post.findMany({
-      where: {
-        ...where,
-        isPinned: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      include: buildPostInclude(userId),
-    });
+    pinnedPosts = await postRepo.getPinnedPosts(where, userId);
   }
 
-  /**
-   * posts thường:
-   * - loại pinned ra khỏi danh sách thường để không trùng
-   * - latest: mới nhất trước
-   * - trending: ví dụ order theo viewCount desc, rồi createdAt desc
-   */
   const orderBy: Prisma.PostOrderByWithRelationInput[] =
     sort === "trending"
       ? [{ viewCount: "desc" }, { createdAt: "desc" }]
       : [{ createdAt: "desc" }];
 
-  const posts = await prisma.post.findMany({
-    where: {
-      ...where,
-      isPinned: false,
-    },
+  // lấy dư 1 bản ghi để biết còn dữ liệu không
+  const posts = await postRepo.getNormalPosts(
+    where,
+    userId,
     skip,
-    take: limit + 1, // lấy dư 1 bản ghi để biết còn dữ liệu không
+    limit + 1,
     orderBy,
-    include: buildPostInclude(userId),
-  });
+  );
 
   const hasMore = posts.length > limit;
-
   const normalizedPosts = hasMore ? posts.slice(0, limit) : posts;
 
-  const normalizePostsWithUrlAttachments = await Promise.all(
-    normalizedPosts.map(async (post) => {
-      const attachmentsWithUrl = await Promise.all(
-        post.attachments.map(async (attachment) => {
-          const url = await getFileUrl(attachment.fileKey, 7 * 24 * 60 * 60); // 7 ngày
-          return {
-            ...attachment,
-            fileUrl: url,
-          };
-        }),
-      );
-      return {
-        ...post,
-        attachments: attachmentsWithUrl,
-      };
-    }),
-  );
-
-  const pinnedPostsWithUrlAttachments = await Promise.all(
-    pinnedPosts.map(async (post) => {
-      const attachmentsWithUrl = await Promise.all(
-        post.attachments.map(async (attachment: any) => {
-          const url = await getFileUrl(attachment.fileKey, 7 * 24 * 60 * 60); // 7 ngày
-          return {
-            ...attachment,
-            fileUrl: url,
-          };
-        }),
-      );
-      return {
-        ...post,
-        attachments: attachmentsWithUrl,
-      };
-    }),
-  );
+  const normalizePostsWithUrlAttachments =
+    await attachUrlsToPostAttachments(normalizedPosts);
+  const pinnedPostsWithUrlAttachments =
+    await attachUrlsToPostAttachments(pinnedPosts);
 
   if (groupId) {
     const maskedPinned = await maskGroupPostAuthors(
@@ -376,7 +273,10 @@ export const getPostListService = async ({
       pinnedPostsWithUrlAttachments,
       userId,
     ),
-    posts: await attachPostEnhancements(normalizePostsWithUrlAttachments, userId),
+    posts: await attachPostEnhancements(
+      normalizePostsWithUrlAttachments,
+      userId,
+    ),
   };
 };
 
@@ -429,16 +329,7 @@ export const createPostService = async ({
   const isAnonymous = wantsAnonymous === true;
 
   if (groupId) {
-    const existingGroup = await prisma.group.findUnique({
-      where: { id: groupId },
-      select: {
-        id: true,
-        status: true,
-        postPermission: true,
-        postApprovalRequired: true,
-        allowAnonymousJoin: true,
-      },
-    });
+    const existingGroup = await postRepo.getGroupForCreatePost(groupId);
 
     if (!existingGroup) {
       throw new AppError(404, "GROUP_NOT_FOUND");
@@ -448,11 +339,7 @@ export const createPostService = async ({
       throw new AppError(400, "Nhóm không hoạt động");
     }
 
-    const membership = await prisma.groupMember.findUnique({
-      where: {
-        groupId_userId: { groupId, userId },
-      },
-    });
+    const membership = await postRepo.getMembership(groupId, userId);
 
     if (!membership || membership.status !== GroupMemberStatus.ACTIVE) {
       throw new AppError(400, "Bạn phải là thành viên nhóm");
@@ -462,7 +349,10 @@ export const createPostService = async ({
       existingGroup.postPermission === GroupPermission.ADMIN_ONLY &&
       membership.memberRole !== GroupMemberRole.ADMIN
     ) {
-      throw new AppError(400, "Chỉ quản trị viên mới có thể đăng bài trong nhóm này");
+      throw new AppError(
+        400,
+        "Chỉ quản trị viên mới có thể đăng bài trong nhóm này",
+      );
     }
 
     await assertGroupAllowsAnonymousContent(groupId, isAnonymous);
@@ -472,25 +362,11 @@ export const createPostService = async ({
       : PostStatus.ACTIVE;
   }
 
-  /**
-   * Validate attachments
-   */
   if (attachmentIds.length > 0) {
-    const attachments = await prisma.postAttachment.findMany({
-      where: {
-        id: {
-          in: attachmentIds,
-        },
-
-        uploadedById: userId,
-
-        status: "READY",
-      },
-
-      select: {
-        id: true,
-      },
-    });
+    const attachments = await postRepo.getReadyAttachments(
+      attachmentIds,
+      userId,
+    );
 
     if (attachments.length !== attachmentIds.length) {
       throw new AppError(400, "INVALID_ATTACHMENTS");
@@ -508,79 +384,42 @@ export const createPostService = async ({
     await assertMentionedUsersInGroup(groupId, uniqueMentionedUserIds);
   }
 
-  /**
-   * Transaction
-   */
-  const post = await prisma.$transaction(async (tx) => {
-    /**
-     * Create post
-     */
-    const createdPost = await tx.post.create({
-      data: {
-        userId,
-        groupId: groupId || null,
-        content: processed.content,
-        contentFormat: processed.contentFormat,
-        visibility,
-        isPinned: false,
-        status: groupId ? groupPostStatus : PostStatus.ACTIVE,
-        viewCount: 0,
-        isAnonymous: groupId ? isAnonymous : false,
-      },
-    });
+  const post = await postRepo.createPostWithRelations({
+    data: {
+      userId,
+      groupId: groupId || null,
+      content: processed.content,
+      contentFormat: processed.contentFormat,
+      visibility,
+      status: groupId ? groupPostStatus : PostStatus.ACTIVE,
+      isAnonymous: groupId ? isAnonymous : false,
+    },
+    attachmentIds,
+    afterCreate: async (tx, newPostId) => {
+      if (poll) {
+        await createPollInTransaction(tx, {
+          ...poll,
+          postId: newPostId,
+        });
+      }
 
-    /**
-     * Activate attachments
-     */
-    if (attachmentIds.length > 0) {
-      await tx.postAttachment.updateMany({
-        where: {
-          id: {
-            in: attachmentIds,
+      if (event) {
+        await tx.event.create({
+          data: {
+            postId: newPostId,
+            title: event.title,
+            description: event.description?.trim() || null,
+            startAt: event.startAt,
+            endAt: event.endAt ?? null,
+            location: event.location?.trim() || null,
           },
-          uploadedById: userId,
-          status: "READY",
-        },
-        data: {
-          postId: createdPost.id,
-          status: "ACTIVE",
-        },
-      });
-    }
+        });
+      }
 
-    if (poll) {
-      await createPollInTransaction(tx, {
-        ...poll,
-        postId: createdPost.id,
-      });
-    }
-
-    if (event) {
-      await tx.event.create({
-        data: {
-          postId: createdPost.id,
-          title: event.title,
-          description: event.description?.trim() || null,
-          startAt: event.startAt,
-          endAt: event.endAt ?? null,
-          location: event.location?.trim() || null,
-        },
-      });
-    }
-
-    if (uniqueMentionedUserIds.length > 0) {
-      await syncPostMentions(tx, createdPost.id, uniqueMentionedUserIds);
-    }
-
-    /**
-     * Return full post
-     */
-    return tx.post.findUnique({
-      where: {
-        id: createdPost.id,
-      },
-      include: buildPostInclude(userId),
-    });
+      if (uniqueMentionedUserIds.length > 0) {
+        await syncPostMentions(tx, newPostId, uniqueMentionedUserIds);
+      }
+    },
   });
 
   if (!post) {
@@ -606,22 +445,13 @@ export const reactPostService = async ({
   postId,
   reactionType,
 }: ReactPostParams) => {
-  const existingUser = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true },
-  });
+  const existingUser = await postRepo.getUser(userId);
 
   if (!existingUser) {
     throw new AppError(404, "Người dùng không tồn tại");
   }
 
-  const existingPost = await prisma.post.findUnique({
-    where: { id: postId },
-    select: {
-      id: true,
-      status: true,
-    },
-  });
+  const existingPost = await postRepo.getPostBasic(postId);
 
   if (!existingPost) {
     throw new AppError(404, "Bài viết không tồn tại");
@@ -631,51 +461,17 @@ export const reactPostService = async ({
     throw new AppError(400, "Bài viết không khả dụng để tương tác");
   }
 
-  const existingReaction = await prisma.reaction.findUnique({
-    where: {
-      userId_postId: {
-        userId,
-        postId,
-      },
-    },
-  });
+  const existingReaction = await postRepo.getUserPostReaction(userId, postId);
 
   if (!existingReaction) {
-    const createdReaction = await prisma.reaction.create({
-      data: {
-        userId,
-        postId,
-        commentId: null,
-        reactionType,
-      },
-    });
-
-    // Đếm tổng số reactions sau khi tạo mới
-    const reactionCount = await prisma.reaction.count({
-      where: {
-        postId,
-      },
-    });
-
-    // Đếm theo từng loại reaction
-    const reactionSummaryRaw = await prisma.reaction.groupBy({
-      by: ["reactionType"],
-      where: {
-        postId,
-      },
-      _count: {
-        reactionType: true,
-      },
-    });
-
-    // Chuyển đổi kết quả groupBy thành định dạng { [reactionType]: count }
-    const reactionSummary = reactionSummaryRaw.reduce(
-      (acc, item) => {
-        acc[item.reactionType] = item._count.reactionType;
-        return acc;
-      },
-      {} as Record<string, number>,
+    const createdReaction = await postRepo.addReaction(
+      userId,
+      postId,
+      reactionType,
     );
+
+    const { reactionCount, reactionSummary } =
+      await postRepo.getPostReactionStats(postId);
 
     await notifyPostReaction(postId, userId, reactionType);
 
@@ -691,39 +487,12 @@ export const reactPostService = async ({
     };
   }
 
+  // cùng loại => bỏ reaction
   if (existingReaction.reactionType === reactionType) {
-    await prisma.reaction.delete({
-      where: {
-        userId_postId: {
-          userId,
-          postId,
-        },
-      },
-    });
+    await postRepo.removeReaction(userId, postId);
 
-    const reactionCount = await prisma.reaction.count({
-      where: {
-        postId,
-      },
-    });
-
-    const reactionSummaryRaw = await prisma.reaction.groupBy({
-      by: ["reactionType"],
-      where: {
-        postId,
-      },
-      _count: {
-        reactionType: true,
-      },
-    });
-
-    const reactionSummary = reactionSummaryRaw.reduce(
-      (acc, item) => {
-        acc[item.reactionType] = item._count.reactionType;
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
+    const { reactionCount, reactionSummary } =
+      await postRepo.getPostReactionStats(postId);
 
     return {
       message: "Bỏ cảm xúc thành công",
@@ -737,41 +506,14 @@ export const reactPostService = async ({
     };
   }
 
-  const updatedReaction = await prisma.reaction.update({
-    where: {
-      userId_postId: {
-        userId,
-        postId,
-      },
-    },
-    data: {
-      reactionType,
-    },
-  });
-
-  const reactionCount = await prisma.reaction.count({
-    where: {
-      postId,
-    },
-  });
-
-  const reactionSummaryRaw = await prisma.reaction.groupBy({
-    by: ["reactionType"],
-    where: {
-      postId,
-    },
-    _count: {
-      reactionType: true,
-    },
-  });
-
-  const reactionSummary = reactionSummaryRaw.reduce(
-    (acc, item) => {
-      acc[item.reactionType] = item._count.reactionType;
-      return acc;
-    },
-    {} as Record<string, number>,
+  const updatedReaction = await postRepo.changeReaction(
+    userId,
+    postId,
+    reactionType,
   );
+
+  const { reactionCount, reactionSummary } =
+    await postRepo.getPostReactionStats(postId);
 
   return {
     message: "Cập nhật cảm xúc thành công",
@@ -804,30 +546,7 @@ export const updatePostService = async ({
   poll?: PollUpdateInput;
   event?: EventInput;
 }) => {
-  const existingPost = await prisma.post.findUnique({
-    where: { id: postId },
-    select: {
-      id: true,
-      userId: true,
-      status: true,
-      groupId: true,
-      poll: {
-        include: {
-          options: {
-            orderBy: { sortOrder: "asc" },
-            include: {
-              _count: {
-                select: { votes: true },
-              },
-            },
-          },
-        },
-      },
-      event: {
-        select: { id: true },
-      },
-    },
-  });
+  const existingPost = await postRepo.getPostForEdit(postId);
 
   if (!existingPost) {
     throw new AppError(404, "Bài viết không tồn tại");
@@ -891,38 +610,35 @@ export const updatePostService = async ({
     );
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.post.update({
-      where: { id: postId },
-      data: {
-        content: processed.content,
-        contentFormat: processed.contentFormat,
-      },
-    });
+  await postRepo.updatePostWithRelations({
+    postId,
+    content: processed.content,
+    contentFormat: processed.contentFormat,
+    afterUpdate: async (tx) => {
+      if (poll && existingPost.poll) {
+        await updatePollForPost(
+          tx,
+          existingPost.poll.id,
+          poll,
+          existingPost.poll.options,
+        );
+      }
 
-    if (poll && existingPost.poll) {
-      await updatePollForPost(
-        tx,
-        existingPost.poll.id,
-        poll,
-        existingPost.poll.options,
-      );
-    }
+      if (event && existingPost.event) {
+        await tx.event.update({
+          where: { id: existingPost.event.id },
+          data: {
+            title: event.title,
+            description: event.description?.trim() || null,
+            startAt: event.startAt,
+            endAt: event.endAt ?? null,
+            location: event.location?.trim() || null,
+          },
+        });
+      }
 
-    if (event && existingPost.event) {
-      await tx.event.update({
-        where: { id: existingPost.event.id },
-        data: {
-          title: event.title,
-          description: event.description?.trim() || null,
-          startAt: event.startAt,
-          endAt: event.endAt ?? null,
-          location: event.location?.trim() || null,
-        },
-      });
-    }
-
-    await syncPostMentions(tx, postId, uniqueMentionedUserIds);
+      await syncPostMentions(tx, postId, uniqueMentionedUserIds);
+    },
   });
 
   if (uniqueMentionedUserIds.length > 0) {
@@ -933,14 +649,7 @@ export const updatePostService = async ({
 };
 
 export const deletePostService = async (userId: number, postId: number) => {
-  const existingPost = await prisma.post.findUnique({
-    where: { id: postId },
-    select: {
-      id: true,
-      userId: true,
-      status: true,
-    },
-  });
+  const existingPost = await postRepo.getPostBasic(postId);
 
   if (!existingPost) {
     throw new AppError(404, "Bài viết không tồn tại");
@@ -954,38 +663,19 @@ export const deletePostService = async (userId: number, postId: number) => {
     throw new AppError(403, "Bạn không có quyền xóa bài viết này");
   }
 
-  await prisma.post.delete({
-    where: {
-      id: postId,
-    },
-  });
-
+  await postRepo.removePost(postId);
   return true;
 };
 
 export const getPostById = async (postId: number, userId: number) => {
-  const existingPost = await prisma.post.findUnique({
-    where: { id: postId },
-    include: buildPostInclude(userId),
-  });
+  const existingPost = await postRepo.getPostDetail(postId, userId);
   if (!existingPost) {
     throw new AppError(404, "Post không tồn tại");
   }
 
-  const attachmentsWithUrl = await Promise.all(
-    existingPost.attachments.map(async (attachment) => {
-      const url = await getFileUrl(attachment.fileKey, 7 * 24 * 60 * 60);
-      return {
-        ...attachment,
-        fileUrl: url,
-      };
-    }),
-  );
-
-  const postWithAttachments = {
-    ...existingPost,
-    attachments: attachmentsWithUrl,
-  };
+  const [postWithAttachments] = await attachUrlsToPostAttachments([
+    existingPost,
+  ]);
 
   if (existingPost.groupId) {
     const [maskedPost] = await maskGroupPostAuthors(
@@ -1006,15 +696,7 @@ export const getPostById = async (postId: number, userId: number) => {
 };
 
 const assertUserCanAccessPost = async (postId: number, userId: number) => {
-  const post = await prisma.post.findUnique({
-    where: { id: postId },
-    select: {
-      id: true,
-      groupId: true,
-      status: true,
-      visibility: true,
-    },
-  });
+  const post = await postRepo.getPostBasic(postId);
 
   if (!post) {
     throw new AppError(404, "Bài viết không tồn tại");
@@ -1025,10 +707,7 @@ const assertUserCanAccessPost = async (postId: number, userId: number) => {
   }
 
   if (post.groupId) {
-    const member = await prisma.groupMember.findUnique({
-      where: { groupId_userId: { groupId: post.groupId, userId } },
-      select: { status: true },
-    });
+    const member = await postRepo.getMembership(post.groupId, userId);
     if (!member || member.status !== GroupMemberStatus.ACTIVE) {
       throw new AppError(403, "Bạn không có quyền truy cập bài viết này");
     }
@@ -1060,43 +739,15 @@ export const getPostReactionsService = async ({
     ...(reactionType ? { reactionType } : {}),
   };
 
-  const [summaryRaw, total, reactions] = await Promise.all([
-    prisma.reaction.groupBy({
-      by: ["reactionType"],
-      where: { postId },
-      _count: { reactionType: true },
-    }),
-    prisma.reaction.count({ where }),
-    prisma.reaction.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip,
-      take: limit,
-      include: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            profile: {
-              select: {
-                avatarKey: true,
-              },
-            },
-          },
-        },
-      },
-    }),
+  const [stats, total, reactions] = await Promise.all([
+    postRepo.getPostReactionStats(postId),
+    postRepo.countReactions(where),
+    postRepo.listReactions(where, skip, limit),
   ]);
 
   const summary = {
     ...defaultReactionSummary(),
-    ...summaryRaw.reduce(
-      (acc, item) => {
-        acc[item.reactionType] = item._count.reactionType;
-        return acc;
-      },
-      {} as Record<ReactionType, number>,
-    ),
+    ...(stats.reactionSummary as Partial<Record<ReactionType, number>>),
   };
 
   const items = await Promise.all(
@@ -1139,27 +790,14 @@ export const toggleSavePostService = async ({
 }) => {
   await assertUserCanAccessPost(postId, userId);
 
-  const existed = await prisma.savedPost.findUnique({
-    where: {
-      userId_postId: { userId, postId },
-    },
-  });
+  const existed = await postRepo.getSavedPost(userId, postId);
 
   if (existed) {
-    await prisma.savedPost.delete({
-      where: {
-        userId_postId: { userId, postId },
-      },
-    });
+    await postRepo.unsavePost(userId, postId);
     return { isSaved: false };
   }
 
-  await prisma.savedPost.create({
-    data: {
-      userId,
-      postId,
-    },
-  });
+  await postRepo.savePost(userId, postId);
   return { isSaved: true };
 };
 
@@ -1174,77 +812,32 @@ export const getSavedPostListService = async ({
 }) => {
   const skip = (page - 1) * limit;
 
-  const saved = await prisma.savedPost.findMany({
-    where: {
-      userId,
-      post: {
-        status: PostStatus.ACTIVE,
-        OR: [
-          { groupId: null, visibility: PostVisibility.PUBLIC },
-          {
-            group: {
-              members: {
-                some: {
-                  userId,
-                  status: GroupMemberStatus.ACTIVE,
-                },
-              },
-            },
-          },
-        ],
-      },
-    },
-    orderBy: {
-      savedAt: "desc",
-    },
-    skip,
-    take: limit + 1,
-    include: {
-      post: {
-        include: buildPostInclude(userId),
-      },
-    },
-  });
+  const saved = await postRepo.getSavedPostList(userId, skip, limit + 1);
 
   const hasMore = saved.length > limit;
   const sliced = hasMore ? saved.slice(0, limit) : saved;
-  const posts = sliced.map((item: any) => item.post);
+  const posts = sliced.map((item) => item.post);
 
-  const postsWithAttachmentUrls = await Promise.all(
-    posts.map(async (post: any) => {
-      const attachments = await Promise.all(
-        post.attachments.map(async (attachment: any) => ({
-          ...attachment,
-          fileUrl: await getFileUrl(attachment.fileKey, 7 * 24 * 60 * 60),
-        })),
-      );
-      return {
-        ...post,
-        attachments,
-      };
-    }),
-  );
+  const postsWithAttachmentUrls = await attachUrlsToPostAttachments(posts);
 
   const groupIds = [
     ...new Set(
-      postsWithAttachmentUrls
-        .map((p: any) => p.groupId)
-        .filter(Boolean),
+      postsWithAttachmentUrls.map((p) => p.groupId).filter(Boolean),
     ),
   ] as number[];
   let maskedPosts = postsWithAttachmentUrls;
-  for (const groupId of groupIds) {
-    const groupPosts = maskedPosts.filter((p: any) => p.groupId === groupId);
-    const others = maskedPosts.filter((p: any) => p.groupId !== groupId);
-    const masked = await maskGroupPostAuthors(groupId, userId, groupPosts);
+  for (const gId of groupIds) {
+    const groupPosts = maskedPosts.filter((p) => p.groupId === gId);
+    const others = maskedPosts.filter((p) => p.groupId !== gId);
+    const masked = await maskGroupPostAuthors(gId, userId, groupPosts);
     maskedPosts = [...others, ...masked];
   }
 
   const idOrder = new Map(
-    postsWithAttachmentUrls.map((post: any, idx: number) => [post.id, idx]),
+    postsWithAttachmentUrls.map((post, idx) => [post.id, idx]),
   );
   maskedPosts.sort(
-    (a: any, b: any) => (idOrder.get(a.id) ?? 0) - (idOrder.get(b.id) ?? 0),
+    (a, b) => (idOrder.get(a.id) ?? 0) - (idOrder.get(b.id) ?? 0),
   );
 
   return {
@@ -1261,47 +854,27 @@ export const pinPostByUserId = async (
   groupId: number | null,
   isPinned: boolean,
 ) => {
-  const post = await prisma.post.findUnique({
-    where: {
-      id: postId,
-    },
-  });
+  const post = await postRepo.getPostRaw(postId);
 
   if (!post || post.groupId !== groupId) {
     throw new AppError(404, "Không tìm thấy bài post");
   }
 
   if (groupId === null) {
-    const currentUser = await prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
-    });
+    const currentUser = await postRepo.getUser(userId);
 
     if (!currentUser || currentUser.role !== Role.ADMIN) {
       throw new AppError(403, "Bạn không có quyền thực hiện thao tác này");
     }
   } else {
-    const member = await prisma.groupMember.findFirst({
-      where: {
-        userId,
-        groupId,
-      },
-    });
+    const member = await postRepo.getMembership(groupId, userId);
 
     if (!member || member.memberRole === GroupMemberRole.MEMBER) {
       throw new AppError(403, "Bạn không có quyền thực hiện thao tác này");
     }
   }
 
-  const updated = await prisma.post.update({
-    where: {
-      id: postId,
-    },
-    data: {
-      isPinned,
-    },
-  });
+  const updated = await postRepo.updatePinStatus(postId, isPinned);
 
   await notifyPostPinned(postId, userId, isPinned);
 

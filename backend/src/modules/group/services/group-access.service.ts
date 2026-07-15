@@ -4,8 +4,8 @@ import {
   GroupPermission,
 } from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
-import prisma from "@/shared/utils/prisma";
 import type { GroupSettingPayload } from "@/modules/group/group.types";
+import * as groupRepo from "@/modules/group/group.repository";
 
 const ROLE_RANK: Record<GroupMemberRole, number> = {
   [GroupMemberRole.MEMBER]: 1,
@@ -25,13 +25,7 @@ export const assertCanManageTargetRole = (
 };
 
 export const countGroupAdmins = async (groupId: number) => {
-  return prisma.groupMember.count({
-    where: {
-      groupId,
-      memberRole: GroupMemberRole.ADMIN,
-      status: GroupMemberStatus.ACTIVE,
-    },
-  });
+  return groupRepo.countAdmins(groupId);
 };
 
 export const assertNotLastAdmin = async (
@@ -47,9 +41,7 @@ export const assertNotLastAdmin = async (
 };
 
 export const checkGroupExists = async (groupId: number) => {
-  const group = await prisma.group.findUnique({
-    where: { id: groupId },
-  });
+  const group = await groupRepo.findGroup(groupId);
 
   if (!group) {
     throw new AppError(404, "Không tìm thấy nhóm");
@@ -59,23 +51,11 @@ export const checkGroupExists = async (groupId: number) => {
 };
 
 export const findGroupMember = async (groupId: number, userId: number) => {
-  return prisma.groupMember.findUnique({
-    where: {
-      groupId_userId: {
-        groupId,
-        userId,
-      },
-    },
-  });
+  return groupRepo.findMember(groupId, userId);
 };
 
 export const countActiveMembers = async (groupId: number) => {
-  return prisma.groupMember.count({
-    where: {
-      groupId,
-      status: GroupMemberStatus.ACTIVE,
-    },
-  });
+  return groupRepo.countActiveMembers(groupId);
 };
 
 export const checkIsGroupAdmin = async (groupId: number, userId: number) => {

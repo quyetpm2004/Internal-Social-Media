@@ -1,32 +1,12 @@
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { AppError } from "@/shared/errors/app-error";
 import { s3 } from "@/shared/lib/s3";
-import prisma from "@/shared/utils/prisma";
 import { getFileUrl } from "@/modules/file/file.service";
 import type { UpdateProfileInput } from "@/modules/user/user.schema";
+import * as userRepo from "@/modules/user/user.repository";
 
 export async function getProfile(userId: number) {
-  const profile = await prisma.profile.findUnique({
-    where: { userId },
-    select: {
-      bio: true,
-      phone: true,
-      gender: true,
-      birthdate: true,
-      address: true,
-      avatarKey: true,
-      user: {
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-          role: true,
-          departmentId: true,
-          positionId: true,
-        },
-      },
-    },
-  });
+  const profile = await userRepo.findProfileByUserId(userId);
 
   if (!profile) {
     throw new AppError(404, "Hồ sơ không tồn tại");
@@ -53,19 +33,14 @@ export async function getProfile(userId: number) {
 }
 
 export async function updateProfile(userId: number, data: UpdateProfileInput) {
-  const existingUser = await prisma.user.findUnique({
-    where: { id: userId },
-    include: { profile: true },
-  });
+  const existingUser = await userRepo.findUserWithProfile(userId);
 
   if (!existingUser) {
     throw new AppError(404, "Người dùng không tồn tại");
   }
 
   if (data.email && data.email !== existingUser.email) {
-    const emailExists = await prisma.user.findUnique({
-      where: { email: data.email },
-    });
+    const emailExists = await userRepo.findUserByEmail(data.email);
 
     if (emailExists) {
       throw new AppError(400, "Email đã được sử dụng bởi người dùng khác");
@@ -74,36 +49,18 @@ export async function updateProfile(userId: number, data: UpdateProfileInput) {
 
   const birthdate = data.birthdate ? new Date(data.birthdate) : undefined;
 
-  const updatedUser = await prisma.user.update({
-    where: { id: userId },
-    data: {
-      fullName: data.fullName,
-      email: data.email,
-      departmentId:
-        data.departmentId != null ? Number(data.departmentId) : undefined,
-      positionId:
-        data.positionId != null ? Number(data.positionId) : undefined,
-      profile: {
-        upsert: {
-          create: {
-            bio: data.bio,
-            phone: data.phone,
-            address: data.address,
-            gender: data.gender,
-            birthdate,
-          },
-          update: {
-            bio: data.bio,
-            phone: data.phone,
-            address: data.address,
-            gender: data.gender,
-            birthdate,
-          },
-        },
-      },
-    },
-    include: {
-      profile: true,
+  const updatedUser = await userRepo.updateUserWithProfile(userId, {
+    fullName: data.fullName,
+    email: data.email,
+    departmentId:
+      data.departmentId != null ? Number(data.departmentId) : undefined,
+    positionId: data.positionId != null ? Number(data.positionId) : undefined,
+    profile: {
+      bio: data.bio,
+      phone: data.phone,
+      address: data.address,
+      gender: data.gender,
+      birthdate,
     },
   });
 
@@ -122,9 +79,7 @@ export async function updateProfile(userId: number, data: UpdateProfileInput) {
 }
 
 export async function deleteAvatar(userId: number) {
-  const profile = await prisma.profile.findUnique({
-    where: { userId },
-  });
+  const profile = await userRepo.findAvatarKeyByUserId(userId);
 
   if (!profile?.avatarKey) {
     throw new AppError(404, "Avatar không tồn tại");
@@ -137,10 +92,7 @@ export async function deleteAvatar(userId: number) {
     }),
   );
 
-  await prisma.profile.update({
-    where: { userId },
-    data: { avatarKey: null },
-  });
+  await userRepo.clearAvatarKey(userId);
 
   return { success: true };
 }
