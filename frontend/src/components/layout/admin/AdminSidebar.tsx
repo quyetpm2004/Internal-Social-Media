@@ -9,6 +9,7 @@ import {
   Users,
   FileText,
   UsersRound,
+  LayoutTemplate,
   LogOut,
 } from "lucide-react";
 import { cn, getDefaultAvatarUrl } from "@/lib/utils";
@@ -51,6 +52,11 @@ export default function AdminSidebar() {
     },
     { to: "/admin/comments", label: t("admin.comments"), icon: MessageSquare },
     { to: "/admin/groups", label: t("admin.groups"), icon: UsersRound },
+    {
+      to: "/admin/project-templates",
+      label: t("admin.projectTemplates"),
+      icon: LayoutTemplate,
+    },
   ];
 
   return (

@@ -154,8 +154,6 @@ const NewFeedPage = () => {
           hasMoreRef.current &&
           !initialLoadingRef.current
         ) {
-          // Không khóa ở đây
-          // chỉ tăng page nếu chưa có request đang chạy
           setPage((prev) => {
             const nextPage = prev + 1;
             pageRef.current = nextPage;

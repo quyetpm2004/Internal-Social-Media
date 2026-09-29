@@ -84,9 +84,6 @@ export const registerPresenceHandlers = (socket: AppSocket): void => {
   });
 };
 
-/**
- * Buộc user offline: ngắt mọi socket (disconnect handler sẽ broadcast presence:offline).
- */
 export const markUserOffline = async (userId: number): Promise<void> => {
   const io = getIO();
   if (!io) return;

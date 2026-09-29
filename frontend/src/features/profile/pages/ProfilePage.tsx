@@ -15,6 +15,7 @@ import NotFoundPage from "@/features/not-found/pages/NotFoundPage";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { authApi } from "@/features/auth/api/auth.api";
 import { useTranslation } from "react-i18next";
+import { chatApi } from "@/features/chat/apis/chat.api";
 
 export default function ProfilePage() {
   const { userId } = useParams();
@@ -125,8 +126,6 @@ export default function ProfilePage() {
         birthdate: profile.birthdate,
         gender: profile.gender,
       };
-
-      console.log("Submitting profile update:", profilePayload);
 
       const res = await profileApi.updateProfile(profilePayload);
 
@@ -241,6 +240,16 @@ export default function ProfilePage() {
     }
   };
 
+  const handleSendMessage = async (userId: string) => {
+    try {
+      const res = await chatApi.createDirectConversation(+userId);
+      const conversationId = res.data.id;
+      navigate(`/messages/${conversationId}`);
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, t("profile.changePasswordFailed")));
+    }
+  };
+
   if (loadingProfile) {
     return <div>{t("profile.loading")}</div>;
   }
@@ -248,8 +257,6 @@ export default function ProfilePage() {
   if (!userId) {
     return <NotFoundPage />;
   }
-
-  // Update avatar state
 
   return (
     <div className="py-4 max-w-6xl mx-auto">
@@ -286,6 +293,7 @@ export default function ProfilePage() {
         onAvatarChange={handleAvatarChange}
         onAvatarDelete={handleDeleteAvatar}
         onOpenChangePasswordModal={() => setOpenChangePasswordModal(true)}
+        onSendMessage={handleSendMessage}
       />
 
       <form>

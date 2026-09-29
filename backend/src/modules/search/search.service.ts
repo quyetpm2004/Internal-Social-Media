@@ -138,7 +138,7 @@ export const searchAll = async (
   };
 };
 
-export const performSearch = async (userId: number, params: SearchQuery) => {
+export const search = async (userId: number, params: SearchQuery) => {
   const query = normalizeQuery(params.q);
   const type = params.type ?? "all";
   const page = params.page ?? 1;

@@ -151,7 +151,7 @@ export const getConversationDetailService = async ({
   return result;
 };
 
-export const getOrCreateDirectConversationService = async ({
+export const getOrCreateConversationService = async ({
   userId,
   otherUserId,
 }: {

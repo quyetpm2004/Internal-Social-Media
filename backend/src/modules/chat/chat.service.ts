@@ -3,7 +3,7 @@ export { CHAT_DEFAULTS } from "@/modules/chat/chat.types";
 export {
   listConversationsService,
   getConversationDetailService,
-  getOrCreateDirectConversationService,
+  getOrCreateConversationService,
   createGroupConversationService,
   updateGroupConversationAvatarService,
   addGroupConversationMembersService,

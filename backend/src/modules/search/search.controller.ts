@@ -10,7 +10,7 @@ import * as searchService from "@/modules/search/search.service";
 export async function search(req: Request, res: Response) {
   const params = req.validated as SearchQuery;
 
-  const data = await searchService.performSearch(req.user!.id, params);
+  const data = await searchService.search(req.user!.id, params);
 
   res.status(200).json({
     message: "Tìm kiếm thành công",

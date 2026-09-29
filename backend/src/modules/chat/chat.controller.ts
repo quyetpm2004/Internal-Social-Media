@@ -61,7 +61,7 @@ export async function getConversationDetail(req: Request, res: Response) {
 export async function createDirectConversation(req: Request, res: Response) {
   const body = req.validated as CreateDirectConversationInput;
 
-  const result = await chatService.getOrCreateDirectConversationService({
+  const result = await chatService.getOrCreateConversationService({
     userId: req.user!.id,
     otherUserId: body.userId,
   });

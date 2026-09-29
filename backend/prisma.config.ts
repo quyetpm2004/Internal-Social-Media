@@ -4,6 +4,26 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
+// fix lỗi prisma khi deploy
+function databaseUrl() {
+  const url = process.env.DATABASE_URL ?? "";
+  if (!url) return url;
+
+  const queryIndex = url.indexOf("?");
+  const base = queryIndex === -1 ? url : url.slice(0, queryIndex);
+  const params = new URLSearchParams(
+    queryIndex === -1 ? "" : url.slice(queryIndex + 1),
+  );
+
+  params.delete("ssl");
+  if (!params.has("sslaccept")) {
+    params.set("sslaccept", "strict");
+  }
+
+  const query = params.toString();
+  return query ? `${base}?${query}` : base;
+}
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
@@ -11,6 +31,6 @@ export default defineConfig({
     seed: "ts-node prisma/seed.ts",
   },
   datasource: {
-    url: process.env["DATABASE_URL"] as string,
+    url: databaseUrl(),
   },
 });

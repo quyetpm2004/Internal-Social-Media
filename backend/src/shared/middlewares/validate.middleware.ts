@@ -1,4 +1,3 @@
-// shared/middlewares/validate.middleware.ts
 import { z } from "zod";
 import { Request, Response, NextFunction } from "express";
 export const validate =
@@ -13,7 +12,7 @@ export const validate =
       });
     }
 
-    // Gán dữ liệu đã validate (đã ép kiểu/loại bỏ trường thừa) vào req
+    // Gán dữ liệu đã validate vào req
     req.validated = result.data;
     next();
   };

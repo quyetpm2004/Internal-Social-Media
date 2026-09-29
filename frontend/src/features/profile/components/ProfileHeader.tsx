@@ -21,6 +21,7 @@ interface HeaderProps {
   onAvatarChange: (file: File) => void;
   onAvatarDelete: () => void;
   onOpenChangePasswordModal: () => void;
+  onSendMessage: (id: string) => void;
 }
 
 const ProfileHeader: React.FC<HeaderProps> = ({
@@ -39,6 +40,7 @@ const ProfileHeader: React.FC<HeaderProps> = ({
   onAvatarChange,
   onAvatarDelete,
   onOpenChangePasswordModal,
+  onSendMessage,
 }) => {
   const { t } = useTranslation();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -155,7 +157,9 @@ const ProfileHeader: React.FC<HeaderProps> = ({
           <div>
             <button
               type="button"
-              onClick={() => navigate(`/messages/${userId}`)}
+              onClick={() => {
+                onSendMessage(userId);
+              }}
               className="cursor-pointer flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-700 text-white font-semibold text-sm shadow-lg hover:bg-blue-800 transition-all"
             >
               <MessageCircle size={20} />

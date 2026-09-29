@@ -193,6 +193,9 @@ model User {
   notificationsReceived Notification[] @relation("NotificationRecipient")
   notificationsSent     Notification[] @relation("NotificationActor")
 
+  createdProjectTemplates ProjectTemplate[] @relation("ProjectTemplateCreator")
+  updatedProjectTemplates ProjectTemplate[] @relation("ProjectTemplateUpdater")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -685,4 +688,191 @@ model PollVote {
   @@index([optionId])
   @@index([userId])
   @@map("poll_votes")
+}
+
+enum ProjectTemplateStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum WorkflowStatusCategory {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum ApprovalApproverType {
+  PROJECT_ROLE
+  TASK_ROLE
+}
+
+enum TemplateTaskRole {
+  ASSIGNEE
+  REVIEWER
+  REPORTER
+}
+
+model ProjectTemplate {
+  id               Int                   @id @default(autoincrement())
+  key              String                @unique @db.VarChar(50)
+  name             String                @db.VarChar(150)
+  description      String?               @db.Text
+  status           ProjectTemplateStatus @default(DRAFT)
+  version          Int                   @default(1)
+  parentTemplateId Int?                  @map("parent_template_id")
+  createdById      Int                   @map("created_by_id")
+  updatedById      Int?                  @map("updated_by_id")
+
+  parentTemplate ProjectTemplate?  @relation("TemplateVersion", fields: [parentTemplateId], references: [id], onDelete: Restrict)
+  childTemplates ProjectTemplate[] @relation("TemplateVersion")
+  createdBy      User              @relation("ProjectTemplateCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy      User?             @relation("ProjectTemplateUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  projectRoles TemplateProjectRole[]
+  taskTypes    TemplateTaskType[]
+  workflows    TemplateWorkflow[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([createdById])
+  @@index([parentTemplateId])
+  @@map("project_templates")
+}
+
+model TemplateProjectRole {
+  id          Int     @id @default(autoincrement())
+  templateId  Int     @map("template_id")
+  key         String  @db.VarChar(50)
+  name        String  @db.VarChar(150)
+  description String? @db.Text
+  sortOrder   Int     @default(0) @map("sort_order")
+
+  template      ProjectTemplate        @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  approvalRules TemplateApprovalRule[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([templateId, key])
+  @@unique([templateId, name])
+  @@index([templateId])
+  @@map("template_project_roles")
+}
+
+model TemplateWorkflow {
+  id          Int     @id @default(autoincrement())
+  templateId  Int     @map("template_id")
+  name        String  @db.VarChar(150)
+  description String? @db.Text
+  isDefault   Boolean @default(false) @map("is_default")
+  isActive    Boolean @default(true) @map("is_active")
+
+  template    ProjectTemplate           @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  statuses    TemplateWorkflowStatus[]
+  transitions TemplateWorkflowTransition[]
+  taskTypes   TemplateTaskType[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([templateId])
+  @@map("template_workflows")
+}
+
+model TemplateTaskType {
+  id          Int     @id @default(autoincrement())
+  templateId  Int     @map("template_id")
+  workflowId  Int?    @map("workflow_id")
+  name        String  @db.VarChar(150)
+  key         String  @db.VarChar(50)
+  description String? @db.Text
+  sortOrder   Int     @default(0) @map("sort_order")
+  isActive    Boolean @default(true) @map("is_active")
+
+  template ProjectTemplate   @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  workflow TemplateWorkflow? @relation(fields: [workflowId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([templateId, key])
+  @@unique([templateId, name])
+  @@index([templateId])
+  @@index([workflowId])
+  @@map("template_task_types")
+}
+
+model TemplateWorkflowStatus {
+  id          Int                    @id @default(autoincrement())
+  workflowId  Int                    @map("workflow_id")
+  name        String                 @db.VarChar(150)
+  key         String                 @db.VarChar(50)
+  description String?                @db.Text
+  sortOrder   Int                    @default(0) @map("sort_order")
+  category    WorkflowStatusCategory
+  color       String?                @db.VarChar(20)
+  isInitial   Boolean                @default(false) @map("is_initial")
+  isFinal     Boolean                @default(false) @map("is_final")
+
+  workflow          TemplateWorkflow             @relation(fields: [workflowId], references: [id], onDelete: Restrict)
+  transitionsFrom   TemplateWorkflowTransition[] @relation("TransitionFromStatus")
+  transitionsTo     TemplateWorkflowTransition[] @relation("TransitionToStatus")
+  rejectionRules    TemplateApprovalRule[]       @relation("ApprovalRejectStatus")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([workflowId, key])
+  @@unique([workflowId, name])
+  @@index([workflowId])
+  @@map("template_workflow_statuses")
+}
+
+model TemplateWorkflowTransition {
+  id           Int     @id @default(autoincrement())
+  workflowId   Int     @map("workflow_id")
+  fromStatusId Int     @map("from_status_id")
+  toStatusId   Int     @map("to_status_id")
+  name         String  @db.VarChar(150)
+  isActive     Boolean @default(true) @map("is_active")
+
+  workflow      TemplateWorkflow       @relation(fields: [workflowId], references: [id], onDelete: Restrict)
+  fromStatus    TemplateWorkflowStatus @relation("TransitionFromStatus", fields: [fromStatusId], references: [id], onDelete: Restrict)
+  toStatus      TemplateWorkflowStatus @relation("TransitionToStatus", fields: [toStatusId], references: [id], onDelete: Restrict)
+  approvalRules TemplateApprovalRule[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([workflowId, fromStatusId, toStatusId])
+  @@index([workflowId])
+  @@index([fromStatusId])
+  @@index([toStatusId])
+  @@map("template_workflow_transitions")
+}
+
+model TemplateApprovalRule {
+  id               Int                  @id @default(autoincrement())
+  transitionId     Int                  @map("transition_id")
+  approverType     ApprovalApproverType @map("approver_type")
+  projectRoleId    Int?                 @map("project_role_id")
+  taskRole         TemplateTaskRole?    @map("task_role")
+  minApprovals     Int                  @default(1) @map("min_approvals")
+  onRejectStatusId Int                  @map("on_reject_status_id")
+
+  transition     TemplateWorkflowTransition @relation(fields: [transitionId], references: [id], onDelete: Cascade)
+  projectRole    TemplateProjectRole?       @relation(fields: [projectRoleId], references: [id], onDelete: Restrict)
+  onRejectStatus TemplateWorkflowStatus     @relation("ApprovalRejectStatus", fields: [onRejectStatusId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([transitionId])
+  @@index([projectRoleId])
+  @@index([onRejectStatusId])
+  @@map("template_approval_rules")
 }
