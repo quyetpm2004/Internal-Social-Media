@@ -18,7 +18,7 @@ const ConversationFilters = ({
   ];
 
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-1.5">
       {filters.map((filter) => {
         const isActive = active === filter.value;
 
@@ -27,10 +27,10 @@ const ConversationFilters = ({
             key={filter.value}
             type="button"
             onClick={() => onChange(filter.value)}
-            className={`px-3 py-1.5 rounded-full text-xs font-label transition-colors ${
+            className={`cursor-pointer rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors ${
               isActive
-                ? "bg-primary text-on-primary font-bold"
-                : "bg-surface-container-highest text-on-surface-variant font-medium hover:bg-surface-container-high"
+                ? "bg-blue-600 text-white"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
             }`}
           >
             {filter.label}

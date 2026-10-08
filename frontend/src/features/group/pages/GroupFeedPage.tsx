@@ -19,6 +19,7 @@ import { PostsApi } from "@/features/new-feed/api/post.api";
 import { useTranslation } from "react-i18next";
 import { mapGroupMembersToMentionCandidates } from "@/features/mention/utils/mention";
 import { useAuthStore } from "@/features/auth/store/auth.store";
+import { Loader2, MessageSquare, Pin } from "lucide-react";
 
 const LIMIT = 10;
 
@@ -179,8 +180,8 @@ const GroupFeedPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col md:grid md:grid-cols-12 gap-8 md:px-4">
-      <div className="md:col-span-8 space-y-6">
+    <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="min-w-0 space-y-4">
         {/* 1. Tạo bài viết */}
         {isMember && (
           <PostCreator
@@ -194,14 +195,35 @@ const GroupFeedPage: React.FC = () => {
 
         {/* 2. Trạng thái Loading ban đầu */}
         {initialLoading && (
-          <div className="p-4 text-center text-sm text-slate-500 bg-white rounded-xl">
-            {t("pages.groups.loadingPosts")}
-          </div>
+          <>
+            <p className="sr-only">{t("pages.groups.loadingPosts")}</p>
+            <div
+              className="animate-pulse rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"
+              aria-hidden
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-800" />
+                <div className="space-y-2">
+                  <div className="h-3 w-32 rounded-full bg-slate-200 dark:bg-slate-800" />
+                  <div className="h-2.5 w-20 rounded-full bg-slate-100 dark:bg-slate-800" />
+                </div>
+              </div>
+              <div className="mt-4 space-y-2">
+                <div className="h-3 w-full rounded-full bg-slate-100 dark:bg-slate-800" />
+                <div className="h-3 w-4/5 rounded-full bg-slate-100 dark:bg-slate-800" />
+              </div>
+            </div>
+          </>
         )}
 
         {/* 3. Bài viết đã Ghim (Pinned) */}
         {!initialLoading && pinnedPosts.length > 0 && (
-          <div className="space-y-6">
+          <div className="space-y-3">
+            <div className="flex items-center gap-1.5 px-1 text-xs font-semibold tracking-wide text-blue-700 uppercase">
+              <Pin size={13} className="fill-current" />
+              {t("pages.newsFeed.pinnedLabel")}
+            </div>
+            <div className="space-y-4">
             {pinnedPosts.map((post) => (
               <PostCard
                 key={`pinned-${post.id}`}
@@ -233,11 +255,13 @@ const GroupFeedPage: React.FC = () => {
                 excludeMentionUserId={currentUser?.id}
               />
             ))}
+            </div>
           </div>
         )}
 
         {/* 4. Danh sách bài viết chính */}
-        <div className="space-y-6">
+        {posts.length > 0 && (
+        <div className="space-y-4">
           {posts.map((post) => (
             <PostCard
               key={post.id}
@@ -268,23 +292,32 @@ const GroupFeedPage: React.FC = () => {
             />
           ))}
         </div>
+        )}
 
         {/* 5. Trạng thái trống hoặc hết dữ liệu */}
         {!initialLoading && posts.length === 0 && pinnedPosts.length === 0 && (
-          <div className="bg-white rounded-xl p-8 text-center text-slate-500 border border-dashed">
-            {t("pages.groups.emptyDiscussion")}
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-14 text-center dark:border-slate-800 dark:bg-slate-900">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-950/40">
+              <MessageSquare size={22} />
+            </div>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+              {t("pages.groups.emptyDiscussion")}
+            </p>
           </div>
         )}
 
         {loading && !initialLoading && (
-          <div className="text-center text-xs text-slate-400 py-4">
+          <div className="flex items-center justify-center gap-2 py-3 text-sm text-slate-500">
+            <Loader2 className="h-4 w-4 animate-spin" />
             {t("pages.groups.loadingMore")}
           </div>
         )}
 
         {!hasMore && posts.length > 0 && (
-          <div className="text-center text-xs text-slate-400 py-4">
+          <div className="flex items-center gap-3 py-2 text-xs text-slate-400">
+            <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
             {t("pages.groups.noMorePosts")}
+            <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
           </div>
         )}
 

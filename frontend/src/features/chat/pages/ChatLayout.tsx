@@ -769,17 +769,18 @@ const ChatLayout = () => {
 
   return (
     <>
+      <div className="flex h-[calc(100vh-4rem)] min-w-0 flex-col bg-white dark:bg-slate-900">
       <div className="md:hidden">
         <button
           onClick={() => navigate(-1)}
-          className="text-sm text-slate-500 hover:text-slate-700 py-4 dark:hover:text-slate-300 flex items-center gap-2 cursor-pointer"
+          className="flex cursor-pointer items-center gap-2 px-3 py-3 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
         >
           <ArrowLeft size={16} />
           <span className="font-medium">{t("common.back")}</span>
         </button>
       </div>
 
-      <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-background">
+      <div className="flex min-h-0 w-full flex-1 overflow-hidden">
         <ConversationList
           conversations={conversations}
           activeConversationId={conversationId}
@@ -798,6 +799,7 @@ const ChatLayout = () => {
         >
           <Outlet context={context} />
         </div>
+      </div>
       </div>
     </>
   );

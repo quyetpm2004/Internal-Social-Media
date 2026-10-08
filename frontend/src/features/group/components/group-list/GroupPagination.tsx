@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 type GroupPaginationProps = {
   currentPage: number;
@@ -6,116 +7,82 @@ type GroupPaginationProps = {
   onPageChange: (page: number) => void;
 };
 
+function buildPages(page: number, totalPages: number) {
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const items: Array<number | "gap"> = [1];
+  const start = Math.max(2, page - 1);
+  const end = Math.min(totalPages - 1, page + 1);
+
+  if (start > 2) items.push("gap");
+  for (let current = start; current <= end; current += 1) items.push(current);
+  if (end < totalPages - 1) items.push("gap");
+  items.push(totalPages);
+
+  return items;
+}
+
 const GroupPagination = ({
   currentPage,
   totalPages,
   onPageChange,
 }: GroupPaginationProps) => {
-  // tạo danh sách page hiển thị
-  const generatePages = () => {
-    const pages: (number | string)[] = [];
+  const { t } = useTranslation();
+  const pages = buildPages(currentPage, totalPages);
 
-    if (totalPages <= 5) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      if (currentPage <= 3) {
-        pages.push(1, 2, 3, 4, "...", totalPages);
-      } else if (currentPage >= totalPages - 2) {
-        pages.push(
-          1,
-          "...",
-          totalPages - 3,
-          totalPages - 2,
-          totalPages - 1,
-          totalPages,
-        );
-      } else {
-        pages.push(
-          1,
-          "...",
-          currentPage - 1,
-          currentPage,
-          currentPage + 1,
-          "...",
-          totalPages,
-        );
-      }
-    }
-
-    return pages;
-  };
-
-  const pages = generatePages();
+  const buttonClass =
+    "inline-flex h-9 min-w-9 cursor-pointer items-center justify-center rounded-full px-3 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40";
 
   return (
-    <div className="flex items-center justify-center gap-2 py-6 flex-wrap">
-      {/* prev button */}
+    <nav
+      aria-label={t("common.pagination.page", { page: currentPage })}
+      className="flex items-center justify-center gap-1.5 pt-2"
+    >
       <button
+        type="button"
+        disabled={currentPage <= 1}
         onClick={() => onPageChange(currentPage - 1)}
-        disabled={currentPage === 1}
-        className="
-          w-10 h-10
-          flex items-center justify-center
-          rounded-xl
-          border border-surface-container-high
-          bg-surface
-          hover:bg-surface-container
-          transition-colors
-          disabled:opacity-40
-          disabled:cursor-not-allowed
-        "
+        aria-label={t("common.pagination.previous")}
+        className={`${buttonClass} border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800`}
       >
-        <ChevronLeft size={18} />
+        <ChevronLeft size={16} />
       </button>
 
-      {/* page numbers */}
       {pages.map((page, index) =>
-        typeof page === "string" ? (
-          <span key={index} className="px-2 text-on-surface-variant text-sm">
-            ...
+        page === "gap" ? (
+          <span key={`gap-${index}`} className="px-1 text-sm text-slate-400">
+            …
           </span>
         ) : (
           <button
             key={page}
+            type="button"
+            aria-label={t("common.pagination.page", { page })}
+            aria-current={page === currentPage ? "page" : undefined}
             onClick={() => onPageChange(page)}
-            className={`
-              min-w-10 h-10 px-3
-              rounded-xl
-              text-sm font-semibold
-              transition-all
-              ${
-                currentPage === page
-                  ? "bg-primary text-white shadow-md"
-                  : "bg-surface border border-surface-container-high hover:bg-surface-container"
-              }
-            `}
+            className={
+              page === currentPage
+                ? `${buttonClass} bg-blue-600 text-white hover:bg-blue-700`
+                : `${buttonClass} border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800`
+            }
           >
             {page}
           </button>
         ),
       )}
 
-      {/* next button */}
       <button
+        type="button"
+        disabled={currentPage >= totalPages}
         onClick={() => onPageChange(currentPage + 1)}
-        disabled={currentPage === totalPages}
-        className="
-          w-10 h-10
-          flex items-center justify-center
-          rounded-xl
-          border border-surface-container-high
-          bg-surface
-          hover:bg-surface-container
-          transition-colors
-          disabled:opacity-40
-          disabled:cursor-not-allowed
-        "
+        aria-label={t("common.pagination.next")}
+        className={`${buttonClass} border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800`}
       >
-        <ChevronRight size={18} />
+        <ChevronRight size={16} />
       </button>
-    </div>
+    </nav>
   );
 };
 

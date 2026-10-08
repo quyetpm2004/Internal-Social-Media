@@ -150,7 +150,7 @@ const MessageThread = ({
     <div
       ref={containerRef}
       className={`flex-1 min-h-0 overflow-y-auto overscroll-contain messenger-thread-scroll flex flex-col ${
-        compact ? "p-3 space-y-4 bg-white" : "p-6 space-y-6"
+        compact ? "space-y-4 bg-white p-3" : "space-y-5 bg-slate-50/80 p-5 dark:bg-slate-950/40"
       }`}
     >
       {hasMore && (

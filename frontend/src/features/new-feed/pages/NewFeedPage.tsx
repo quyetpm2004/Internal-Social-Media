@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Post } from "@/features/new-feed/types/post.type";
 import PostCreator from "@/features/new-feed/components/PostCreator";
 import PostCard from "@/features/new-feed/components/PostCard";
-import { Bell, Calendar, Users2 } from "lucide-react";
+import { Bell, Calendar, Loader2, Newspaper, Pin, Users2 } from "lucide-react";
 import RightSidebarWidget from "@/features/new-feed/components/RightSidebarWidget";
 import GroupItem from "@/features/new-feed/components/GroupItem";
 import { PostsApi } from "@/features/new-feed/api/post.api";
@@ -39,6 +39,30 @@ const formatEventMeta = (event: UpcomingEventSummary, locale: string) => {
   );
   return [event.location, time].filter(Boolean).join(" • ");
 };
+
+const FeedSkeleton = () => (
+  <div className="space-y-4" aria-hidden>
+    {[0, 1].map((item) => (
+      <div
+        key={item}
+        className="animate-pulse rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"
+      >
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-800" />
+          <div className="space-y-2">
+            <div className="h-3 w-32 rounded-full bg-slate-200 dark:bg-slate-800" />
+            <div className="h-2.5 w-20 rounded-full bg-slate-100 dark:bg-slate-800" />
+          </div>
+        </div>
+        <div className="mt-4 space-y-2">
+          <div className="h-3 w-full rounded-full bg-slate-100 dark:bg-slate-800" />
+          <div className="h-3 w-4/5 rounded-full bg-slate-100 dark:bg-slate-800" />
+          <div className="h-3 w-2/3 rounded-full bg-slate-100 dark:bg-slate-800" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
 const NewFeedPage = () => {
   const { t, i18n } = useTranslation();
@@ -243,149 +267,149 @@ const NewFeedPage = () => {
     }
   };
 
+  const renderPost = (post: Post) => (
+    <PostCard
+      key={post.id}
+      {...post}
+      onDeleted={(postId) => {
+        setPosts((prev) => prev.filter((item) => item.id !== postId));
+        setPinnedPosts((prev) => prev.filter((item) => item.id !== postId));
+      }}
+      onUpdated={(postId, newContent, newFormat) => {
+        const updater = (prev: Post[]) =>
+          prev.map((item) =>
+            item.id === postId
+              ? { ...item, content: newContent, contentFormat: newFormat }
+              : item,
+          );
+        setPosts(updater);
+        setPinnedPosts(updater);
+      }}
+      onCopied={handleCopyPostLink}
+      onSavedChanged={(postId, isSaved) => {
+        const updater = (prev: Post[]) =>
+          prev.map((item) =>
+            item.id === postId ? { ...item, isSaved } : item,
+          );
+        setPosts(updater);
+        setPinnedPosts(updater);
+      }}
+      canPinPost={canPinPost}
+      pinGroupId={null}
+      onPinned={handlePinPost}
+    />
+  );
+
+  const displayName = user?.fullName?.trim();
+  const todayLabel = new Date().toLocaleDateString(
+    i18n.language.startsWith("vi") ? "vi-VN" : "en-US",
+    { weekday: "long", day: "numeric", month: "long" },
+  );
+  const visibleGroups = myGroups.slice(0, 5);
+
   return (
-    <main className="flex-1 py-8 md:px-4">
-      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-8 space-y-6">
+    <main className="flex-1 px-3 py-6 sm:px-5 md:py-8">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-6">
+        <section className="min-w-0 space-y-4">
+          <header className="px-1">
+            <p className="text-xs font-medium capitalize tracking-wide text-blue-700">
+              {todayLabel}
+            </p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
+              {displayName
+                ? t("pages.newsFeed.greeting", { name: displayName })
+                : t("pages.newsFeed.title")}
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">
+              {t("pages.newsFeed.subtitle")}
+            </p>
+          </header>
+
           <PostCreator fetchPosts={fetchPosts} groupVisibility="PUBLIC" />
 
           {initialLoading && (
-            <div className="rounded-xl border border-slate-200 p-4 text-sm text-slate-500">
-              {t("pages.newsFeed.loadingFeed")}
-            </div>
+            <>
+              <p className="sr-only">{t("pages.newsFeed.loadingFeed")}</p>
+              <FeedSkeleton />
+            </>
           )}
 
           {!initialLoading && pinnedPosts.length > 0 && (
-            <div className="space-y-6">
-              {pinnedPosts.map((post) => (
-                <PostCard
-                  key={`pinned-${post.id}`}
-                  {...post}
-                  onDeleted={(postId) => {
-                    setPosts((prev) =>
-                      prev.filter((item) => item.id !== postId),
-                    );
-                    setPinnedPosts((prev) =>
-                      prev.filter((item) => item.id !== postId),
-                    );
-                  }}
-                  onUpdated={(postId, newContent, newFormat) => {
-                    const updater = (prev: Post[]) =>
-                      prev.map((item) =>
-                        item.id === postId
-                          ? {
-                              ...item,
-                              content: newContent,
-                              contentFormat: newFormat,
-                            }
-                          : item,
-                      );
-                    setPosts(updater);
-                    setPinnedPosts(updater);
-                  }}
-                  onCopied={(postId) => handleCopyPostLink(postId)}
-                  onSavedChanged={(postId, isSaved) => {
-                    const updater = (prev: Post[]) =>
-                      prev.map((item) =>
-                        item.id === postId ? { ...item, isSaved } : item,
-                      );
-                    setPosts(updater);
-                    setPinnedPosts(updater);
-                  }}
-                  canPinPost={canPinPost}
-                  pinGroupId={null}
-                  onPinned={handlePinPost}
-                />
-              ))}
+            <div className="space-y-3">
+              <div className="flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-blue-700">
+                <Pin size={13} className="fill-current" />
+                {t("pages.newsFeed.pinnedLabel")}
+              </div>
+              <div className="space-y-4">{pinnedPosts.map(renderPost)}</div>
             </div>
           )}
 
-          <div className="space-y-6">
-            {posts.map((post) => (
-              <PostCard
-                key={post.id}
-                {...post}
-                onDeleted={(postId) => {
-                  setPosts((prev) => prev.filter((item) => item.id !== postId));
-                  setPinnedPosts((prev) =>
-                    prev.filter((item) => item.id !== postId),
-                  );
-                }}
-                onUpdated={(postId, newContent, newFormat) => {
-                  const updater = (prev: Post[]) =>
-                    prev.map((item) =>
-                      item.id === postId
-                        ? {
-                            ...item,
-                            content: newContent,
-                            contentFormat: newFormat,
-                          }
-                        : item,
-                    );
-                  setPosts(updater);
-                  setPinnedPosts(updater);
-                }}
-                onCopied={(postId) => handleCopyPostLink(postId)}
-                onSavedChanged={(postId, isSaved) => {
-                  const updater = (prev: Post[]) =>
-                    prev.map((item) =>
-                      item.id === postId ? { ...item, isSaved } : item,
-                    );
-                  setPosts(updater);
-                  setPinnedPosts(updater);
-                }}
-                canPinPost={canPinPost}
-                pinGroupId={null}
-                onPinned={handlePinPost}
-              />
-            ))}
-          </div>
+          {posts.length > 0 && (
+            <div className="space-y-4">{posts.map(renderPost)}</div>
+          )}
 
           {!initialLoading &&
             posts.length === 0 &&
             pinnedPosts.length === 0 && (
-              <div className="rounded-xl border border-slate-200 p-4 text-sm text-slate-500">
-                {t("pages.newsFeed.empty")}
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-14 text-center dark:border-slate-800 dark:bg-slate-900">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-950/40">
+                  <Newspaper size={22} />
+                </div>
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                  {t("pages.newsFeed.empty")}
+                </p>
               </div>
             )}
 
           {loading && !initialLoading && (
-            <div className="rounded-xl border border-slate-200 p-4 text-sm text-slate-500">
+            <div className="flex items-center justify-center gap-2 py-3 text-sm text-slate-500">
+              <Loader2 className="h-4 w-4 animate-spin" />
               {t("pages.newsFeed.loadingMore")}
             </div>
           )}
 
           {!hasMore && !initialLoading && posts.length > 0 && (
-            <div className="text-center text-sm text-slate-500 py-2">
+            <div className="flex items-center gap-3 py-2 text-xs text-slate-400">
+              <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
               {t("pages.newsFeed.noMore")}
+              <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
             </div>
           )}
 
-          <div ref={loadMoreRef} className="h-10" />
-        </div>
+          <div ref={loadMoreRef} className="h-8" />
+        </section>
 
-        <div className="lg:col-span-4 space-y-6">
+        <aside className="space-y-4 lg:sticky lg:top-20">
           <RightSidebarWidget
             title={t("pages.newsFeed.yourGroups")}
             icon={Users2}
+            action={
+              <button
+                type="button"
+                onClick={() => navigate("/groups")}
+                className="shrink-0 text-xs font-semibold text-blue-700 hover:underline"
+              >
+                {t("pages.newsFeed.viewAllGroups")}
+              </button>
+            }
           >
-            <div className="space-y-4">
-              {myGroups.map((item) => (
-                <GroupItem
-                  key={item.id}
-                  id={item.id}
-                  name={item.groupName}
-                  members={item._count.members}
-                  url={item.coverUrl}
-                />
-              ))}
-            </div>
-            <button
-              onClick={() => navigate("/groups")}
-              className="w-full mt-4 py-2 text-xs font-bold text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors border border-dashed border-blue-200 dark:border-blue-800 cursor-pointer"
-            >
-              {t("pages.newsFeed.viewAllGroups")}
-            </button>
+            {visibleGroups.length === 0 ? (
+              <p className="px-2 py-3 text-xs text-slate-500">
+                {t("pages.newsFeed.noGroups")}
+              </p>
+            ) : (
+              <div className="space-y-0.5">
+                {visibleGroups.map((item) => (
+                  <GroupItem
+                    key={item.id}
+                    id={item.id}
+                    name={item.groupName}
+                    members={item._count.members}
+                    url={item.coverUrl}
+                  />
+                ))}
+              </div>
+            )}
           </RightSidebarWidget>
 
           <RightSidebarWidget
@@ -393,11 +417,11 @@ const NewFeedPage = () => {
             icon={Bell}
           >
             {recentNotifications.length === 0 ? (
-              <p className="text-xs text-slate-500">
+              <p className="px-2 py-3 text-xs text-slate-500">
                 {t("pages.newsFeed.noRecentNotifications")}
               </p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-0.5">
                 {recentNotifications.map((notification) => {
                   const isUnread = !notification.readAt;
                   return (
@@ -407,25 +431,27 @@ const NewFeedPage = () => {
                       onClick={() =>
                         navigate(getNotificationLink(notification))
                       }
-                      className="w-full flex gap-3 text-left hover:opacity-80 transition-opacity"
+                      className={`flex w-full gap-3 rounded-xl px-2.5 py-2.5 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/70 ${
+                        isUnread ? "bg-blue-50/70 dark:bg-blue-950/30" : ""
+                      }`}
                     >
-                      <div
-                        className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                      <span
+                        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
                           isUnread ? "bg-blue-600" : "bg-slate-300"
                         }`}
                       />
-                      <div className="min-w-0">
-                        <p
-                          className={`text-xs leading-snug ${
+                      <span className="min-w-0">
+                        <span
+                          className={`block text-xs leading-snug text-slate-800 dark:text-slate-200 ${
                             isUnread ? "font-medium" : ""
                           }`}
                         >
                           {getNotificationMessage(notification, t)}
-                        </p>
-                        <p className="text-[10px] text-slate-500 mt-1">
+                        </span>
+                        <span className="mt-1 block text-[11px] text-slate-500">
                           {formatTimeAgo(notification.createdAt)}
-                        </p>
-                      </div>
+                        </span>
+                      </span>
                     </button>
                   );
                 })}
@@ -438,11 +464,11 @@ const NewFeedPage = () => {
             icon={Calendar}
           >
             {upcomingEvents.length === 0 ? (
-              <p className="text-xs text-slate-500">
+              <p className="px-2 py-3 text-xs text-slate-500">
                 {t("pages.newsFeed.noUpcomingEvents")}
               </p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-0.5">
                 {upcomingEvents.map((event) => {
                   const { monthLabel, day } = formatEventDateParts(
                     event.startAt,
@@ -460,19 +486,21 @@ const NewFeedPage = () => {
                           navigate(`/news-feed/${event.postId}`);
                         }
                       }}
-                      className="w-full flex items-center gap-4 text-left hover:opacity-80 transition-opacity"
+                      className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/70"
                     >
-                      <div className="bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center w-12 h-12 rounded-lg shrink-0">
-                        <span className="text-[10px] font-bold text-blue-700 uppercase">
+                      <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-950/40">
+                        <span className="text-[10px] font-semibold uppercase leading-none">
                           {monthLabel}
                         </span>
-                        <span className="text-lg font-bold">{day}</span>
+                        <span className="mt-0.5 text-base font-bold leading-none">
+                          {day}
+                        </span>
                       </div>
                       <div className="min-w-0">
-                        <h4 className="text-xs font-bold truncate">
+                        <h4 className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
                           {event.title}
                         </h4>
-                        <p className="text-[10px] text-slate-500 truncate">
+                        <p className="truncate text-xs text-slate-500">
                           {formatEventMeta(event, i18n.language)}
                         </p>
                       </div>
@@ -482,7 +510,7 @@ const NewFeedPage = () => {
               </div>
             )}
           </RightSidebarWidget>
-        </div>
+        </aside>
       </div>
     </main>
   );

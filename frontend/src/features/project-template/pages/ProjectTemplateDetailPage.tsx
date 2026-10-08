@@ -2,7 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import ConfirmModal from "@/components/common/ConfirmModal";
+import Checkbox from "@/components/shared/Checkbox";
+import Field from "@/components/shared/Field";
+import Input from "@/components/shared/Input";
+import Modal from "@/components/shared/Modal";
+import Select from "@/components/shared/Select";
+import Textarea from "@/components/shared/Textarea";
 import { projectTemplateApi } from "@/features/project-template/api/project-template.api";
 import SimpleRecordSection from "@/features/project-template/components/SimpleRecordSection";
 import TemplateMetaForm from "@/features/project-template/components/TemplateMetaForm";
@@ -18,18 +23,7 @@ import {
 } from "@/features/project-template/utils/api-error";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-
-const selectClass =
-  "h-8 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 outline-none";
 
 function extractActivateErrors(error: unknown): string[] {
   return getApiErrorMessages(error);
@@ -447,7 +441,7 @@ export default function ProjectTemplateDetailPage() {
           },
         ]}
         addForm={
-          <form onSubmit={handleAddRole} className="flex flex-wrap gap-2">
+          <form onSubmit={handleAddRole} className="flex flex-wrap items-center gap-2">
             <Input
               placeholder={t("pages.admin.projectTemplateKey")}
               value={roleKey}
@@ -472,13 +466,13 @@ export default function ProjectTemplateDetailPage() {
               placeholder={t("pages.admin.projectTemplateSortOrder")}
               value={roleSortOrder}
               onChange={(e) => setRoleSortOrder(e.target.value)}
-              className="max-w-[100px]"
+              className="w-36 shrink-0"
               type="number"
             />
             <Button
               type="submit"
               disabled={actionLoading}
-              className="cursor-pointer text-white bg-primary hover:bg-primary/90"
+              className="h-10 cursor-pointer bg-primary text-white hover:bg-primary/90"
             >
               {t("pages.admin.projectTemplateAdd")}
             </Button>
@@ -520,7 +514,7 @@ export default function ProjectTemplateDetailPage() {
           },
         ]}
         addForm={
-          <form onSubmit={handleAddTaskType} className="flex flex-wrap gap-2">
+          <form onSubmit={handleAddTaskType} className="flex flex-wrap items-center gap-2">
             <Input
               placeholder={t("pages.admin.projectTemplateKey")}
               value={ttKey}
@@ -545,10 +539,10 @@ export default function ProjectTemplateDetailPage() {
               placeholder={t("pages.admin.projectTemplateSortOrder")}
               value={ttSortOrder}
               onChange={(e) => setTtSortOrder(e.target.value)}
-              className="max-w-[100px]"
+              className="w-36 shrink-0"
               type="number"
             />
-            <label className="flex items-center gap-1 text-sm">
+            <label className="flex h-10 items-center gap-1 text-sm">
               <input
                 type="checkbox"
                 checked={ttIsActive}
@@ -559,7 +553,7 @@ export default function ProjectTemplateDetailPage() {
             <select
               value={ttWorkflowId}
               onChange={(e) => setTtWorkflowId(e.target.value)}
-              className={selectClass}
+              className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none"
             >
               <option value="">
                 {t("pages.admin.projectTemplateDefaultWorkflow")}
@@ -573,7 +567,7 @@ export default function ProjectTemplateDetailPage() {
             <Button
               type="submit"
               disabled={actionLoading}
-              className="cursor-pointer text-white bg-primary hover:bg-primary/90"
+              className="h-10 cursor-pointer bg-primary text-white hover:bg-primary/90"
             >
               {t("pages.admin.projectTemplateAdd")}
             </Button>
@@ -589,233 +583,212 @@ export default function ProjectTemplateDetailPage() {
         onChanged={fetchTemplate}
       />
 
-      <Dialog open={editRole !== null} onOpenChange={() => setEditRole(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {t("pages.admin.projectTemplateEditRole")}
-            </DialogTitle>
-          </DialogHeader>
-          {editRole && (
-            <form onSubmit={handleUpdateRole}>
-              <div className="mb-3">
-                <label className="mb-1 block text-sm text-gray-600">
-                  {t("pages.admin.projectTemplateKey")}
-                </label>
-                <Input value={editRole.key} disabled />
-              </div>
-              <div className="mb-3">
-                <label className="mb-1 block text-sm text-gray-600">
-                  {t("pages.admin.projectTemplateName")}
-                </label>
-                <Input
-                  value={editRoleName}
-                  onChange={(e) => setEditRoleName(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="mb-3">
-                <label className="mb-1 block text-sm text-gray-600">
-                  {t("pages.admin.projectTemplateDescription")}
-                </label>
-                <Input
-                  value={editRoleDescription}
-                  onChange={(e) => setEditRoleDescription(e.target.value)}
-                />
-              </div>
-              <div className="mb-3">
-                <label className="mb-1 block text-sm text-gray-600">
-                  {t("pages.admin.projectTemplateSortOrder")}
-                </label>
-                <Input
-                  value={editRoleSortOrder}
-                  onChange={(e) => setEditRoleSortOrder(e.target.value)}
-                  type="number"
-                />
-              </div>
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setEditRole(null)}
-                >
-                  {t("common.cancel")}
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={actionLoading}
-                  className="cursor-pointer text-white bg-primary hover:bg-primary/90"
-                >
-                  {t("common.save")}
-                </Button>
-              </DialogFooter>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={editTaskType !== null}
-        onOpenChange={() => setEditTaskType(null)}
+      <Modal
+        open={editRole !== null}
+        title={t("pages.admin.projectTemplateEditRole")}
+        onClose={() => {
+          if (!actionLoading) setEditRole(null);
+        }}
+        formId="edit-project-role"
+        confirmText={t("common.save")}
+        loading={actionLoading}
       >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {t("pages.admin.projectTemplateEditTaskType")}
-            </DialogTitle>
-          </DialogHeader>
-          {editTaskType && (
-            <form onSubmit={handleUpdateTaskType}>
-              <div className="mb-3">
-                <label className="mb-1 block text-sm text-gray-600">
-                  {t("pages.admin.projectTemplateKey")}
-                </label>
-                <Input value={editTaskType.key} disabled />
-              </div>
-              <div className="mb-3">
-                <label className="mb-1 block text-sm text-gray-600">
-                  {t("pages.admin.projectTemplateName")}
-                </label>
-                <Input
-                  value={editTtName}
-                  onChange={(e) => setEditTtName(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="mb-3">
-                <label className="mb-1 block text-sm text-gray-600">
-                  {t("pages.admin.projectTemplateDescription")}
-                </label>
-                <Input
-                  value={editTtDescription}
-                  onChange={(e) => setEditTtDescription(e.target.value)}
-                />
-              </div>
-              <div className="mb-3">
-                <label className="mb-1 block text-sm text-gray-600">
-                  {t("pages.admin.projectTemplateSortOrder")}
-                </label>
-                <Input
-                  value={editTtSortOrder}
-                  onChange={(e) => setEditTtSortOrder(e.target.value)}
-                  type="number"
-                />
-              </div>
-              <div className="mb-3">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={editTtIsActive}
-                    onChange={(e) => setEditTtIsActive(e.target.checked)}
-                  />
-                  {t("common.active")}
-                </label>
-              </div>
-              <div className="mb-3">
-                <label className="mb-1 block text-sm text-gray-600">
-                  {t("pages.admin.projectTemplateWorkflow")}
-                </label>
-                <select
-                  value={editTtWorkflowId}
-                  onChange={(e) => setEditTtWorkflowId(e.target.value)}
-                  className={`${selectClass} w-full`}
-                >
-                  <option value="">
-                    {t("pages.admin.projectTemplateDefaultWorkflow")}
-                  </option>
-                  {template.workflows.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setEditTaskType(null)}
-                >
-                  {t("common.cancel")}
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={actionLoading}
-                  className="cursor-pointer text-white bg-primary hover:bg-primary/90"
-                >
-                  {t("common.save")}
-                </Button>
-              </DialogFooter>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={duplicateOpen} onOpenChange={setDuplicateOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {t("pages.admin.projectTemplateDuplicate")}
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleDuplicate}>
-            <div className="mb-3">
-              <label className="mb-1 block text-sm text-gray-600">
-                {t("pages.admin.projectTemplateKey")}
-              </label>
+        {editRole && (
+          <form
+            id="edit-project-role"
+            onSubmit={handleUpdateRole}
+            className="space-y-4"
+          >
+            <Field
+              label={t("pages.admin.projectTemplateKey")}
+              htmlFor="edit-role-key"
+            >
+              <Input id="edit-role-key" value={editRole.key} disabled />
+            </Field>
+            <Field
+              label={t("pages.admin.projectTemplateName")}
+              htmlFor="edit-role-name"
+              required
+            >
               <Input
-                value={dupKey}
-                onChange={(e) => setDupKey(e.target.value.toUpperCase())}
+                id="edit-role-name"
+                value={editRoleName}
+                onChange={(e) => setEditRoleName(e.target.value)}
                 required
               />
-            </div>
-            <div className="mb-3">
-              <label className="mb-1 block text-sm text-gray-600">
-                {t("pages.admin.projectTemplateName")}
-              </label>
-              <Input
-                value={dupName}
-                onChange={(e) => setDupName(e.target.value)}
-                required
+            </Field>
+            <Field
+              label={t("pages.admin.projectTemplateDescription")}
+              htmlFor="edit-role-description"
+            >
+              <Textarea
+                id="edit-role-description"
+                value={editRoleDescription}
+                onChange={(e) => setEditRoleDescription(e.target.value)}
+                className="min-h-20"
               />
-            </div>
-            <div className="mb-3">
-              <label className="mb-1 block text-sm text-gray-600">
-                {t("pages.admin.projectTemplateDescription")}
-              </label>
+            </Field>
+            <Field
+              label={t("pages.admin.projectTemplateSortOrder")}
+              htmlFor="edit-role-sort"
+            >
               <Input
-                value={dupDescription}
-                onChange={(e) => setDupDescription(e.target.value)}
+                id="edit-role-sort"
+                value={editRoleSortOrder}
+                onChange={(e) => setEditRoleSortOrder(e.target.value)}
+                type="number"
               />
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDuplicateOpen(false)}
-              >
-                {t("common.cancel")}
-              </Button>
-              <Button
-                type="submit"
-                disabled={actionLoading}
-                className="cursor-pointer text-white bg-primary hover:bg-primary/90"
-              >
-                {t("pages.admin.projectTemplateDuplicate")}
-              </Button>
-            </DialogFooter>
+            </Field>
           </form>
-        </DialogContent>
-      </Dialog>
+        )}
+      </Modal>
 
-      <ConfirmModal
+      <Modal
+        open={editTaskType !== null}
+        title={t("pages.admin.projectTemplateEditTaskType")}
+        onClose={() => {
+          if (!actionLoading) setEditTaskType(null);
+        }}
+        formId="edit-task-type"
+        confirmText={t("common.save")}
+        loading={actionLoading}
+      >
+        {editTaskType && (
+          <form
+            id="edit-task-type"
+            onSubmit={handleUpdateTaskType}
+            className="space-y-4"
+          >
+            <Field
+              label={t("pages.admin.projectTemplateKey")}
+              htmlFor="edit-task-type-key"
+            >
+              <Input id="edit-task-type-key" value={editTaskType.key} disabled />
+            </Field>
+            <Field
+              label={t("pages.admin.projectTemplateName")}
+              htmlFor="edit-task-type-name"
+              required
+            >
+              <Input
+                id="edit-task-type-name"
+                value={editTtName}
+                onChange={(e) => setEditTtName(e.target.value)}
+                required
+              />
+            </Field>
+            <Field
+              label={t("pages.admin.projectTemplateDescription")}
+              htmlFor="edit-task-type-description"
+            >
+              <Textarea
+                id="edit-task-type-description"
+                value={editTtDescription}
+                onChange={(e) => setEditTtDescription(e.target.value)}
+                className="min-h-20"
+              />
+            </Field>
+            <Field
+              label={t("pages.admin.projectTemplateSortOrder")}
+              htmlFor="edit-task-type-sort"
+            >
+              <Input
+                id="edit-task-type-sort"
+                value={editTtSortOrder}
+                onChange={(e) => setEditTtSortOrder(e.target.value)}
+                type="number"
+              />
+            </Field>
+            <Checkbox
+              id="edit-task-type-active"
+              label={t("common.active")}
+              checked={editTtIsActive}
+              onChange={(e) => setEditTtIsActive(e.target.checked)}
+            />
+            <Field
+              label={t("pages.admin.projectTemplateWorkflow")}
+              htmlFor="edit-task-type-workflow"
+            >
+              <Select
+                id="edit-task-type-workflow"
+                value={editTtWorkflowId}
+                onChange={(e) => setEditTtWorkflowId(e.target.value)}
+              >
+                <option value="">
+                  {t("pages.admin.projectTemplateDefaultWorkflow")}
+                </option>
+                {template.workflows.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </form>
+        )}
+      </Modal>
+
+      <Modal
+        open={duplicateOpen}
+        title={t("pages.admin.projectTemplateDuplicate")}
+        onClose={() => {
+          if (!actionLoading) setDuplicateOpen(false);
+        }}
+        formId="duplicate-project-template"
+        confirmText={t("pages.admin.projectTemplateDuplicate")}
+        loading={actionLoading}
+      >
+        <form
+          id="duplicate-project-template"
+          onSubmit={handleDuplicate}
+          className="space-y-4"
+        >
+          <Field
+            label={t("pages.admin.projectTemplateKey")}
+            htmlFor="duplicate-template-key"
+            required
+          >
+            <Input
+              id="duplicate-template-key"
+              value={dupKey}
+              onChange={(e) => setDupKey(e.target.value.toUpperCase())}
+              required
+            />
+          </Field>
+          <Field
+            label={t("pages.admin.projectTemplateName")}
+            htmlFor="duplicate-template-name"
+            required
+          >
+            <Input
+              id="duplicate-template-name"
+              value={dupName}
+              onChange={(e) => setDupName(e.target.value)}
+              required
+            />
+          </Field>
+          <Field
+            label={t("pages.admin.projectTemplateDescription")}
+            htmlFor="duplicate-template-description"
+          >
+            <Textarea
+              id="duplicate-template-description"
+              value={dupDescription}
+              onChange={(e) => setDupDescription(e.target.value)}
+              className="min-h-20"
+            />
+          </Field>
+        </form>
+      </Modal>
+
+      <Modal
         open={confirmDelete}
         title={t("pages.admin.projectTemplateDeleteTitle")}
         description={t("pages.admin.projectTemplateDeleteDescription")}
         confirmText={t("common.delete")}
         loading={actionLoading}
         variant="danger"
-        onCancel={() => setConfirmDelete(false)}
+        onClose={() => setConfirmDelete(false)}
         onConfirm={handleDelete}
       />
     </div>

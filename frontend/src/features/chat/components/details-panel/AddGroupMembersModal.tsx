@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
 import { toast } from "sonner";
 import ItemSearch from "@/features/chat/components/conversation-list/ItemSearch";
 import { chatApi } from "@/features/chat/apis/chat.api";
 import type { ChatSearchUser } from "@/features/chat/types/chat-search.type";
 import { useTranslation } from "react-i18next";
+import Modal from "@/components/shared/Modal";
+import { SearchField } from "@/components/shared/SearchFilter";
 
 interface AddGroupMembersModalProps {
   open: boolean;
@@ -122,8 +123,6 @@ const AddGroupMembersModal = ({
     }
   };
 
-  if (!open) return null;
-
   const mapUser = (user: ChatSearchUser) => ({
     id: user.id,
     fullName: user.fullName,
@@ -131,72 +130,51 @@ const AddGroupMembersModal = ({
   });
 
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden
-      />
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t("pages.chat.addPeople")}
+      containerClassName="z-60"
+      onConfirm={handleSubmit}
+      confirmText={t("pages.chat.addToGroup")}
+      loading={submitting}
+      confirmDisabled={selected.length === 0}
+      hideCancel
+      footerClassName="[&>button]:w-full"
+    >
+      <div className="space-y-4">
+        <SearchField
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder={t("pages.chat.searchByNameOrEmail")}
+          className="w-full"
+        />
 
-      <div className="relative w-full max-w-md rounded-3xl bg-surface shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant bg-surface-container-low shrink-0">
-          <h2 className="text-lg font-bold text-on-surface">{t("pages.chat.addPeople")}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-full hover:bg-surface-container-high transition-colors"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t("pages.chat.searchByNameOrEmail")}
-            className="w-full px-4 py-3 rounded-2xl bg-surface-container-high border-none outline-none focus:ring-2 focus:ring-primary text-sm"
+        {selected.map((user) => (
+          <ItemSearch
+            key={user.id}
+            user={mapUser(user)}
+            showDeleteButton
+            onDelete={() => handleRemoveFromSelection(user.id)}
           />
+        ))}
 
-          {selected.map((user) => (
-            <ItemSearch
-              key={user.id}
-              user={mapUser(user)}
-              showDeleteButton
-              onDelete={() => handleRemoveFromSelection(user.id)}
-            />
-          ))}
-
-          {searchLoading && (
-            <p className="text-xs text-on-surface-variant">{t("pages.chat.searching")}</p>
-          )}
-          {!searchLoading && trimmedQuery && searchResults.length === 0 && (
-            <p className="text-xs text-on-surface-variant">
-              {t("pages.chat.noUsersFound")}
-            </p>
-          )}
-          {searchResults.map((user) => (
-            <ItemSearch
-              key={user.id}
-              user={mapUser(user)}
-              onClick={() => handleAddToSelection(user)}
-            />
-          ))}
-        </div>
-
-        <div className="px-6 py-4 border-t border-outline-variant shrink-0">
-          <button
-            type="button"
-            disabled={submitting || selected.length === 0}
-            onClick={handleSubmit}
-            className="w-full py-3 rounded-2xl bg-primary text-on-primary font-semibold text-sm hover:opacity-90 disabled:opacity-50 transition-opacity"
-          >
-            {submitting ? t("pages.chat.adding") : t("pages.chat.addToGroup")}
-          </button>
-        </div>
+        {searchLoading && (
+          <p className="text-xs text-slate-500">{t("pages.chat.searching")}</p>
+        )}
+        {!searchLoading && trimmedQuery && searchResults.length === 0 && (
+          <p className="text-xs text-slate-500">{t("pages.chat.noUsersFound")}</p>
+        )}
+        {searchResults.map((user) => (
+          <ItemSearch
+            key={user.id}
+            user={mapUser(user)}
+            onClick={() => handleAddToSelection(user)}
+          />
+        ))}
       </div>
-    </div>
+    </Modal>
   );
 };
 

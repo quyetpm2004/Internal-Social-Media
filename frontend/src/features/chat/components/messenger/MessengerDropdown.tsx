@@ -58,7 +58,7 @@ const MessengerDropdown = () => {
   return (
     <div className="absolute right-0 top-11 w-[min(100vw-2rem,360px)] rounded-xl bg-white shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100 border border-[#e5e5e5]">
       <div className="flex items-center justify-between px-4 py-3">
-        <h3 className="font-bold text-2xl text-[#050505]">
+        <h3 className="font-semibold text-xl text-[#050505]">
           {t("pages.chat.conversationsTitle")}
         </h3>
         <div className="flex items-center gap-1">

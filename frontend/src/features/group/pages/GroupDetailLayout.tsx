@@ -1,6 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import GroupHeader from "@/features/group/components/group-detail/main-detail/GroupHeader";
 import { ArrowLeft, Clock, Lock, Users } from "lucide-react";
+
+const GroupDetailSkeleton = () => (
+  <div className="space-y-5" aria-hidden>
+    <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900">
+      <div className="h-52 animate-pulse bg-slate-200 md:h-64 dark:bg-slate-800" />
+      <div className="space-y-3 p-5">
+        <div className="h-6 w-48 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+        <div className="h-4 w-64 animate-pulse rounded-full bg-slate-100 dark:bg-slate-800" />
+        <div className="mt-4 h-8 w-full animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+      </div>
+    </div>
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="h-40 animate-pulse rounded-2xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900" />
+      <div className="h-40 animate-pulse rounded-2xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900" />
+    </div>
+  </div>
+);
 import { Outlet, useNavigate, useParams } from "react-router-dom";
 import type {
   GroupDetail,
@@ -199,8 +216,8 @@ const GroupDetailLayout = () => {
 
   if (!groupId) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <span className="text-gray-500">
+      <div className="flex h-64 items-center justify-center">
+        <span className="text-sm text-slate-500">
           {t("pages.groups.groupIdMissing")}
         </span>
       </div>
@@ -210,17 +227,16 @@ const GroupDetailLayout = () => {
   return (
     <>
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <span className="text-gray-500">
-            {t("pages.groups.loadingDetails")}
-          </span>
-        </div>
+        <main className="mx-auto max-w-6xl flex-1 px-3 py-6 sm:px-5 md:py-8">
+          <p className="sr-only">{t("pages.groups.loadingDetails")}</p>
+          <GroupDetailSkeleton />
+        </main>
       ) : (
-        <main className="flex-1 py-6 max-w-6xl mx-auto bg-slate-50 dark:bg-slate-950">
+        <main className="mx-auto max-w-6xl flex-1 px-3 py-6 sm:px-5 md:py-8">
           <div className="md:hidden">
             <button
               onClick={() => navigate(-1)}
-              className="text-sm text-slate-500 hover:text-slate-700 pb-4 dark:hover:text-slate-300 flex items-center gap-2 cursor-pointer"
+              className="mb-4 flex cursor-pointer items-center gap-2 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
             >
               <ArrowLeft size={16} />
               <span className="font-medium">{t("common.back")}</span>
@@ -243,20 +259,20 @@ const GroupDetailLayout = () => {
             currentMemberRole={currentMemberRole}
           />
 
-          <div className="w-full mx-auto py-8 px-1">
+          <div className="mx-auto w-full py-5">
             {isPrivateBlocked ? (
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-10 text-center">
-                <div className="flex justify-center mb-5">
-                  <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <div className="rounded-2xl border border-slate-200/80 bg-white p-10 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <div className="mb-5 flex justify-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800">
                     {isPendingRequest ? (
-                      <Clock size={34} className="text-amber-500" />
+                      <Clock size={28} className="text-amber-500" />
                     ) : (
-                      <Lock size={34} className="text-slate-500" />
+                      <Lock size={28} className="text-slate-500" />
                     )}
                   </div>
                 </div>
 
-                <h2 className="text-2xl font-bold mb-3">
+                <h2 className="mb-2 text-xl font-bold tracking-tight">
                   {isPendingRequest
                     ? t("pages.groups.requestPendingTitle")
                     : t("pages.groups.privateGroupTitle")}

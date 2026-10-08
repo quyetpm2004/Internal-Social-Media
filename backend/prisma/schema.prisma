@@ -149,6 +149,27 @@ enum NotificationType {
   GROUP_MEMBER_REJECTED
 }
 
+// Project 
+enum ProjectVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum ProjectPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT // Must be completed within 24 hours
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
 model User {
   id       Int    @id @default(autoincrement())
   fullName String
@@ -196,8 +217,13 @@ model User {
   createdProjectTemplates ProjectTemplate[] @relation("ProjectTemplateCreator")
   updatedProjectTemplates ProjectTemplate[] @relation("ProjectTemplateUpdater")
 
+  createdProjects Project[]       @relation("ProjectCreator")
+  updatedProjects Project[]       @relation("ProjectUpdater")
+  projectMembers  ProjectMember[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  @@map("users")
 }
 
 model SearchHistory {
@@ -235,6 +261,7 @@ model RefreshToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  @@map("refresh_tokens")
 }
 
 model PasswordResetToken {
@@ -265,6 +292,7 @@ model Department {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  @@map("departments")
 }
 
 model Position {
@@ -274,6 +302,7 @@ model Position {
   user      User[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  @@map("positions")
 }
 
 model Profile {
@@ -288,6 +317,7 @@ model Profile {
   avatarKey String?   @map("avatar_key")
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  @@map("profiles")
 }
 
 model Group {
@@ -733,6 +763,7 @@ model ProjectTemplate {
   projectRoles TemplateProjectRole[]
   taskTypes    TemplateTaskType[]
   workflows    TemplateWorkflow[]
+  projects Project[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -875,4 +906,190 @@ model TemplateApprovalRule {
   @@index([projectRoleId])
   @@index([onRejectStatusId])
   @@map("template_approval_rules")
+}
+
+model Project {
+  id              Int               @id @default(autoincrement())
+  name            String            @db.VarChar(150)
+  description     String?           @db.Text
+  visibility      ProjectVisibility @default(PRIVATE)
+  priority        ProjectPriority   @default(MEDIUM)
+  status          ProjectStatus     @default(IN_PROGRESS)
+  isUrgent        Boolean           @default(false) @map("is_urgent")
+  startDate       DateTime          @map("start_date") @db.Date
+  endDate         DateTime          @map("end_date") @db.Date
+  templateId      Int               @map("template_id")
+  templateVersion Int               @map("template_version")
+  createdById     Int               @map("created_by_id")
+  updatedById     Int?              @map("updated_by_id")
+
+  template  ProjectTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  createdBy User            @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy User?           @relation("ProjectUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  roles     ProjectRole[]
+  workflows ProjectWorkflow[]
+  taskTypes ProjectTaskType[]
+  members   ProjectMember[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([visibility])
+  @@index([status])
+  @@index([templateId])
+  @@index([createdById])
+  @@map("projects")
+}
+
+model ProjectMember {
+  id            Int      @id @default(autoincrement())
+  projectId     Int      @map("project_id")
+  userId        Int      @map("user_id")
+  projectRoleId Int      @map("project_role_id")
+  joinedAt      DateTime @default(now()) @map("joined_at")
+
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  projectRole ProjectRole @relation(fields: [projectRoleId], references: [id], onDelete: Restrict)
+
+  @@unique([projectId, userId, projectRoleId])
+  @@index([projectId, userId])
+  @@index([projectRoleId])
+  @@map("project_members")
+}
+
+model ProjectRole {
+  id          Int     @id @default(autoincrement())
+  projectId   Int     @map("project_id")
+  key         String  @db.VarChar(50)
+  name        String  @db.VarChar(150)
+  description String? @db.Text
+  sortOrder   Int     @default(0) @map("sort_order")
+
+  project       Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  members       ProjectMember[]
+  approvalRules ProjectApprovalRule[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([projectId, key])
+  @@unique([projectId, name])
+  @@index([projectId])
+  @@map("project_roles")
+}
+
+model ProjectWorkflow {
+  id          Int     @id @default(autoincrement())
+  projectId   Int     @map("project_id")
+  name        String  @db.VarChar(150)
+  description String? @db.Text
+  isDefault   Boolean @default(false) @map("is_default")
+  isActive    Boolean @default(true) @map("is_active")
+
+  project     Project                     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  statuses    ProjectWorkflowStatus[]
+  transitions ProjectWorkflowTransition[]
+  taskTypes   ProjectTaskType[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([projectId])
+  @@map("project_workflows")
+}
+
+model ProjectTaskType {
+  id          Int     @id @default(autoincrement())
+  projectId   Int     @map("project_id")
+  workflowId  Int?    @map("workflow_id")
+  name        String  @db.VarChar(150)
+  key         String  @db.VarChar(50)
+  description String? @db.Text
+  sortOrder   Int     @default(0) @map("sort_order")
+  isActive    Boolean @default(true) @map("is_active")
+
+  project  Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workflow ProjectWorkflow? @relation(fields: [workflowId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([projectId, key])
+  @@unique([projectId, name])
+  @@index([projectId])
+  @@index([workflowId])
+  @@map("project_task_types")
+}
+
+model ProjectWorkflowStatus {
+  id          Int                    @id @default(autoincrement())
+  workflowId  Int                    @map("workflow_id")
+  name        String                 @db.VarChar(150)
+  key         String                 @db.VarChar(50)
+  description String?                @db.Text
+  sortOrder   Int                    @default(0) @map("sort_order")
+  category    WorkflowStatusCategory
+  color       String?                @db.VarChar(20)
+  isInitial   Boolean                @default(false) @map("is_initial")
+  isFinal     Boolean                @default(false) @map("is_final")
+
+  workflow        ProjectWorkflow             @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  transitionsFrom ProjectWorkflowTransition[] @relation("ProjectTransitionFrom")
+  transitionsTo   ProjectWorkflowTransition[] @relation("ProjectTransitionTo")
+  rejectionRules  ProjectApprovalRule[]       @relation("ProjectApprovalReject")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([workflowId, key])
+  @@unique([workflowId, name])
+  @@index([workflowId])
+  @@map("project_workflow_statuses")
+}
+
+model ProjectWorkflowTransition {
+  id           Int     @id @default(autoincrement())
+  workflowId   Int     @map("workflow_id")
+  fromStatusId Int     @map("from_status_id")
+  toStatusId   Int     @map("to_status_id")
+  name         String  @db.VarChar(150)
+  isActive     Boolean @default(true) @map("is_active")
+
+  workflow      ProjectWorkflow       @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  fromStatus    ProjectWorkflowStatus @relation("ProjectTransitionFrom", fields: [fromStatusId], references: [id], onDelete: Restrict)
+  toStatus      ProjectWorkflowStatus @relation("ProjectTransitionTo", fields: [toStatusId], references: [id], onDelete: Restrict)
+  approvalRules ProjectApprovalRule[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([workflowId, fromStatusId, toStatusId])
+  @@index([workflowId])
+  @@index([fromStatusId])
+  @@index([toStatusId])
+  @@map("project_workflow_transitions")
+}
+
+model ProjectApprovalRule {
+  id               Int                  @id @default(autoincrement())
+  transitionId     Int                  @map("transition_id")
+  approverType     ApprovalApproverType @map("approver_type")
+  projectRoleId    Int?                 @map("project_role_id")
+  taskRole         TemplateTaskRole?    @map("task_role")
+  minApprovals     Int                  @default(1) @map("min_approvals")
+  onRejectStatusId Int                  @map("on_reject_status_id")
+
+  transition     ProjectWorkflowTransition @relation(fields: [transitionId], references: [id], onDelete: Cascade)
+  projectRole    ProjectRole?              @relation(fields: [projectRoleId], references: [id], onDelete: Restrict)
+  onRejectStatus ProjectWorkflowStatus     @relation("ProjectApprovalReject", fields: [onRejectStatusId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([transitionId])
+  @@index([projectRoleId])
+  @@index([onRejectStatusId])
+  @@map("project_approval_rules")
 }

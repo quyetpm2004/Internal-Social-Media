@@ -5,7 +5,9 @@ import { projectTemplateApi } from "@/features/project-template/api/project-temp
 import type { TemplateDetail } from "@/features/project-template/types/project-template.type";
 import { toastApiError } from "@/features/project-template/utils/api-error";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import Field from "@/components/shared/Field";
+import Input from "@/components/shared/Input";
+import Textarea from "@/components/shared/Textarea";
 
 type TemplateMetaFormProps = {
   template: TemplateDetail;
@@ -50,33 +52,36 @@ export default function TemplateMetaForm({
       <h2 className="mb-3 text-lg font-semibold">
         {t("pages.admin.projectTemplateMetaTitle")}
       </h2>
-      <form onSubmit={handleSave}>
-        <div className="mb-3">
-          <label className="mb-1 block text-sm text-gray-600">
-            {t("pages.admin.projectTemplateKey")}
-          </label>
-          <Input value={template.key} disabled />
-        </div>
-        <div className="mb-3">
-          <label className="mb-1 block text-sm text-gray-600">
-            {t("pages.admin.projectTemplateName")}
-          </label>
+      <form onSubmit={handleSave} className="space-y-4">
+        <Field
+          label={t("pages.admin.projectTemplateKey")}
+          htmlFor="template-meta-key"
+        >
+          <Input id="template-meta-key" value={template.key} disabled />
+        </Field>
+        <Field
+          label={t("pages.admin.projectTemplateName")}
+          htmlFor="template-meta-name"
+        >
           <Input
+            id="template-meta-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             disabled={!isDraft}
           />
-        </div>
-        <div className="mb-3">
-          <label className="mb-1 block text-sm text-gray-600">
-            {t("pages.admin.projectTemplateDescription")}
-          </label>
-          <Input
+        </Field>
+        <Field
+          label={t("pages.admin.projectTemplateDescription")}
+          htmlFor="template-meta-description"
+        >
+          <Textarea
+            id="template-meta-description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             disabled={!isDraft}
+            className="min-h-20"
           />
-        </div>
+        </Field>
         {isDraft && (
           <Button
             type="submit"

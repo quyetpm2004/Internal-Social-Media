@@ -77,6 +77,7 @@ interface PostCardProps extends Post {
 interface RightSidebarWidgetProps {
   title: string;
   icon: LucideIcon;
+  action?: ReactNode;
   children: ReactNode;
 }
 

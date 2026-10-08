@@ -139,6 +139,8 @@ export const GroupMembersPage = () => {
         currentUserId={currentUser?.id}
         currentPage={currentPage}
         totalPages={pagination.totalPages}
+        total={pagination.total}
+        limit={pagination.limit}
         onPageChange={setCurrentPage}
         onAddMember={() => setAddModalOpen(true)}
         onEditMember={setEditMember}

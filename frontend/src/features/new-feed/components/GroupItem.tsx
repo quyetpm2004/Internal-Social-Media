@@ -6,25 +6,22 @@ import { useTranslation } from "react-i18next";
 const GroupItem: React.FC<GroupItemProps> = ({ id, name, members, url }) => {
   const { t } = useTranslation();
   return (
-    <Link to={`/groups/${id}`}>
-      <div className="flex items-center justify-between group cursor-pointer py-1">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10">
-            <img
-              src={url || DEFAULT_COVER}
-              className="w-full h-full rounded-lg"
-              alt={t("common.groupAvatar")}
-            />
-          </div>
-          <div>
-            <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-blue-700 transition-colors">
-              {name}
-            </h4>
-            <p className="text-[10px] text-slate-500">
-              {t("pages.groups.memberCount", { count: members })}
-            </p>
-          </div>
-        </div>
+    <Link
+      to={`/groups/${id}`}
+      className="group flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/70"
+    >
+      <img
+        src={url || DEFAULT_COVER}
+        className="h-10 w-10 shrink-0 rounded-xl object-cover"
+        alt={t("common.groupAvatar")}
+      />
+      <div className="min-w-0">
+        <h4 className="truncate text-sm font-semibold text-slate-900 transition-colors group-hover:text-blue-700 dark:text-slate-100">
+          {name}
+        </h4>
+        <p className="text-xs text-slate-500">
+          {t("pages.groups.memberCount", { count: members })}
+        </p>
       </div>
     </Link>
   );

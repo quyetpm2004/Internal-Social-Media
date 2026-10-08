@@ -1,5 +1,9 @@
-import { ListFilter, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import {
+  FilterPills,
+  SearchField,
+  searchButtonClass,
+} from "@/components/shared/SearchFilter";
 
 type GroupFilterProps = {
   filter: string;
@@ -7,7 +11,16 @@ type GroupFilterProps = {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   onSearch: () => void;
+  resultCount?: number;
 };
+
+const filters = [
+  { value: "", labelKey: "pages.groups.filterAll" },
+  { value: "MY", labelKey: "pages.groups.filterMy" },
+  { value: "PUBLIC", labelKey: "common.public" },
+  { value: "PRIVATE", labelKey: "common.private" },
+  { value: "DEPARTMENT", labelKey: "common.department" },
+] as const;
 
 const GroupFilter = ({
   filter,
@@ -15,116 +28,47 @@ const GroupFilter = ({
   searchQuery,
   setSearchQuery,
   onSearch,
+  resultCount,
 }: GroupFilterProps) => {
   const { t } = useTranslation();
+
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-4">
-      <div className="flex items-center gap-2 w-full sm:max-w-md">
-        <div className="relative flex-1">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">
-            <ListFilter size={18} />
-          </span>
-
-          <button
-            onClick={onSearch}
-            className="
-              absolute right-2 top-1/2 -translate-y-1/2
-              flex items-center gap-1
-              px-3 py-1.5
-              text-primary
-              text-sm font-medium
-              hover:opacity-90
-              transition
-              cursor-pointer
-            "
-          >
-            <Search size={18} />
-          </button>
-
-          <input
-            className="
-              w-full
-              pl-10
-              pr-28
-              py-3
-              bg-surface-container-highest
-              border-none
-              outline-none
-              rounded-2xl
-              text-sm
-              focus:ring-2
-              focus:ring-surface-tint
-              transition-all
-            "
+    <div className="rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="flex min-w-0 flex-1 gap-2">
+          <SearchField
             placeholder={t("pages.groups.searchGroupsPlaceholder")}
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                onSearch();
-              }
+              if (e.key === "Enter") onSearch();
             }}
           />
+          <button
+            type="button"
+            onClick={onSearch}
+            className={`${searchButtonClass} rounded-lg`}
+          >
+            {t("common.search")}
+          </button>
         </div>
+
+        <FilterPills
+          options={filters.map((item) => ({
+            value: item.value,
+            label: t(item.labelKey),
+          }))}
+          value={filter}
+          onChange={setFilter}
+        />
       </div>
 
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 w-full sm:w-auto scrollbar-hide">
-        <button
-          className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer ${
-            filter === ""
-              ? "bg-primary-container text-white"
-              : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"
-          }`}
-          onClick={() => setFilter("")}
-        >
-          {t("pages.groups.filterAll")}
-        </button>
-
-        <button
-          className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer ${
-            filter === "MY"
-              ? "bg-primary-container text-white"
-              : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"
-          }`}
-          onClick={() => setFilter("MY")}
-        >
-          {t("pages.groups.filterMy")}
-        </button>
-
-        <button
-          className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer ${
-            filter === "PUBLIC"
-              ? "bg-primary-container text-white"
-              : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"
-          }`}
-          onClick={() => setFilter("PUBLIC")}
-        >
-          {t("common.public")}
-        </button>
-
-        <button
-          className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer ${
-            filter === "PRIVATE"
-              ? "bg-primary-container text-white"
-              : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"
-          }`}
-          onClick={() => setFilter("PRIVATE")}
-        >
-          {t("common.private")}
-        </button>
-
-        <button
-          className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer ${
-            filter === "DEPARTMENT"
-              ? "bg-primary-container text-white"
-              : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"
-          }`}
-          onClick={() => setFilter("DEPARTMENT")}
-        >
-          {t("common.department")}
-        </button>
-      </div>
+      {typeof resultCount === "number" && (
+        <p className="mt-3 px-1 text-xs text-slate-500">
+          {t("pages.groups.resultCount", { count: resultCount })}
+        </p>
+      )}
     </div>
   );
 };

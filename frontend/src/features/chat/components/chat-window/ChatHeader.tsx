@@ -28,7 +28,7 @@ const ChatHeader = ({
   })();
 
   return (
-    <header className="h-16 flex items-center justify-between px-4 md:px-6 bg-surface-container-lowest border-b border-outline-variant/10 z-10">
+    <header className="z-10 flex h-16 items-center justify-between border-b border-slate-100 bg-white px-4 md:px-5 dark:border-slate-800 dark:bg-slate-900">
       <div className="flex items-center gap-3 min-w-0">
         <button
           type="button"
@@ -71,14 +71,12 @@ const ChatHeader = ({
         </div>
 
         <div className="min-w-0">
-          <h3 className="text-md font-bold text-on-surface leading-tight font-headline truncate">
+          <h3 className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
             {name}
           </h3>
 
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-bold text-on-surface-variant tracking-wide font-label uppercase">
-              {statusLabel}
-            </span>
+            <span className="text-xs text-slate-500">{statusLabel}</span>
           </div>
         </div>
       </div>
@@ -87,7 +85,7 @@ const ChatHeader = ({
         <button
           type="button"
           onClick={onToggleDetails}
-          className="p-2.5 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-90 cursor-pointer"
+          className="cursor-pointer rounded-xl p-2.5 text-slate-500 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
           aria-label={t("common.information")}
         >
           <Info size={20} />

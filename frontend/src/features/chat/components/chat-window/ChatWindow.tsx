@@ -60,7 +60,7 @@ const ChatWindow = ({
   })();
 
   return (
-    <section className="flex-1 flex flex-col bg-surface-container-lowest min-w-0">
+    <section className="flex min-w-0 flex-1 flex-col bg-white dark:bg-slate-900">
       <ChatHeader
         conversation={conversation}
         isOnline={isCounterpartOnline}

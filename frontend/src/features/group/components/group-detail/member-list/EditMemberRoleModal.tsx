@@ -1,5 +1,4 @@
 ﻿import { useMemo, useState, type FormEvent } from "react";
-import { X } from "lucide-react";
 import type { Member } from "@/features/group/types/group.type";
 import type { GroupMemberRole } from "@/features/group/utils/group-member";
 import {
@@ -8,6 +7,9 @@ import {
   GROUP_MEMBER_ROLE_OPTIONS,
 } from "@/features/group/utils/group-member";
 import { useTranslation } from "react-i18next";
+import Modal from "@/components/shared/Modal";
+import Field from "@/components/shared/Field";
+import Select from "@/components/shared/Select";
 
 type EditMemberRoleModalProps = {
   open: boolean;
@@ -17,6 +19,8 @@ type EditMemberRoleModalProps = {
   onClose: () => void;
   onSubmit: (memberRole: GroupMemberRole) => void;
 };
+
+const FORM_ID = "edit-member-role";
 
 export const EditMemberRoleModal = ({
   open,
@@ -39,7 +43,7 @@ export const EditMemberRoleModal = ({
       : (assignableRoles[0] ?? "MEMBER");
   });
 
-  if (!open || !member) return null;
+  if (!member) return null;
 
   const roleOptions = GROUP_MEMBER_ROLE_OPTIONS.filter((opt) =>
     assignableRoles.includes(opt.value),
@@ -51,72 +55,38 @@ export const EditMemberRoleModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div className="relative w-full max-w-md rounded-3xl bg-surface shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant bg-surface-container-low">
-          <h2 className="text-xl font-bold text-on-surface">
-            {t("pages.groups.editRole")}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-full hover:bg-surface-container-high transition-colors"
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t("pages.groups.editRole")}
+      containerClassName="z-60"
+      formId={FORM_ID}
+      confirmText={t("pages.groups.saveChanges")}
+      loading={loading}
+      confirmDisabled={selectedRole === member.memberRole}
+    >
+      <form id={FORM_ID} onSubmit={handleSubmit} className="space-y-4">
+        <p className="text-sm text-slate-500">
+          {t("common.members")}:{" "}
+          <span className="font-semibold text-slate-800">{member.fullName}</span>
+        </p>
+        <p className="text-sm text-slate-500">
+          {t("pages.groups.currentRole")}:{" "}
+          {formatGroupMemberRole(member.memberRole)}
+        </p>
+        <Field label={t("pages.groups.newRole")}>
+          <Select
+            value={selectedRole}
+            onChange={(e) => setSelectedRole(e.target.value as GroupMemberRole)}
           >
-            <X size={20} />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <div className="p-6 space-y-4">
-            <p className="text-sm text-on-surface-variant">
-              {t("common.members")}:{" "}
-              <span className="font-semibold text-on-surface">
-                {member.fullName}
-              </span>
-            </p>
-            <p className="text-sm text-on-surface-variant">
-              {t("pages.groups.currentRole")}: {formatGroupMemberRole(member.memberRole)}
-            </p>
-            <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-on-surface px-1">
-                {t("pages.groups.newRole")}
-              </label>
-              <select
-                value={selectedRole}
-                onChange={(e) =>
-                  setSelectedRole(e.target.value as GroupMemberRole)
-                }
-                className="w-full px-4 py-3 rounded-2xl bg-surface-container-high border-none outline-none focus:ring-2 focus:ring-surface-tint text-sm"
-              >
-                {roleOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="flex justify-end gap-3 px-6 py-4 border-t border-outline-variant bg-surface-container-low">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 rounded-full text-sm font-semibold text-on-surface-variant hover:bg-surface-container-high transition-colors"
-            >
-              {t("common.cancel")}
-            </button>
-            <button
-              type="submit"
-              disabled={loading || selectedRole === member.memberRole}
-              className="px-5 py-2.5 rounded-full text-sm font-bold bg-primary text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
-            >
-              {loading ? t("common.processing") : t("pages.groups.saveChanges")}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+            {roleOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </form>
+    </Modal>
   );
 };

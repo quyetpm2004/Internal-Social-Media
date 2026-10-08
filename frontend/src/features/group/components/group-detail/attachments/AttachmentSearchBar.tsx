@@ -1,5 +1,10 @@
-import { Search } from "lucide-react";
 import { useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  SearchField,
+  SearchFilter,
+  searchButtonClass,
+} from "@/components/shared/SearchFilter";
 
 type AttachmentSearchBarProps = {
   placeholder: string;
@@ -12,6 +17,7 @@ export const AttachmentSearchBar = ({
   searchTerm,
   onSearchChange,
 }: AttachmentSearchBarProps) => {
+  const { t } = useTranslation();
   const [inputValue, setInputValue] = useState(searchTerm);
 
   const handleSubmit = (e: FormEvent) => {
@@ -20,22 +26,18 @@ export const AttachmentSearchBar = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mb-6">
-      <div className="relative max-w-md">
-        <input
+    <form onSubmit={handleSubmit}>
+      <SearchFilter className="mb-6">
+        <SearchField
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           placeholder={placeholder}
-          className="w-full pl-4 pr-12 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
         />
-        <button
-          type="submit"
-          className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-lg text-blue-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-        >
-          <Search size={18} />
+        <button type="submit" className={`${searchButtonClass} rounded-lg`}>
+          {t("common.search")}
         </button>
-      </div>
+      </SearchFilter>
     </form>
   );
 };

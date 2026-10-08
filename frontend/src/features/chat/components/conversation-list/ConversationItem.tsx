@@ -85,12 +85,12 @@ const ConversationItem = ({
           ? `${name} (${unreadCount} ${t("pages.chat.unreadMessages")})`
           : name
       }
-      className={`relative w-full text-left px-4 py-4 cursor-pointer transition-all border-l-4 ${
+      className={`relative mx-2 my-0.5 w-[calc(100%-1rem)] cursor-pointer rounded-xl px-3 py-2.5 text-left transition-colors ${
         isActive
-          ? "bg-surface-container-lowest border-primary"
+          ? "bg-blue-50 dark:bg-blue-950/40"
           : hasUnread
-            ? "border-transparent bg-primary/5 hover:bg-primary/10"
-            : "border-transparent hover:bg-surface-container"
+            ? "bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/60 dark:hover:bg-slate-800"
+            : "hover:bg-slate-50 dark:hover:bg-slate-800/70"
       }`}
     >
       <div className="flex gap-3">
@@ -120,7 +120,7 @@ const ConversationItem = ({
 
           {isCounterpartOnline && (
             <span
-              className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-surface-container-low"
+              className="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 dark:border-slate-900"
               aria-label={t("pages.chat.online")}
             />
           )}
@@ -129,20 +129,18 @@ const ConversationItem = ({
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-baseline gap-2">
             <h4
-              className={`text-sm truncate ${
-                hasUnread
-                  ? "font-extrabold text-on-surface"
-                  : "font-bold text-on-surface"
+              className={`truncate text-sm text-slate-900 dark:text-slate-100 ${
+                hasUnread ? "font-semibold" : "font-medium"
               }`}
             >
               {name}
             </h4>
             {lastMessageAt && (
               <span
-                className={`text-[10px] shrink-0 ${
+                className={`shrink-0 text-[11px] ${
                   hasUnread
-                    ? "text-primary font-bold"
-                    : "text-on-surface-variant font-medium"
+                    ? "font-semibold text-blue-700"
+                    : "font-medium text-slate-400"
                 }`}
               >
                 {formatConversationListTime(lastMessageAt)}
@@ -152,10 +150,10 @@ const ConversationItem = ({
 
           <div className="flex justify-between items-center gap-2 mt-0.5">
             <p
-              className={`text-xs truncate ${
+              className={`truncate text-xs ${
                 hasUnread
-                  ? "text-on-surface font-bold"
-                  : "text-on-surface-variant font-medium"
+                  ? "font-medium text-slate-800 dark:text-slate-200"
+                  : "text-slate-500"
               }`}
             >
               {senderName && (
@@ -165,7 +163,7 @@ const ConversationItem = ({
             </p>
 
             {hasUnread && (
-              <span className="min-w-5 h-5 px-1.5 bg-primary text-[10px] flex items-center justify-center text-on-primary rounded-full font-bold shrink-0 shadow-sm">
+              <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 px-1.5 text-[10px] font-bold text-white">
                 {unreadCount > 99 ? "99+" : unreadCount}
               </span>
             )}

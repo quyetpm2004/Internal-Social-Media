@@ -1,10 +1,19 @@
 import { useState } from "react";
-import { Check, ChevronLeft, ChevronRight, ExternalLink, X } from "lucide-react";
+import { Check, ExternalLink, X } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import type { PendingGroupPost } from "@/features/group/types/group.type";
 import ConfirmModal from "@/components/common/ConfirmModal";
 import { getDefaultAvatarUrl } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/shared/Table";
+import Pagination from "@/components/shared/Pagination";
 
 function stripHtml(html: string): string {
   const doc = new DOMParser().parseFromString(html, "text/html");
@@ -21,6 +30,8 @@ interface PendingPostReviewTableProps {
   posts: PendingGroupPost[];
   currentPage: number;
   totalPages: number;
+  total: number;
+  limit: number;
   processingPostId: number | null;
   onPageChange: (page: number) => void;
   onApprove: (postId: number) => void;
@@ -32,6 +43,8 @@ export const PendingPostReviewTable = ({
   posts,
   currentPage,
   totalPages,
+  total,
+  limit,
   processingPostId,
   onPageChange,
   onApprove,
@@ -44,141 +57,113 @@ export const PendingPostReviewTable = ({
 
   return (
     <>
-      <div className="bg-surface-container-lowest rounded-xl shadow-sm overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-surface-container-low border-b border-outline-variant/30">
-              <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                {t("common.author")}
-              </th>
-              <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                {t("common.content")}
-              </th>
-              <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                {t("pages.groups.submitDate")}
-              </th>
-              <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant text-right">
-                {t("common.actions")}
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-outline-variant/20">
-            {posts.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={4}
-                  className="px-6 py-10 text-center text-sm text-on-surface-variant"
-                >
-                  {t("pages.groups.noPendingPosts")}
-                </td>
-              </tr>
-            ) : (
-              posts.map((post) => {
-                const isProcessing = processingPostId === post.id;
-                const preview = truncateText(stripHtml(post.content), 120);
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t("common.author")}</TableHead>
+            <TableHead>{t("common.content")}</TableHead>
+            <TableHead>{t("pages.groups.submitDate")}</TableHead>
+            <TableHead className="text-right">{t("common.actions")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {posts.length === 0 ? (
+            <TableRow>
+              <TableCell
+                colSpan={4}
+                className="py-10 text-center whitespace-normal text-slate-500"
+              >
+                {t("pages.groups.noPendingPosts")}
+              </TableCell>
+            </TableRow>
+          ) : (
+            posts.map((post) => {
+              const isProcessing = processingPostId === post.id;
+              const preview = truncateText(stripHtml(post.content), 120);
 
-                return (
-                  <tr
-                    key={post.id}
-                    className="hover:bg-surface-container/30 transition-colors"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <img
-                          alt={post.author.fullName}
-                          className="w-10 h-10 rounded-lg object-cover"
-                          src={
-                            post.author.avatarUrl ||
-                            getDefaultAvatarUrl(post.author.fullName)
-                          }
-                        />
-                        <div>
-                          <NavLink to={`/profile/${post.author.id}`}>
-                            <span className="font-semibold text-sm text-on-surface hover:text-primary">
-                              {post.author.fullName}
-                            </span>
-                          </NavLink>
-                          <p className="text-xs text-on-surface-variant">
-                            {post.author.email}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-on-surface-variant max-w-md">
-                      <p className="line-clamp-2">{preview}</p>
-                      {post.attachmentCount > 0 && (
-                        <p className="text-xs mt-1 text-on-surface-variant/80">
-                          {post.attachmentCount} {t("common.attachments")}
+              return (
+                <TableRow key={post.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <img
+                        alt={post.author.fullName}
+                        className="h-10 w-10 rounded-lg object-cover"
+                        src={
+                          post.author.avatarUrl ||
+                          getDefaultAvatarUrl(post.author.fullName)
+                        }
+                      />
+                      <div>
+                        <NavLink to={`/profile/${post.author.id}`}>
+                          <span className="text-sm font-semibold text-slate-800 hover:text-primary">
+                            {post.author.fullName}
+                          </span>
+                        </NavLink>
+                        <p className="text-xs text-slate-500">
+                          {post.author.email}
                         </p>
-                      )}
-                      <NavLink
-                        to={`/groups/${groupId}/posts/${post.id}`}
-                        className="inline-flex items-center gap-1 text-xs text-primary mt-1 hover:underline"
-                      >
-                        {t("common.details")}
-                        <ExternalLink size={12} />
-                      </NavLink>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-on-surface-variant whitespace-nowrap">
-                      {new Date(post.createdAt).toLocaleDateString("vi-VN", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          disabled={isProcessing}
-                          onClick={() => onApprove(post.id)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-green-700 bg-green-50 hover:bg-green-100 rounded-lg disabled:opacity-50 transition-colors"
-                        >
-                          <Check size={16} />
-                          {t("pages.groups.approve")}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={isProcessing}
-                          onClick={() => setRejectTarget(post)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg disabled:opacity-50 transition-colors"
-                        >
-                          <X size={16} />
-                          {t("pages.groups.reject")}
-                        </button>
                       </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                    </div>
+                  </TableCell>
+                  <TableCell className="max-w-md whitespace-normal text-slate-500">
+                    <p className="line-clamp-2">{preview}</p>
+                    {post.attachmentCount > 0 && (
+                      <p className="mt-1 text-xs text-slate-400">
+                        {post.attachmentCount} {t("common.attachments")}
+                      </p>
+                    )}
+                    <NavLink
+                      to={`/groups/${groupId}/posts/${post.id}`}
+                      className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                    >
+                      {t("common.details")}
+                      <ExternalLink size={12} />
+                    </NavLink>
+                  </TableCell>
+                  <TableCell className="text-slate-500">
+                    {new Date(post.createdAt).toLocaleDateString("vi-VN", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        disabled={isProcessing}
+                        onClick={() => onApprove(post.id)}
+                        className="flex items-center gap-1.5 rounded-lg bg-green-50 px-3 py-1.5 text-sm font-semibold text-green-700 transition-colors hover:bg-green-100 disabled:opacity-50"
+                      >
+                        <Check size={16} />
+                        {t("pages.groups.approve")}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isProcessing}
+                        onClick={() => setRejectTarget(post)}
+                        className="flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:opacity-50"
+                      >
+                        <X size={16} />
+                        {t("pages.groups.reject")}
+                      </button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })
+          )}
+        </TableBody>
+      </Table>
 
-        <div className="flex items-center justify-end gap-3 p-4 border-t border-outline-variant/20 bg-surface-container-low/50">
-          <button
-            type="button"
-            disabled={currentPage === 1}
-            onClick={() => onPageChange(currentPage - 1)}
-            className="p-2 rounded-lg border disabled:opacity-50"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <span className="text-sm font-medium">
-            {t("pages.groups.page")} {currentPage} / {totalPages}
-          </span>
-          <button
-            type="button"
-            disabled={currentPage === totalPages}
-            onClick={() => onPageChange(currentPage + 1)}
-            className="p-2 rounded-lg border disabled:opacity-50"
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
-      </div>
+      {totalPages > 1 && (
+        <Pagination
+          pagination={{ page: currentPage, limit, total, totalPages }}
+          onPageChange={onPageChange}
+        />
+      )}
 
       {rejectTarget && (
         <ConfirmModal

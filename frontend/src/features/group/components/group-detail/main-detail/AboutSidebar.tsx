@@ -1,9 +1,8 @@
 import React from "react";
-import { Calendar, Building2 } from "lucide-react";
+import { Building2, Calendar, Info } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 type AboutSidebarProps = {
-  // You can add props here if needed, e.g. group details
   description?: string;
   establishedDate?: string;
   department?: string;
@@ -15,29 +14,42 @@ const AboutSidebar: React.FC<AboutSidebarProps> = ({
   department,
 }) => {
   const { t } = useTranslation();
-  return (
-    <aside className="md:col-span-4 space-y-6">
-      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm">
-        <h3 className="font-bold text-lg mb-4">{t("common.description")}</h3>
-        <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-6">
-          {description}
-        </p>
 
-        <div className="space-y-4">
-          <SidebarInfo
-            icon={<Calendar size={18} />}
-            label={t("pages.groups.established")}
-            value={establishedDate || ""}
-          />
-          {department && (
-            <SidebarInfo
-              icon={<Building2 size={18} />}
-              label={t("common.department")}
-              value={department || ""}
-            />
-          )}
+  return (
+    <aside className="lg:sticky lg:top-20">
+      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-950/50">
+            <Info size={15} />
+          </span>
+          <h3 className="text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+            {t("common.description")}
+          </h3>
         </div>
-      </div>
+
+        <div className="space-y-4 p-4">
+          <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+            {description || t("pages.groups.noDescription")}
+          </p>
+
+          <div className="space-y-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+            {establishedDate && (
+              <SidebarInfo
+                icon={<Calendar size={16} />}
+                label={t("pages.groups.established")}
+                value={establishedDate}
+              />
+            )}
+            {department && (
+              <SidebarInfo
+                icon={<Building2 size={16} />}
+                label={t("common.department")}
+                value={department}
+              />
+            )}
+          </div>
+        </div>
+      </section>
     </aside>
   );
 };
@@ -52,10 +64,12 @@ const SidebarInfo = ({
   value: string;
 }) => (
   <div className="flex items-center gap-3">
-    <div className="text-slate-400">{icon}</div>
-    <div>
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800">
+      {icon}
+    </div>
+    <div className="min-w-0">
+      <p className="text-[11px] text-slate-500">{label}</p>
+      <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
         {value}
       </p>
     </div>

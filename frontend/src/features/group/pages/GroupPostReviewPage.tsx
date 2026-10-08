@@ -106,6 +106,8 @@ export const GroupPostReviewPage = () => {
         posts={posts}
         currentPage={currentPage}
         totalPages={pagination.totalPages}
+        total={pagination.total}
+        limit={pagination.limit}
         processingPostId={processingPostId}
         onPageChange={setCurrentPage}
         onApprove={handleApprove}

@@ -25,7 +25,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/components/shared/Table";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 
@@ -41,7 +41,7 @@ function stripHtml(content: string) {
 }
 
 const dashboardCardClass =
-  "overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-none";
+  "overflow-hidden rounded-xl border border-white/80 bg-white shadow-sm shadow-sky-100";
 
 const dashboardDividerClass = "border-gray-200/70";
 
@@ -51,24 +51,32 @@ const statCards = [
     labelKey: "pages.admin.totalUsers",
     icon: Users,
     to: "/admin/users",
+    iconClass: "bg-blue-100 text-blue-600",
+    hoverClass: "hover:bg-blue-50/80",
   },
   {
     key: "activeUsers" as const,
     labelKey: "pages.admin.activeUsers",
     icon: UserCheck,
     to: "/admin/users",
+    iconClass: "bg-emerald-100 text-emerald-600",
+    hoverClass: "hover:bg-emerald-50/80",
   },
   {
     key: "totalPosts" as const,
     labelKey: "pages.admin.totalPosts",
     icon: FileText,
     to: "/admin/posts",
+    iconClass: "bg-violet-100 text-violet-600",
+    hoverClass: "hover:bg-violet-50/80",
   },
   {
     key: "totalGroups" as const,
     labelKey: "pages.admin.totalGroups",
     icon: UsersRound,
     to: "/admin/groups",
+    iconClass: "bg-amber-100 text-amber-600",
+    hoverClass: "hover:bg-amber-50/80",
   },
 ];
 
@@ -141,11 +149,11 @@ export default function AdminDashboardPage() {
 
       <div className={dashboardCardClass}>
         <div className="grid divide-y divide-gray-200/70 sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
-          {statCards.map(({ key, labelKey, icon: Icon, to }) => (
+          {statCards.map(({ key, labelKey, icon: Icon, to, iconClass, hoverClass }) => (
             <Link
               key={key}
               to={to}
-              className="block p-5 transition-colors hover:bg-gray-50/80"
+              className={cn("block p-5 transition-colors", hoverClass)}
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -154,7 +162,7 @@ export default function AdminDashboardPage() {
                     {data.stats[key].toLocaleString("vi-VN")}
                   </p>
                 </div>
-                <div className="rounded-full bg-gray-100 p-2.5 text-gray-600">
+                <div className={cn("rounded-full p-2.5", iconClass)}>
                   <Icon className="size-4" />
                 </div>
               </div>
@@ -326,7 +334,7 @@ export default function AdminDashboardPage() {
               {t("pages.admin.noPosts")}
             </p>
           ) : (
-            <Table>
+            <Table containerClassName="rounded-none border-0 shadow-none">
               <TableHeader>
                 <TableRow className={cn("border-b hover:bg-transparent", dashboardDividerClass)}>
                   <TableHead className="px-5 text-gray-500">{t("common.content")}</TableHead>
@@ -396,7 +404,7 @@ export default function AdminDashboardPage() {
               {t("pages.admin.noUsers")}
             </p>
           ) : (
-            <Table>
+            <Table containerClassName="rounded-none border-0 shadow-none">
               <TableHeader>
                 <TableRow className={cn("border-b hover:bg-transparent", dashboardDividerClass)}>
                   <TableHead className="px-5 text-gray-500">{t("common.fullName")}</TableHead>

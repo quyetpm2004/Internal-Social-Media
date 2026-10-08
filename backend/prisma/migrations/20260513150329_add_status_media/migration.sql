@@ -1,3 +1,0 @@
--- AlterTable
-ALTER TABLE `post_attachments` ADD COLUMN `status` ENUM('PENDING', 'READY', 'ACTIVE', 'FAILED', 'DELETED') NOT NULL DEFAULT 'PENDING',
-    MODIFY `post_id` INTEGER NULL;

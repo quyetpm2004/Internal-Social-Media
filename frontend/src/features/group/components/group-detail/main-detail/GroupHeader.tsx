@@ -9,6 +9,7 @@ import {
   Clock,
   Camera,
   Eye,
+  Users,
 } from "lucide-react";
 import { NavLink, useParams } from "react-router-dom";
 import ConfirmModal from "@/components/common/ConfirmModal";
@@ -158,22 +159,24 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
   };
 
   return (
-    <section className="bg-white dark:bg-slate-900">
-      <div className="relative h-64 md:h-80 w-full overflow-hidden group/cover">
+    <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="group/cover relative h-52 w-full overflow-hidden md:h-64">
         <img
-          className="w-full h-full object-cover"
+          className="h-full w-full object-cover"
           src={coverUrl || DEFAULT_COVER}
           alt={t("pages.groups.coverImage")}
         />
 
-        <div className="absolute inset-0 bg-linear-to-t from-slate-900/60 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-slate-900/55 to-transparent" />
 
-        <div
-          onClick={() => setIndex(1)}
-          className="absolute bottom-4 left-4 rounded-lg opacity-0 group-hover/cover:opacity-100 transition-opacity focus:opacity-100 cursor-pointer bg-white/90 dark:bg-slate-900/90 text-slate-900 dark:text-white p-2"
+        <button
+          type="button"
+          onClick={() => setIndex(0)}
+          className="absolute bottom-4 left-4 cursor-pointer rounded-lg bg-white/90 p-2 text-slate-900 opacity-100 transition-opacity focus:opacity-100 md:opacity-0 md:group-hover/cover:opacity-100 dark:bg-slate-900/90 dark:text-white"
+          aria-label={t("pages.groups.coverImage")}
         >
           <Eye size={18} />
-        </div>
+        </button>
 
         {canEditMedia && (
           <>
@@ -189,7 +192,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
               type="button"
               disabled={coverUploading}
               onClick={() => coverInputRef.current?.click()}
-              className="absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2 bg-white/90 dark:bg-slate-900/90 text-slate-900 dark:text-white text-sm font-semibold rounded-lg shadow-lg opacity-0 group-hover/cover:opacity-100 focus:opacity-100 transition-opacity hover:bg-white disabled:opacity-60 cursor-pointer"
+              className="absolute right-4 bottom-4 flex cursor-pointer items-center gap-2 rounded-lg bg-white/90 px-4 py-2 text-sm font-semibold text-slate-900 opacity-100 shadow-lg transition-opacity hover:bg-white focus:opacity-100 disabled:opacity-60 md:opacity-0 md:group-hover/cover:opacity-100 dark:bg-slate-900/90 dark:text-white"
             >
               <Camera size={18} />
               {coverUploading ? t("common.loading") : t("pages.groups.changeCover")}
@@ -198,47 +201,51 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
         )}
       </div>
 
-      <div className="w-full mx-auto px-6 py-4 relative">
-        <div className="flex flex-col md:flex-row items-end md:items-center justify-between gap-4">
-          <div className="flex items-end gap-6">
-            <div className="mb-4 text-black dark:text-white">
-              <h1 className="text-3xl font-extrabold mb-2">{name}</h1>
-              <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1.5 text-sm font-medium">
-                  {type === "PUBLIC" && (
-                    <>
-                      <Globe size={16} />
-                      <span>{t("pages.groups.privacyPublic")}</span>
-                    </>
-                  )}
-                  {type === "PRIVATE" && (
-                    <>
-                      <EarthLock size={16} />
-                      <span>{t("pages.groups.privacyPrivate")}</span>
-                    </>
-                  )}
-                  {type === "DEPARTMENT" && (
-                    <>
-                      <Activity size={16} />
-                      <span>{t("pages.groups.privacyDepartment")}</span>
-                    </>
-                  )}
-                </span>
-                <span className="text-black/60">•</span>
-                <span className="text-sm font-semibold">
-                  {memberCount.toLocaleString()} {t("pages.groups.members")}
-                </span>
-              </div>
+      <div className="relative px-5 py-4 md:px-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              {name}
+            </h1>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                {type === "PUBLIC" && (
+                  <>
+                    <Globe size={14} />
+                    <span>{t("pages.groups.privacyPublic")}</span>
+                  </>
+                )}
+                {type === "PRIVATE" && (
+                  <>
+                    <EarthLock size={14} />
+                    <span>{t("pages.groups.privacyPrivate")}</span>
+                  </>
+                )}
+                {type === "DEPARTMENT" && (
+                  <>
+                    <Activity size={14} />
+                    <span>{t("pages.groups.privacyDepartment")}</span>
+                  </>
+                )}
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium">
+                <Users size={14} />
+                {t("pages.groups.memberCount", {
+                  count: memberCount.toLocaleString(),
+                })}
+              </span>
             </div>
           </div>
 
-          <div className="flex gap-3 mb-4">
+          <div className="flex shrink-0 gap-2">
             <button
               type="button"
-              className={`px-6 py-2.5 font-bold cursor-pointer rounded-xl flex items-center gap-2 transition-colors shadow-lg ${
+              className={`flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
                 isPending
-                  ? "bg-amber-100 text-amber-800 hover:bg-amber-200 shadow-amber-200/30"
-                  : "bg-blue-700 text-white hover:bg-blue-800 shadow-blue-700/20"
+                  ? "bg-amber-50 text-amber-800 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-200"
+                  : isMember
+                    ? "border border-slate-200 bg-white text-slate-700 hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                    : "bg-blue-600 text-white hover:bg-blue-700"
               }`}
               onClick={() => setShowLeaveJoinConfirm(true)}
             >
@@ -247,15 +254,16 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
 
             <button
               type="button"
-              className="p-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              className="rounded-xl bg-slate-100 p-2.5 text-slate-700 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
               onClick={handleCopyLink}
+              aria-label={t("pages.groups.copyLinkSuccess")}
             >
-              <Share2 size={20} />
+              <Share2 size={18} />
             </button>
           </div>
         </div>
 
-        <div className="mt-4 flex gap-8 border-t border-slate-100 dark:border-slate-800 pt-1 overflow-x-auto scrollbar-hide">
+        <div className="scrollbar-hide mt-4 flex gap-6 overflow-x-auto border-t border-slate-100 pt-1 dark:border-slate-800">
           {tabs.map((item) => {
             const to = item.path
               ? `/groups/${groupId}/${item.path}`
@@ -287,7 +295,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
                 to={to}
                 end={!item.path}
                 className={({ isActive }) =>
-                  `py-4 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap ${
+                  `flex items-center gap-2 border-b-2 py-3 text-sm font-semibold whitespace-nowrap transition-colors ${
                     isActive
                       ? "text-blue-700 border-blue-700"
                       : "text-slate-500 border-transparent hover:text-slate-900 dark:hover:text-white"

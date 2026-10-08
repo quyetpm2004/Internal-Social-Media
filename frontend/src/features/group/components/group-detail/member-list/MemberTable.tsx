@@ -1,8 +1,17 @@
 import { useState } from "react";
 import { type Member } from "@/features/group/types/group.type";
 import { MemberRow } from "./MemberRow";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import ConfirmModal from "@/components/common/ConfirmModal";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/shared/Table";
+import Pagination from "@/components/shared/Pagination";
 import {
   canManageGroupMembers,
   canManageTargetMember,
@@ -20,6 +29,8 @@ interface MemberTableProps {
   onRemoveMember: (id: string) => void;
   currentPage: number;
   totalPages: number;
+  total: number;
+  limit: number;
   onPageChange: (page: number) => void;
 }
 
@@ -33,6 +44,8 @@ export const MemberTable = ({
   onRemoveMember,
   currentPage,
   totalPages,
+  total,
+  limit,
   onPageChange,
 }: MemberTableProps) => {
   const { t } = useTranslation();
@@ -59,95 +72,62 @@ export const MemberTable = ({
 
   return (
     <>
-      <div className="bg-surface-container-lowest rounded-xl shadow-sm overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-surface-container-low border-b border-outline-variant/30">
-              <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                {t("common.members")}
-              </th>
-              <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                {t("common.email")}
-              </th>
-              <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                {t("common.role")}
-              </th>
-              <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                {t("common.joinedAt")}
-              </th>
-              {showActionsColumn && (
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant text-right">
-                  {t("common.actions")}
-                </th>
-              )}
-            </tr>
-          </thead>
-
-          <tbody className="divide-y divide-outline-variant/20">
-            {members.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={showActionsColumn ? 5 : 4}
-                  className="px-6 py-10 text-center text-sm text-on-surface-variant"
-                >
-                  {t("pages.groups.noMembers")}
-                </td>
-              </tr>
-            ) : (
-              members.map((member) => (
-                <MemberRow
-                  key={member.id}
-                  member={member}
-                  actorRole={actorRole}
-                  currentUserId={currentUserId}
-                  showActionsColumn={showActionsColumn}
-                  onEdit={onEditMember}
-                  onRemove={() => handleRemoveClick(member)}
-                />
-              ))
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t("common.members")}</TableHead>
+            <TableHead>{t("common.email")}</TableHead>
+            <TableHead>{t("common.role")}</TableHead>
+            <TableHead>{t("common.joinedAt")}</TableHead>
+            {showActionsColumn && (
+              <TableHead className="text-right">{t("common.actions")}</TableHead>
             )}
-          </tbody>
-        </table>
+          </TableRow>
+        </TableHeader>
 
-        <div className="flex items-center justify-between p-4 border-t border-outline-variant/20 bg-surface-container-low/50">
-          {canManage ? (
-            <button
-              type="button"
-              onClick={onAddMember}
-              className="flex items-center gap-2 text-sm text-primary font-bold hover:underline transition-all"
-            >
-              <Plus size={16} />
-              <span>{t("pages.groups.addMember")}</span>
-            </button>
+        <TableBody>
+          {members.length === 0 ? (
+            <TableRow>
+              <TableCell
+                colSpan={showActionsColumn ? 5 : 4}
+                className="py-10 text-center whitespace-normal text-slate-500"
+              >
+                {t("pages.groups.noMembers")}
+              </TableCell>
+            </TableRow>
           ) : (
-            <div />
+            members.map((member) => (
+              <MemberRow
+                key={member.id}
+                member={member}
+                actorRole={actorRole}
+                currentUserId={currentUserId}
+                showActionsColumn={showActionsColumn}
+                onEdit={onEditMember}
+                onRemove={() => handleRemoveClick(member)}
+              />
+            ))
           )}
+        </TableBody>
+      </Table>
 
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              disabled={currentPage === 1}
-              onClick={() => onPageChange(currentPage - 1)}
-              className="p-2 rounded-lg border disabled:opacity-50"
-            >
-              <ChevronLeft size={16} />
-            </button>
+      {canManage && (
+        <button
+          type="button"
+          onClick={onAddMember}
+          className="mt-3 flex items-center gap-2 text-sm font-bold text-primary hover:underline"
+        >
+          <Plus size={16} />
+          <span>{t("pages.groups.addMember")}</span>
+        </button>
+      )}
 
-            <span className="text-sm font-medium">
-              {t("pages.groups.page")} {currentPage} / {totalPages}
-            </span>
-
-            <button
-              type="button"
-              disabled={currentPage === totalPages}
-              onClick={() => onPageChange(currentPage + 1)}
-              className="p-2 rounded-lg border disabled:opacity-50"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
+      {totalPages > 1 && (
+        <Pagination
+          pagination={{ page: currentPage, limit, total, totalPages }}
+          onPageChange={onPageChange}
+        />
+      )}
 
       {openConfirm && selectedMember && (
         <ConfirmModal

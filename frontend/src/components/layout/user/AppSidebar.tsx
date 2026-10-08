@@ -2,7 +2,6 @@ import { NavLink } from "react-router-dom";
 import {
   Bookmark,
   Group,
-  Languages,
   LayoutGrid,
   MessageCircleCheck,
 } from "lucide-react";
@@ -33,7 +32,7 @@ const menuButtonClass = (isActive: boolean, isCollapsed: boolean) =>
 export default function AppSidebar() {
   const user = useAuthStore((state) => state.user);
   const { state } = useSidebar();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const isCollapsed = state === "collapsed";
   const profilePath = `/profile/${user?.id}`;
   const navItems = [
@@ -110,33 +109,6 @@ export default function AppSidebar() {
                   </NavLink>
                 </SidebarMenuItem>
               ))}
-              <SidebarMenuItem>
-                <div
-                  onClick={() =>
-                    i18n.changeLanguage(
-                      i18n.language.startsWith("vi") ? "en" : "vi",
-                    )
-                  }
-                  className={cn(
-                    "w-full flex items-center",
-                    isCollapsed && "justify-center",
-                  )}
-                >
-                  <SidebarMenuButton
-                    tooltip={t("nav.languageToggle")}
-                    className={
-                      menuButtonClass(false, isCollapsed) + " h-auto w-full"
-                    }
-                  >
-                    <Languages className="size-6! shrink-0" />
-                    <span className={cn("truncate", isCollapsed && "hidden")}>
-                      {i18n.language.startsWith("vi")
-                        ? t("languageName.vi")
-                        : t("languageName.en")}
-                    </span>
-                  </SidebarMenuButton>
-                </div>
-              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

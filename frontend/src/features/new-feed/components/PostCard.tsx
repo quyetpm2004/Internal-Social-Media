@@ -466,8 +466,10 @@ const PostCard: React.FC<PostCardProps> = ({
 
   return (
     <div
-      className={`bg-white dark:bg-slate-900 rounded-xl shadow-sm overflow-hidden relative ${
-        isPinned ? "ring-1 ring-blue-500/20" : ""
+      className={`relative overflow-hidden rounded-2xl border bg-white shadow-sm dark:bg-slate-900 ${
+        isPinned
+          ? "border-blue-200 ring-1 ring-blue-500/15 dark:border-blue-900"
+          : "border-slate-200/80 dark:border-slate-800"
       }`}
     >
       <div className="p-6">

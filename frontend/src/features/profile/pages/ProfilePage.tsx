@@ -16,6 +16,9 @@ import { useAuthStore } from "@/features/auth/store/auth.store";
 import { authApi } from "@/features/auth/api/auth.api";
 import { useTranslation } from "react-i18next";
 import { chatApi } from "@/features/chat/apis/chat.api";
+import Modal from "@/components/shared/Modal";
+import Field from "@/components/shared/Field";
+import Input from "@/components/shared/Input";
 
 export default function ProfilePage() {
   const { userId } = useParams();
@@ -74,7 +77,6 @@ export default function ProfilePage() {
 
     try {
       const res = await profileApi.getProfile(userId);
-      console.log("Fetched profile:", res.data);
       setProfile(res.data);
     } catch {
       toast.error(t("profile.loadFailed"));
@@ -493,56 +495,45 @@ export default function ProfilePage() {
         </div>
       </form>
 
-      {openChangePasswordModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg p-6 space-y-3">
-            <h3 className="text-lg font-bold">
-              {t("profile.changePasswordTitle")}
-            </h3>
-            <input
+      <Modal
+        open={openChangePasswordModal}
+        onClose={() => setOpenChangePasswordModal(false)}
+        title={t("profile.changePasswordTitle")}
+        cancelText={t("profile.cancel")}
+        confirmText={t("profile.confirm")}
+        onConfirm={submitChangePassword}
+        loading={securityLoading}
+      >
+        <div className="space-y-3">
+          <Field label={t("profile.currentPassword")}>
+            <Input
               type="password"
               name="currentPassword"
               value={changePasswordForm.currentPassword}
               onChange={handleChangePasswordInput}
               placeholder={t("profile.currentPassword")}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-900"
             />
-            <input
+          </Field>
+          <Field label={t("profile.newPassword")}>
+            <Input
               type="password"
               name="newPassword"
               value={changePasswordForm.newPassword}
               onChange={handleChangePasswordInput}
               placeholder={t("profile.newPassword")}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-900"
             />
-            <input
+          </Field>
+          <Field label={t("profile.confirmNewPassword")}>
+            <Input
               type="password"
               name="confirmNewPassword"
               value={changePasswordForm.confirmNewPassword}
               onChange={handleChangePasswordInput}
               placeholder={t("profile.confirmNewPassword")}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-900"
             />
-            <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setOpenChangePasswordModal(false)}
-                className="flex-1 rounded-lg border border-slate-200 dark:border-slate-700 py-2 text-sm font-semibold"
-              >
-                {t("profile.cancel")}
-              </button>
-              <button
-                type="button"
-                disabled={securityLoading}
-                onClick={submitChangePassword}
-                className="flex-1 rounded-lg bg-blue-700 hover:bg-blue-800 disabled:bg-slate-300 text-white py-2 text-sm font-semibold transition-colors"
-              >
-                {t("profile.confirm")}
-              </button>
-            </div>
-          </div>
+          </Field>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

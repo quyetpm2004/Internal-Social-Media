@@ -1,4 +1,4 @@
-import { Users } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 type GroupHeaderProps = {
@@ -8,20 +8,21 @@ type GroupHeaderProps = {
 const GroupHeader = ({ onClick }: GroupHeaderProps) => {
   const { t } = useTranslation();
   return (
-    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h1 className="text-4xl font-extrabold tracking-tight text-on-surface mb-2">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
           {t("pages.groups.title")}
         </h1>
-        <p className="text-on-surface-variant text-sm">
+        <p className="mt-1 max-w-xl text-sm text-slate-500">
           {t("pages.groups.description")}
         </p>
       </div>
       <button
-        className="inline-flex items-center cursor-pointer gap-2 px-4 py-2 bg-primary text-on-primary rounded-xl text-sm font-bold transition-all hover:brightness-110 active:scale-95 shadow-xl shadow-primary/20"
+        type="button"
+        className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
         onClick={onClick}
       >
-        <Users size={16} />
+        <Plus size={16} />
         {t("pages.groups.createGroup")}
       </button>
     </div>

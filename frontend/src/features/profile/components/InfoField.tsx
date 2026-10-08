@@ -1,10 +1,14 @@
+import type { ChangeEvent } from "react";
+import Input from "@/components/shared/Input";
+import Select from "@/components/shared/Select";
+
 interface InfoFieldProps {
   label: string;
-  value: any; // Chấp nhận string, number hoặc date string
+  value: string | number | null | undefined;
   date?: boolean;
   name?: string;
   onChange?: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => void;
   options?: { id: string; name: string }[];
   placeholder?: string;
@@ -12,7 +16,7 @@ interface InfoFieldProps {
   readonly?: boolean;
 }
 
-const InfoField: React.FC<InfoFieldProps> = ({
+const InfoField = ({
   label,
   value,
   date,
@@ -22,44 +26,41 @@ const InfoField: React.FC<InfoFieldProps> = ({
   placeholder,
   disabled,
   readonly,
-}) => {
+}: InfoFieldProps) => {
+  const locked = Boolean(disabled || readonly);
   const displayValue =
-    date && value ? new Date(value).toISOString().split("T")[0] : value || "";
+    date && value ? new Date(value).toISOString().split("T")[0] : (value ?? "");
 
   return (
-    <div className="space-y-2 flex-1">
-      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">
+    <div className="flex-1 space-y-2">
+      <label className="block text-xs font-semibold tracking-wider text-slate-500 uppercase">
         {label}
       </label>
-      <div className="bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center focus-within:ring-2 focus-within:ring-blue-500 transition-all">
-        {options ? (
-          <select
-            name={name}
-            value={value}
-            onChange={onChange}
-            className="bg-transparent w-full p-4 text-slate-900 dark:text-slate-100 font-medium outline-none border-none focus:ring-0 cursor-pointer"
-            disabled={disabled}
-          >
-            <option selected>{placeholder ?? label}</option>
-            {options.map((opt) => (
-              <option key={opt.id} value={opt.id} className="dark:bg-slate-800">
-                {opt.name}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <input
-            name={name}
-            type={date ? "date" : "text"}
-            value={displayValue}
-            onChange={onChange}
-            placeholder={placeholder}
-            disabled={disabled}
-            readOnly={readonly}
-            className="bg-transparent w-full p-4 text-slate-900 dark:text-slate-100 font-medium outline-none border-none focus:ring-0"
-          />
-        )}
-      </div>
+      {options ? (
+        <Select
+          name={name}
+          value={value ?? ""}
+          onChange={onChange}
+          disabled={locked}
+        >
+          <option value="">{placeholder ?? label}</option>
+          {options.map((opt) => (
+            <option key={opt.id} value={opt.id}>
+              {opt.name}
+            </option>
+          ))}
+        </Select>
+      ) : (
+        <Input
+          name={name}
+          type={date ? "date" : "text"}
+          value={displayValue}
+          onChange={onChange}
+          placeholder={placeholder}
+          disabled={locked}
+          readOnly={readonly}
+        />
+      )}
     </div>
   );
 };

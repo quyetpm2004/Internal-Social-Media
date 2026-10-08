@@ -4,7 +4,15 @@ import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { groupApi } from "@/features/group/apis/group.api";
 import { AttachmentSearchBar } from "@/features/group/components/group-detail/attachments/AttachmentSearchBar";
-import GroupPagination from "@/features/group/components/group-list/GroupPagination";
+import Pagination from "@/components/shared/Pagination";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/shared/Table";
 import type { GroupAttachmentItem } from "@/features/group/types/group.type";
 import { formatFileSize } from "@/features/group/utils/formatFileSize";
 import { useTranslation } from "react-i18next";
@@ -89,91 +97,85 @@ const GroupFilesPage = () => {
           <p className="text-slate-500">{t("pages.groups.noFiles")}</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 dark:bg-slate-800/50 text-left text-slate-500">
-                <th className="px-4 py-3 font-semibold">{t("pages.groups.fileName")}</th>
-                <th className="px-4 py-3 font-semibold hidden sm:table-cell">
-                  {t("pages.groups.fileSize")}
-                </th>
-                <th className="px-4 py-3 font-semibold hidden md:table-cell">
-                  {t("pages.groups.uploader")}
-                </th>
-                <th className="px-4 py-3 font-semibold hidden lg:table-cell">
-                  {t("pages.groups.uploadDate")}
-                </th>
-                <th className="px-4 py-3 font-semibold text-right">{t("pages.groups.download")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr
-                  key={item.id}
-                  className="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors"
-                >
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <FileText
-                        size={18}
-                        className="text-blue-700 shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{item.fileName}</p>
-                        {item.post && (
-                          <Link
-                            to={`/groups/${groupId}/posts/${item.post.id}`}
-                            className="text-xs text-blue-700 hover:underline truncate block"
-                          >
-                            {t("pages.groups.viewPost")}
-                          </Link>
-                        )}
-                      </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t("pages.groups.fileName")}</TableHead>
+              <TableHead className="hidden sm:table-cell">
+                {t("pages.groups.fileSize")}
+              </TableHead>
+              <TableHead className="hidden md:table-cell">
+                {t("pages.groups.uploader")}
+              </TableHead>
+              <TableHead className="hidden lg:table-cell">
+                {t("pages.groups.uploadDate")}
+              </TableHead>
+              <TableHead className="text-right">
+                {t("pages.groups.download")}
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell className="whitespace-normal">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <FileText size={18} className="shrink-0 text-blue-700" />
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{item.fileName}</p>
+                      {item.post && (
+                        <Link
+                          to={`/groups/${groupId}/posts/${item.post.id}`}
+                          className="block truncate text-xs text-blue-700 hover:underline"
+                        >
+                          {t("pages.groups.viewPost")}
+                        </Link>
+                      )}
                     </div>
-                  </td>
-                  <td className="px-4 py-3 hidden sm:table-cell text-slate-500">
-                    {formatFileSize(item.fileSize)}
-                  </td>
-                  <td className="px-4 py-3 hidden md:table-cell">
-                    {item.post ? (
-                      <div className="flex items-center gap-2">
-                        {item.post.author.avatarUrl ? (
-                          <img
-                            src={item.post.author.avatarUrl}
-                            alt=""
-                            className="w-6 h-6 rounded-full object-cover"
-                          />
-                        ) : (
-                          <User size={16} className="text-slate-400" />
-                        )}
-                        <span className="truncate max-w-[140px]">
-                          {item.post.author.fullName}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-slate-400">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 hidden lg:table-cell text-slate-500">
-                    {formatDate(item.uploadedAt)}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <a
-                      href={item.fileUrl}
-                      download
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                      title={t("pages.groups.download")}
-                    >
-                      <Download size={18} />
-                    </a>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                </TableCell>
+                <TableCell className="hidden text-slate-500 sm:table-cell">
+                  {formatFileSize(item.fileSize)}
+                </TableCell>
+                <TableCell className="hidden md:table-cell">
+                  {item.post ? (
+                    <div className="flex items-center gap-2">
+                      {item.post.author.avatarUrl ? (
+                        <img
+                          src={item.post.author.avatarUrl}
+                          alt=""
+                          className="h-6 w-6 rounded-full object-cover"
+                        />
+                      ) : (
+                        <User size={16} className="text-slate-400" />
+                      )}
+                      <span className="max-w-[140px] truncate">
+                        {item.post.author.fullName}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-slate-400">—</span>
+                  )}
+                </TableCell>
+                <TableCell className="hidden text-slate-500 lg:table-cell">
+                  {formatDate(item.uploadedAt)}
+                </TableCell>
+                <TableCell className="text-right">
+                  <a
+                    href={item.fileUrl}
+                    download
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-blue-700 transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                    title={t("pages.groups.download")}
+                  >
+                    <Download size={18} />
+                  </a>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
       {!loading && (
@@ -183,9 +185,13 @@ const GroupFilesPage = () => {
       )}
 
       {pagination.totalPages > 1 && (
-        <GroupPagination
-          currentPage={currentPage}
-          totalPages={pagination.totalPages}
+        <Pagination
+          pagination={{
+            page: currentPage,
+            limit: pagination.limit,
+            total: pagination.total,
+            totalPages: pagination.totalPages,
+          }}
           onPageChange={setCurrentPage}
         />
       )}

@@ -6,7 +6,7 @@ import "yet-another-react-lightbox/styles.css";
 import { toast } from "sonner";
 import { groupApi } from "@/features/group/apis/group.api";
 import { AttachmentSearchBar } from "@/features/group/components/group-detail/attachments/AttachmentSearchBar";
-import GroupPagination from "@/features/group/components/group-list/GroupPagination";
+import Pagination from "@/components/shared/Pagination";
 import type { GroupAttachmentItem } from "@/features/group/types/group.type";
 import { useTranslation } from "react-i18next";
 
@@ -158,9 +158,13 @@ const GroupMediaPage = () => {
       )}
 
       {pagination.totalPages > 1 && (
-        <GroupPagination
-          currentPage={currentPage}
-          totalPages={pagination.totalPages}
+        <Pagination
+          pagination={{
+            page: currentPage,
+            limit: pagination.limit,
+            total: pagination.total,
+            totalPages: pagination.totalPages,
+          }}
           onPageChange={setCurrentPage}
         />
       )}

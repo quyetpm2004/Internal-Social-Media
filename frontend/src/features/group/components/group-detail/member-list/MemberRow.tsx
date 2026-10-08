@@ -1,4 +1,5 @@
 import { Pencil, Trash2 } from "lucide-react";
+import { TableCell, TableRow } from "@/components/shared/Table";
 import { type Member } from "@/features/group/types/group.type";
 import {
   canManageTargetMember,
@@ -45,8 +46,8 @@ export const MemberRow = ({
     currentUserId,
   );
   return (
-    <tr className="hover:bg-surface-container/30 transition-colors">
-      <td className="px-6 py-4">
+    <TableRow>
+      <TableCell>
         <div className="flex items-center gap-3">
           <img
             alt={member.fullName}
@@ -59,26 +60,26 @@ export const MemberRow = ({
             </div>
           </NavLink>
         </div>
-      </td>
+      </TableCell>
 
-      <td className="px-6 py-4 text-sm text-on-surface-variant">
+      <TableCell className="text-sm text-slate-500">
         {member.email}
-      </td>
+      </TableCell>
 
-      <td className="px-6 py-4">
+      <TableCell>
         <RoleBadge role={member.memberRole} />
-      </td>
+      </TableCell>
 
-      <td className="px-6 py-4 text-sm text-on-surface-variant">
+      <TableCell className="text-sm text-slate-500">
         {new Date(member.joinedAt).toLocaleDateString("vi-VN", {
           day: "2-digit",
           month: "2-digit",
           year: "numeric",
         })}
-      </td>
+      </TableCell>
 
       {showActionsColumn && (
-        <td className="px-6 py-4 text-right">
+        <TableCell className="text-right">
           {canManageThisMember ? (
             <>
               <button
@@ -99,8 +100,8 @@ export const MemberRow = ({
               </button>
             </>
           ) : null}
-        </td>
+        </TableCell>
       )}
-    </tr>
+    </TableRow>
   );
 };

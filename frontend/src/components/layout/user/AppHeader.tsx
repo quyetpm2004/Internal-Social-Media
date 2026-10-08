@@ -3,7 +3,6 @@ import {
   Bookmark,
   ChevronDown,
   Group,
-  Languages,
   LogOut,
   Search,
   Settings,
@@ -22,6 +21,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { getDefaultAvatarUrl } from "@/lib/utils";
+import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
+import WorkspaceSwitcher from "@/components/layout/work/WorkspaceSwitcher";
 import NotificationBell from "@/features/notification/components/NotificationBell";
 import MessengerBell, {
   MessengerBellMobile,
@@ -43,7 +44,7 @@ function UserMenuPanel({
   onLogout,
 }: UserMenuPanelProps) {
   const navigate = useNavigate();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
 
   const menuItemClass =
@@ -107,22 +108,6 @@ function UserMenuPanel({
               {t("nav.profile")}
             </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                i18n.changeLanguage(
-                  i18n.language.startsWith("vi") ? "en" : "vi",
-                );
-              }}
-              className="w-full flex items-center gap-2 pl-11 pr-4 py-2.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <Languages size={18} />
-              <span>
-                {i18n.language.startsWith("vi")
-                  ? t("languageName.vi")
-                  : t("languageName.en")}
-              </span>
-            </button>
           </>
         )}
       </div>
@@ -215,11 +200,13 @@ export default function AppHeader() {
 
           <SearchBar />
         </div>
-        <div className="hidden md:flex shrink-0 flex-1 px-3">
+        <div className="hidden md:flex flex-1 items-center gap-3 px-3">
           <SidebarTrigger />
         </div>
 
-        <div className="flex items-center gap-4 pr-4">
+        <div className="flex items-center gap-2 pr-3 sm:gap-3 sm:pr-4">
+          <WorkspaceSwitcher compact className="md:hidden" />
+          <WorkspaceSwitcher className="hidden md:inline-flex" />
           <button
             type="button"
             onClick={() => navigate("/search")}
@@ -229,6 +216,7 @@ export default function AppHeader() {
             <Search size={20} />
           </button>
           <MessengerBellMobile />
+          <LanguageSwitcher />
           <NotificationBell />
 
           <MessengerBell />

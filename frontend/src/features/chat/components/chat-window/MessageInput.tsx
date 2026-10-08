@@ -520,7 +520,7 @@ const MessageInput = ({
   }
 
   return (
-    <footer className="p-4 bg-surface-container-lowest">
+    <footer className="border-t border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
       {poll && (
         <div className="max-w-4xl mx-auto mb-3">
           <PollForm

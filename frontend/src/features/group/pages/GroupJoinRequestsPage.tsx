@@ -102,6 +102,8 @@ export const GroupJoinRequestsPage = () => {
         requests={requests}
         currentPage={currentPage}
         totalPages={pagination.totalPages}
+        total={pagination.total}
+        limit={pagination.limit}
         processingUserId={processingUserId}
         onPageChange={setCurrentPage}
         onApprove={handleApprove}

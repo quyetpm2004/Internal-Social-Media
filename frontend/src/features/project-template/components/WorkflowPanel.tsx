@@ -12,7 +12,7 @@ import type {
 import { toastApiError } from "@/features/project-template/utils/api-error";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import Input from "@/components/shared/Input";
 import {
   Table,
   TableBody,
@@ -20,7 +20,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/components/shared/Table";
 
 type WorkflowPanelProps = {
   templateId: number;
@@ -382,7 +382,7 @@ export default function WorkflowPanel({
           <p className="mb-2 text-sm font-medium">
             {t("pages.admin.projectTemplateAddWorkflow")}
           </p>
-          <div className="mb-3 flex flex-wrap gap-2">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
             <Input
               placeholder={t("pages.admin.projectTemplateName")}
               value={wfName}
@@ -396,7 +396,7 @@ export default function WorkflowPanel({
               onChange={(e) => setWfDescription(e.target.value)}
               className="max-w-xs"
             />
-            <label className="flex items-center gap-1 text-sm">
+            <label className="flex h-10 items-center gap-1 text-sm">
               <input
                 type="checkbox"
                 checked={wfIsDefault}
@@ -404,7 +404,7 @@ export default function WorkflowPanel({
               />
               {t("pages.admin.projectTemplateDefault")}
             </label>
-            <label className="flex items-center gap-1 text-sm">
+            <label className="flex h-10 items-center gap-1 text-sm">
               <input
                 type="checkbox"
                 checked={wfIsActive}
@@ -415,7 +415,7 @@ export default function WorkflowPanel({
             <Button
               type="submit"
               disabled={submitting}
-              className="cursor-pointer text-white bg-primary hover:bg-primary/90"
+              className="h-10 cursor-pointer bg-primary text-white hover:bg-primary/90"
             >
               {t("pages.admin.projectTemplateAdd")}
             </Button>

@@ -2,8 +2,17 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import ConfirmModal from "@/components/common/ConfirmModal";
-import AdminPagination from "@/features/admin/components/AdminPagination";
+import Field from "@/components/shared/Field";
+import Input from "@/components/shared/Input";
+import Modal from "@/components/shared/Modal";
+import PaginationBar from "@/components/shared/Pagination";
+import {
+  FilterSelect,
+  SearchField,
+  SearchFilter,
+  searchButtonClass,
+} from "@/components/shared/SearchFilter";
+import Textarea from "@/components/shared/Textarea";
 import type { Pagination } from "@/features/admin/types/admin.type";
 import { projectTemplateApi } from "@/features/project-template/api/project-template.api";
 import type {
@@ -13,14 +22,6 @@ import type {
 import { toastApiError } from "@/features/project-template/utils/api-error";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import {
   Table,
@@ -29,10 +30,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-
-const selectClass =
-  "h-8 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 outline-none";
+} from "@/components/shared/Table";
 
 function statusBadgeVariant(status: TemplateStatus) {
   if (status === "ACTIVE") return "active" as const;
@@ -127,20 +125,19 @@ export default function ProjectTemplateListPage() {
         {t("pages.admin.projectTemplatesTitle")}
       </h1>
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <form onSubmit={handleSearch} className="flex gap-2">
-          <Input
+      <SearchFilter>
+        <form onSubmit={handleSearch} className="flex min-w-0 flex-1 flex-wrap gap-2">
+          <SearchField
             placeholder={t("pages.admin.projectTemplateSearchPlaceholder")}
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             className="max-w-sm"
           />
-          <select
+          <FilterSelect
             value={statusFilter}
             onChange={(e) =>
               setStatusFilter(e.target.value as TemplateStatus | "")
             }
-            className={selectClass}
           >
             <option value="">
               {t("pages.admin.projectTemplateAllStatuses")}
@@ -154,21 +151,18 @@ export default function ProjectTemplateListPage() {
             <option value="ARCHIVED">
               {t("pages.admin.projectTemplateStatusArchived")}
             </option>
-          </select>
-          <Button
-            type="submit"
-            className="cursor-pointer text-white bg-primary hover:bg-primary/90"
-          >
+          </FilterSelect>
+          <Button type="submit" className={searchButtonClass}>
             {t("common.search")}
           </Button>
         </form>
         <Button
-          className="cursor-pointer text-white bg-primary hover:bg-primary/90"
+          className="h-10 cursor-pointer bg-primary px-4 text-white hover:bg-primary/90"
           onClick={() => setCreateOpen(true)}
         >
           {t("pages.admin.projectTemplateCreate")}
         </Button>
-      </div>
+      </SearchFilter>
 
       {loading ? (
         <div className="flex justify-center py-12">
@@ -232,78 +226,75 @@ export default function ProjectTemplateListPage() {
           </Table>
 
           {pagination && (
-            <AdminPagination pagination={pagination} onPageChange={setPage} />
+            <PaginationBar pagination={pagination} onPageChange={setPage} />
           )}
         </>
       )}
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t("pages.admin.projectTemplateCreate")}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleCreate}>
-            <div className="mb-3">
-              <label className="mb-1 block text-sm text-gray-600">
-                {t("pages.admin.projectTemplateKey")}
-              </label>
-              <Input
-                value={createKey}
-                onChange={(e) => setCreateKey(e.target.value.toUpperCase())}
-                placeholder="SOFTWARE_DEVELOPMENT"
-                required
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                {t("pages.admin.projectTemplateKeyHint")}
-              </p>
-            </div>
-            <div className="mb-3">
-              <label className="mb-1 block text-sm text-gray-600">
-                {t("pages.admin.projectTemplateName")}
-              </label>
-              <Input
-                value={createName}
-                onChange={(e) => setCreateName(e.target.value)}
-                required
-              />
-            </div>
-            <div className="mb-3">
-              <label className="mb-1 block text-sm text-gray-600">
-                {t("pages.admin.projectTemplateDescription")}
-              </label>
-              <Input
-                value={createDescription}
-                onChange={(e) => setCreateDescription(e.target.value)}
-              />
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setCreateOpen(false)}
-              >
-                {t("common.cancel")}
-              </Button>
-              <Button
-                type="submit"
-                disabled={creating}
-                className="cursor-pointer text-white bg-primary hover:bg-primary/90"
-              >
-                {creating ? t("common.processing") : t("common.confirm")}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <Modal
+        open={createOpen}
+        title={t("pages.admin.projectTemplateCreate")}
+        onClose={() => {
+          if (!creating) setCreateOpen(false);
+        }}
+        formId="create-project-template"
+        confirmText={t("common.confirm")}
+        loading={creating}
+        size="md"
+      >
+        <form
+          id="create-project-template"
+          onSubmit={handleCreate}
+          className="space-y-4"
+        >
+          <Field
+            label={t("pages.admin.projectTemplateKey")}
+            hint={t("pages.admin.projectTemplateKeyHint")}
+            htmlFor="create-template-key"
+            required
+          >
+            <Input
+              id="create-template-key"
+              value={createKey}
+              onChange={(e) => setCreateKey(e.target.value.toUpperCase())}
+              placeholder="SOFTWARE_DEVELOPMENT"
+              required
+            />
+          </Field>
+          <Field
+            label={t("pages.admin.projectTemplateName")}
+            htmlFor="create-template-name"
+            required
+          >
+            <Input
+              id="create-template-name"
+              value={createName}
+              onChange={(e) => setCreateName(e.target.value)}
+              required
+            />
+          </Field>
+          <Field
+            label={t("pages.admin.projectTemplateDescription")}
+            htmlFor="create-template-description"
+          >
+            <Textarea
+              id="create-template-description"
+              value={createDescription}
+              onChange={(e) => setCreateDescription(e.target.value)}
+              className="min-h-20"
+            />
+          </Field>
+        </form>
+      </Modal>
 
-      <ConfirmModal
+      <Modal
         open={confirmDeleteId !== null}
         title={t("pages.admin.projectTemplateDeleteTitle")}
         description={t("pages.admin.projectTemplateDeleteDescription")}
         confirmText={t("common.delete")}
         loading={deletingId !== null}
         variant="danger"
-        onCancel={() => setConfirmDeleteId(null)}
+        onClose={() => setConfirmDeleteId(null)}
         onConfirm={handleConfirmDelete}
       />
     </div>

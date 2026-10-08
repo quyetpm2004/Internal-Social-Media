@@ -36,6 +36,12 @@ import AdminGroupsPage from "@/features/admin/pages/AdminGroupsPage";
 import AdminGroupDetailPage from "@/features/admin/pages/AdminGroupDetailPage";
 import ProjectTemplateListPage from "@/features/project-template/pages/ProjectTemplateListPage";
 import ProjectTemplateDetailPage from "@/features/project-template/pages/ProjectTemplateDetailPage";
+import ProjectListPage from "@/features/project/pages/ProjectListPage";
+import ProjectDetailPage from "@/features/project/pages/ProjectDetailPage";
+import WorkLayout from "@/components/layout/work/WorkLayout";
+import OrgOverviewPage from "@/features/work/pages/OrgOverviewPage";
+import MyWorkPage from "@/features/work/pages/MyWorkPage";
+import WorkSpacePage from "@/features/work/pages/WorkSpacePage";
 import ResetPasswordPage from "@/features/auth/pages/ResetPasswordPage";
 import ForgotPasswordPage from "@/features/auth/pages/ForgotPasswordPage";
 import RegisterPage from "@/features/auth/pages/RegisterPage";
@@ -159,6 +165,31 @@ export const router = createBrowserRouter([
                 element: <GroupPostReviewPage />,
               },
             ],
+          },
+        ],
+      },
+      {
+        element: <WorkLayout />,
+        children: [
+          {
+            path: "/work",
+            element: <OrgOverviewPage />,
+          },
+          {
+            path: "/work/mine",
+            element: <MyWorkPage />,
+          },
+          {
+            path: "/work/spaces/:spaceId",
+            element: <WorkSpacePage />,
+          },
+          {
+            path: "/projects",
+            element: <ProjectListPage />,
+          },
+          {
+            path: "/projects/:projectId",
+            element: <ProjectDetailPage />,
           },
         ],
       },

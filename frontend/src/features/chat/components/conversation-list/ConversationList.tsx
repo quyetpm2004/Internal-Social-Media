@@ -153,10 +153,10 @@ const ConversationList = ({
 
   return (
     <section
-      className={`w-full md:w-80 flex-col bg-surface-container-low border-r border-outline-variant/30 transition-all shrink-0 ${className ?? "flex"}`}
+      className={`h-full min-h-0 w-full shrink-0 flex-col border-r border-slate-200/80 bg-white transition-all md:w-80 dark:border-slate-800 dark:bg-slate-900 ${className ?? "flex"}`}
     >
-      <div className="p-4 space-y-4">
-        <h2 className="font-headline font-extrabold text-xl tracking-tight text-on-surface">
+      <div className="space-y-3 border-b border-slate-100 p-4 dark:border-slate-800">
+        <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-50">
           {t("pages.chat.conversationsTitle")}
         </h2>
         <div className="flex items-center gap-2">
@@ -184,11 +184,22 @@ const ConversationList = ({
       {!isSearchFocused && (
         <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <p className="px-4 py-6 text-xs text-on-surface-variant">
-              {t("pages.chat.loadingConversation")}
-            </p>
+            <>
+            <p className="sr-only">{t("pages.chat.loadingConversation")}</p>
+            <div className="space-y-2 px-3 py-3" aria-hidden>
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="flex animate-pulse items-center gap-3 rounded-xl px-2 py-2">
+                  <div className="h-11 w-11 rounded-full bg-slate-200 dark:bg-slate-800" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 w-24 rounded-full bg-slate-200 dark:bg-slate-800" />
+                    <div className="h-2.5 w-36 rounded-full bg-slate-100 dark:bg-slate-800" />
+                  </div>
+                </div>
+              ))}
+            </div>
+            </>
           ) : filteredConversations.length === 0 ? (
-            <p className="px-4 py-6 text-xs text-on-surface-variant">
+            <p className="px-4 py-10 text-center text-sm text-slate-500">
               {t("pages.chat.noConversations")}
             </p>
           ) : (

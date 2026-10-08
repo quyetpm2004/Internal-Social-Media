@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import ConfirmModal from "@/components/common/ConfirmModal";
+import Modal from "@/components/shared/Modal";
 import { adminApi } from "@/features/admin/api/admin.api";
 import type { AdminPostDetail } from "@/features/admin/types/admin.type";
 import { Badge } from "@/components/ui/badge";
@@ -297,14 +297,14 @@ export default function AdminPostDetailPage() {
           .map((item) => ({ src: item.fileUrl! }))}
       />
 
-      <ConfirmModal
+      <Modal
         open={showDeleteConfirm}
         title={t("pages.admin.deletePostTitle")}
         description={t("pages.admin.deletePostDescription")}
         confirmText={t("common.delete")}
         loading={deleting}
         variant="danger"
-        onCancel={() => setShowDeleteConfirm(false)}
+        onClose={() => setShowDeleteConfirm(false)}
         onConfirm={handleConfirmDelete}
       />
     </div>

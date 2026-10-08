@@ -8,7 +8,7 @@
 
 @theme {
   /* Fonts */
-  --font-headline: "Manrope", ui-sans-serif, system-ui;
+  --font-headline: "Inter", ui-sans-serif, system-ui;
   --font-body: "Inter", ui-sans-serif, system-ui;
   --font-label: "Inter", ui-sans-serif, system-ui;
 
@@ -61,6 +61,23 @@
   --color-surface-tint: #3755c3;
   --color-on-secondary-container: #4c5680;
 
+  /* shadcn semantic tokens — light surfaces so dialogs, inputs, and menus stay white */
+  --color-foreground: #191c1e;
+  --color-card: #ffffff;
+  --color-card-foreground: #191c1e;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #191c1e;
+  --color-primary-foreground: #ffffff;
+  --color-secondary-foreground: #ffffff;
+  --color-muted: #f3f4f6;
+  --color-muted-foreground: #6b7280;
+  --color-accent: #f3f4f6;
+  --color-accent-foreground: #191c1e;
+  --color-destructive: #ba1a1a;
+  --color-border: #e5e7eb;
+  --color-input: #e5e7eb;
+  --color-ring: #0a6af6;
+
   /* Border Radius */
   --radius-default: 0.25rem;
   --radius-lg: 0.5rem;
@@ -77,7 +94,7 @@ body {
 }
 
 h1, h2, h3 { 
-  font-family: 'Manrope', sans-serif; 
+  font-family: 'Inter', sans-serif; 
 }
 
 .messenger-scrollbar::-webkit-scrollbar {

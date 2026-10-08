@@ -106,7 +106,7 @@ const ProfileHeader: React.FC<HeaderProps> = ({
         </div>
 
         <div className="flex-1 pb-2">
-          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight md:text-left text-right">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight md:text-left text-right">
             {name}
           </h1>
           <p className="text-blue-700 dark:text-blue-400 font-semibold flex items-center gap-2  md:text-left text-right">

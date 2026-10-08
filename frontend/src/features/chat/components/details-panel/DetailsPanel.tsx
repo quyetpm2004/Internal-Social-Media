@@ -109,7 +109,7 @@ const DetailsPanel = ({
   return (
     <>
       <section
-        className={`w-80 border-l border-outline-variant/30 bg-surface-container-low hidden md:flex flex-col overflow-y-auto shrink-0 ${className ?? ""}`}
+        className={`hidden w-80 shrink-0 flex-col overflow-y-auto border-l border-slate-200/80 bg-white md:flex dark:border-slate-800 dark:bg-slate-900 ${className ?? ""}`}
       >
         <ProfileSummary
           conversation={conversation}

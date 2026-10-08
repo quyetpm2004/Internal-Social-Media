@@ -1,13 +1,18 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import ConfirmModal from "@/components/common/ConfirmModal";
+import Modal from "@/components/shared/Modal";
+import PaginationBar from "@/components/shared/Pagination";
+import {
+  FilterSelect,
+  SearchField,
+  SearchFilter,
+  searchButtonClass,
+} from "@/components/shared/SearchFilter";
 import { adminApi } from "@/features/admin/api/admin.api";
-import AdminPagination from "@/features/admin/components/AdminPagination";
 import type { AdminComment, Pagination } from "@/features/admin/types/admin.type";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import {
   Table,
@@ -16,7 +21,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/components/shared/Table";
 import { useTranslation } from "react-i18next";
 
 function getErrorMessage(error: unknown): string {
@@ -137,36 +142,32 @@ export default function AdminCommentsPage() {
         </p>
       </div>
 
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <form onSubmit={handleSearch} className="flex flex-1 gap-2">
-          <Input
+      <SearchFilter>
+        <form onSubmit={handleSearch} className="flex min-w-0 flex-1 gap-2">
+          <SearchField
             placeholder={t("pages.admin.searchCommentsPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-sm"
           />
-          <Button
-            type="submit"
-            className="cursor-pointer text-white bg-primary hover:bg-primary/90"
-          >
+          <Button type="submit" className={searchButtonClass}>
             {t("common.search")}
           </Button>
         </form>
 
-        <select
+        <FilterSelect
           value={statusFilter}
           onChange={(e) => {
             setPage(1);
             setStatusFilter(e.target.value as StatusFilter);
           }}
-          className="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 outline-none"
         >
           <option value="">{t("pages.admin.allCommentStatuses")}</option>
           <option value="ACTIVE">{t("common.active")}</option>
           <option value="HIDDEN">{t("pages.admin.commentHidden")}</option>
           <option value="DELETED">{t("pages.admin.commentDeleted")}</option>
-        </select>
-      </div>
+        </FilterSelect>
+      </SearchFilter>
 
       {loading ? (
         <div className="flex justify-center py-12">
@@ -269,19 +270,19 @@ export default function AdminCommentsPage() {
           </Table>
 
           {pagination && (
-            <AdminPagination pagination={pagination} onPageChange={setPage} />
+            <PaginationBar pagination={pagination} onPageChange={setPage} />
           )}
         </>
       )}
 
-      <ConfirmModal
+      <Modal
         open={pendingAction !== null}
         title={confirmCopy.title}
         description={confirmCopy.description}
         confirmText={t("common.confirm")}
         loading={actionId !== null}
         variant={pendingAction?.status === "ACTIVE" ? "primary" : "danger"}
-        onCancel={() => setPendingAction(null)}
+        onClose={() => setPendingAction(null)}
         onConfirm={handleConfirmStatusChange}
       />
     </div>

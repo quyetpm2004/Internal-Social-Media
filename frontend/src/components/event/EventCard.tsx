@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { CalendarDays, Clock3, Loader2, MapPin, Users, X } from "lucide-react";
+import { CalendarDays, Clock3, Loader2, MapPin, Users } from "lucide-react";
+import Modal from "@/components/shared/Modal";
 import type {
   EventAttendanceStatus,
   EventAttendee,
@@ -178,67 +179,56 @@ const EventCard = ({ event, onUpdated }: EventCardProps) => {
         {t("pages.event.viewAttendees")}
       </button>
 
-      {openAttendees ? (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
-              <h3 className="text-sm font-semibold">{t("pages.event.attendeesTitle")}</h3>
-              <button
-                type="button"
-                onClick={() => setOpenAttendees(false)}
-                className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                <X size={16} />
-              </button>
+      <Modal
+        open={openAttendees}
+        onClose={() => setOpenAttendees(false)}
+        title={t("pages.event.attendeesTitle")}
+        hideFooter
+        size="lg"
+      >
+        {loadingAttendees ? (
+          <div className="text-sm text-slate-500">{t("common.loading")}</div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <p className="mb-2 text-xs font-semibold">
+                {t("pages.event.going")} ({attendeesByStatus.GOING.length})
+              </p>
+              <div className="space-y-2">
+                {attendeesByStatus.GOING.map((item) => (
+                  <div key={`going-${item.id}`} className="text-sm">
+                    {item.fullName}
+                  </div>
+                ))}
+              </div>
             </div>
-
-            <div className="p-4 max-h-[60vh] overflow-y-auto space-y-4">
-              {loadingAttendees ? (
-                <div className="text-sm text-slate-500">{t("common.loading")}</div>
-              ) : (
-                <>
-                  <div>
-                    <p className="text-xs font-semibold mb-2">
-                      {t("pages.event.going")} ({attendeesByStatus.GOING.length})
-                    </p>
-                    <div className="space-y-2">
-                      {attendeesByStatus.GOING.map((item) => (
-                        <div key={`going-${item.id}`} className="text-sm">
-                          {item.fullName}
-                        </div>
-                      ))}
-                    </div>
+            <div>
+              <p className="mb-2 text-xs font-semibold">
+                {t("pages.event.interested")} ({attendeesByStatus.MAYBE.length})
+              </p>
+              <div className="space-y-2">
+                {attendeesByStatus.MAYBE.map((item) => (
+                  <div key={`maybe-${item.id}`} className="text-sm">
+                    {item.fullName}
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold mb-2">
-                      {t("pages.event.interested")} ({attendeesByStatus.MAYBE.length})
-                    </p>
-                    <div className="space-y-2">
-                      {attendeesByStatus.MAYBE.map((item) => (
-                        <div key={`maybe-${item.id}`} className="text-sm">
-                          {item.fullName}
-                        </div>
-                      ))}
-                    </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-semibold">
+                {t("pages.event.notGoing")} ({attendeesByStatus.DECLINED.length})
+              </p>
+              <div className="space-y-2">
+                {attendeesByStatus.DECLINED.map((item) => (
+                  <div key={`declined-${item.id}`} className="text-sm">
+                    {item.fullName}
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold mb-2">
-                      {t("pages.event.notGoing")} ({attendeesByStatus.DECLINED.length})
-                    </p>
-                    <div className="space-y-2">
-                      {attendeesByStatus.DECLINED.map((item) => (
-                        <div key={`declined-${item.id}`} className="text-sm">
-                          {item.fullName}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      ) : null}
+        )}
+      </Modal>
     </div>
   );
 };

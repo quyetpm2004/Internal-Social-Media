@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from "react";
-import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import Modal from "@/components/shared/Modal";
+import Field from "@/components/shared/Field";
+import Input from "@/components/shared/Input";
 
 type AddMemberModalProps = {
   open: boolean;
@@ -8,6 +10,8 @@ type AddMemberModalProps = {
   onClose: () => void;
   onSubmit: (email: string) => void;
 };
+
+const FORM_ID = "add-group-member";
 
 export const AddMemberModal = ({
   open,
@@ -18,7 +22,10 @@ export const AddMemberModal = ({
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
 
-  if (!open) return null;
+  const handleClose = () => {
+    setEmail("");
+    onClose();
+  };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -27,65 +34,28 @@ export const AddMemberModal = ({
     onSubmit(trimmed);
   };
 
-  const handleClose = () => {
-    setEmail("");
-    onClose();
-  };
-
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={handleClose}
-      />
-
-      <div className="relative w-full max-w-md rounded-3xl bg-surface shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant bg-surface-container-low">
-          <h2 className="text-xl font-bold text-on-surface">{t("pages.groups.addMember")}</h2>
-          <button
-            type="button"
-            onClick={handleClose}
-            className="p-2 rounded-full hover:bg-surface-container-high transition-colors"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <div className="p-6 space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-on-surface px-1">
-                {t("pages.groups.memberEmail")}
-              </label>
-              <input
-                type="email"
-                placeholder="name@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-3 rounded-2xl bg-surface-container-high border-none outline-none focus:ring-2 focus:ring-surface-tint text-sm"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3 px-6 py-4 border-t border-outline-variant bg-surface-container-low">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="px-5 py-2.5 rounded-full text-sm font-semibold text-on-surface-variant hover:bg-surface-container-high transition-colors"
-            >
-              {t("common.cancel")}
-            </button>
-            <button
-              type="submit"
-              disabled={loading || !email.trim()}
-              className="px-5 py-2.5 rounded-full text-sm font-bold bg-primary text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
-            >
-              {loading ? t("pages.chat.adding") : t("pages.groups.addMember")}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <Modal
+      open={open}
+      onClose={handleClose}
+      title={t("pages.groups.addMember")}
+      containerClassName="z-60"
+      formId={FORM_ID}
+      confirmText={loading ? t("pages.chat.adding") : t("pages.groups.addMember")}
+      loading={loading}
+      confirmDisabled={!email.trim()}
+    >
+      <form id={FORM_ID} onSubmit={handleSubmit}>
+        <Field label={t("pages.groups.memberEmail")} required>
+          <Input
+            type="email"
+            placeholder="name@company.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </Field>
+      </form>
+    </Modal>
   );
 };

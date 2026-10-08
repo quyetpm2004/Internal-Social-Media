@@ -2,11 +2,15 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { adminApi } from "@/features/admin/api/admin.api";
-import AdminPagination from "@/features/admin/components/AdminPagination";
+import PaginationBar from "@/components/shared/Pagination";
+import {
+  SearchField,
+  SearchFilter,
+  searchButtonClass,
+} from "@/components/shared/SearchFilter";
 import type { AdminPost, Pagination } from "@/features/admin/types/admin.type";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import {
   Table,
@@ -15,7 +19,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/components/shared/Table";
 import { useTranslation } from "react-i18next";
 
 function getErrorMessage(error: unknown): string {
@@ -91,20 +95,19 @@ export default function AdminPendingPostsPage() {
         </p>
       </div>
 
-      <form onSubmit={handleSearch} className="mb-4 flex gap-2">
-        <Input
-          placeholder={t("pages.admin.searchPostsPlaceholder")}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-sm"
-        />
-        <Button
-          type="submit"
-          className="cursor-pointer text-white bg-primary hover:bg-primary/90"
-        >
-          {t("common.search")}
-        </Button>
-      </form>
+      <SearchFilter>
+        <form onSubmit={handleSearch} className="flex min-w-0 flex-1 gap-2">
+          <SearchField
+            placeholder={t("pages.admin.searchPostsPlaceholder")}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="max-w-sm"
+          />
+          <Button type="submit" className={searchButtonClass}>
+            {t("common.search")}
+          </Button>
+        </form>
+      </SearchFilter>
 
       {loading ? (
         <div className="flex justify-center py-12">
@@ -170,7 +173,7 @@ export default function AdminPendingPostsPage() {
           </Table>
 
           {pagination && (
-            <AdminPagination pagination={pagination} onPageChange={setPage} />
+            <PaginationBar pagination={pagination} onPageChange={setPage} />
           )}
         </>
       )}

@@ -15,35 +15,13 @@ const ConversationSearch = ({
   const { t } = useTranslation();
   return (
     <div className="relative flex-1">
-      <button
-        //   onClick={onSearch}
-        className="
-              absolute left-3 top-1/2 -translate-y-1/2
-              flex items-center gap-1
-              text-primary
-              text-sm font-medium
-              hover:opacity-90
-              transition
-              cursor-pointer
-            "
-      >
-        <Search size={18} />
-      </button>
+      <Search
+        size={16}
+        className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-400"
+      />
 
       <input
-        className="
-              w-full
-              pl-10
-              py-2
-              bg-surface-container-highest
-              border-none
-              outline-none
-              rounded-2xl
-              text-sm
-              focus:ring-2
-              focus:ring-surface-tint
-              transition-all
-            "
+        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-3 pl-9 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-900"
         placeholder={t("pages.chat.searchPlaceholder")}
         type="text"
         value={searchQuery}

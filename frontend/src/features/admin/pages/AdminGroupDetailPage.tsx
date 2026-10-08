@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import ConfirmModal from "@/components/common/ConfirmModal";
+import Modal from "@/components/shared/Modal";
+import PaginationBar from "@/components/shared/Pagination";
 import { adminApi } from "@/features/admin/api/admin.api";
-import AdminPagination from "@/features/admin/components/AdminPagination";
 import type {
   AdminGroupDetail,
   AdminGroupMember,
@@ -21,7 +21,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/components/shared/Table";
 import { useTranslation } from "react-i18next";
 
 function getErrorMessage(error: unknown): string {
@@ -253,7 +253,7 @@ export default function AdminGroupDetailPage() {
                 </TableBody>
               </Table>
               {membersPagination && (
-                <AdminPagination
+                <PaginationBar
                   pagination={membersPagination}
                   onPageChange={setMembersPage}
                 />
@@ -263,14 +263,14 @@ export default function AdminGroupDetailPage() {
         </CardContent>
       </Card>
 
-      <ConfirmModal
+      <Modal
         open={showDeleteConfirm}
         title={t("pages.admin.deleteGroupTitle")}
         description={t("pages.admin.deleteGroupDescription")}
         confirmText={t("common.delete")}
         loading={deleting}
         variant="danger"
-        onCancel={() => setShowDeleteConfirm(false)}
+        onClose={() => setShowDeleteConfirm(false)}
         onConfirm={handleConfirmDelete}
       />
     </div>

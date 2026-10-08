@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { MessageCircle, X } from "lucide-react";
+import { MessageCircle } from "lucide-react";
+import Modal from "@/components/shared/Modal";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -139,8 +140,6 @@ const PostReactionsModal = ({
     }
   };
 
-  if (!open) return null;
-
   const totalCount = Object.values(summary).reduce(
     (acc, count) => acc + count,
     0,
@@ -163,21 +162,14 @@ const PostReactionsModal = ({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="flex max-h-[min(80vh,640px)] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-xl border border-slate-200 dark:border-slate-700">
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-4 py-3">
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">
-            {t("pages.posts.reactionsTitle")}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t("pages.posts.reactionsTitle")}
+      hideFooter
+      className="max-h-[min(80vh,640px)]"
+    >
+      <div className="-mt-4">
         <div className="border-b border-slate-200 dark:border-slate-700">
           <div className="flex items-center gap-1 overflow-x-auto px-2 pt-2">
             {tabs.map((tab) => (
@@ -285,7 +277,7 @@ const PostReactionsModal = ({
           )}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };
 

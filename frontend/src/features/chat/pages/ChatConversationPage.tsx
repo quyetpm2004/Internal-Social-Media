@@ -35,7 +35,7 @@ const ChatConversationPage = () => {
 
   if (!conversation) {
     return (
-      <section className="flex-1 flex items-center justify-center bg-surface-container-lowest">
+      <section className="flex flex-1 items-center justify-center bg-slate-50/70 dark:bg-slate-950/30">
         <p className="text-sm text-on-surface-variant">
           {loadingMessages
             ? t("pages.chat.loadingConversation")
