@@ -3,7 +3,6 @@ import { getDefaultAvatarUrl } from "@/lib/utils";
 import { Camera, KeyRound, MessageCircle, Trash2 } from "lucide-react";
 import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 
 interface HeaderProps {
   userId: string;
@@ -45,7 +44,6 @@ const ProfileHeader: React.FC<HeaderProps> = ({
   const { t } = useTranslation();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const navigate = useNavigate();
 
   const handleSelectAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
