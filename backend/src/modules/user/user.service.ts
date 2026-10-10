@@ -3,7 +3,14 @@ import { AppError } from "@/shared/errors/app-error";
 import { s3 } from "@/shared/lib/s3";
 import { getFileUrl } from "@/modules/file/file.service";
 import type { UpdateProfileInput } from "@/modules/user/user.schema";
+import {
+  mapProfile,
+  mapUpdatedUser,
+  mapUpdateProfileData,
+} from "@/modules/user/user.mapper";
 import * as userRepo from "@/modules/user/user.repository";
+
+const AVATAR_URL_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 export async function getProfile(userId: number) {
   const profile = await userRepo.findProfileByUserId(userId);
@@ -13,23 +20,10 @@ export async function getProfile(userId: number) {
   }
 
   const avatarUrl = profile.avatarKey
-    ? await getFileUrl(profile.avatarKey, 7 * 24 * 60 * 60)
+    ? await getFileUrl(profile.avatarKey, AVATAR_URL_TTL_SECONDS)
     : null;
 
-  return {
-    id: profile.user.id,
-    fullName: profile.user.fullName,
-    email: profile.user.email,
-    role: profile.user.role,
-    bio: profile.bio,
-    phone: profile.phone,
-    gender: profile.gender,
-    birthdate: profile.birthdate,
-    address: profile.address,
-    avatarUrl,
-    departmentId: profile.user.departmentId,
-    positionId: profile.user.positionId,
-  };
+  return mapProfile(profile, avatarUrl);
 }
 
 export async function updateProfile(userId: number, data: UpdateProfileInput) {
@@ -47,35 +41,12 @@ export async function updateProfile(userId: number, data: UpdateProfileInput) {
     }
   }
 
-  const birthdate = data.birthdate ? new Date(data.birthdate) : undefined;
+  const updatedUser = await userRepo.updateUserWithProfile(
+    userId,
+    mapUpdateProfileData(data),
+  );
 
-  const updatedUser = await userRepo.updateUserWithProfile(userId, {
-    fullName: data.fullName,
-    email: data.email,
-    departmentId:
-      data.departmentId != null ? Number(data.departmentId) : undefined,
-    positionId: data.positionId != null ? Number(data.positionId) : undefined,
-    profile: {
-      bio: data.bio,
-      phone: data.phone,
-      address: data.address,
-      gender: data.gender,
-      birthdate,
-    },
-  });
-
-  return {
-    fullName: updatedUser.fullName,
-    email: updatedUser.email,
-    role: updatedUser.role,
-    bio: updatedUser.profile?.bio,
-    phone: updatedUser.profile?.phone,
-    gender: updatedUser.profile?.gender,
-    birthdate: updatedUser.profile?.birthdate,
-    address: updatedUser.profile?.address,
-    departmentId: updatedUser.departmentId,
-    positionId: updatedUser.positionId,
-  };
+  return mapUpdatedUser(updatedUser);
 }
 
 export async function deleteAvatar(userId: number) {
