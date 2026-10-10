@@ -82,6 +82,8 @@ export type ProjectMemberUserParams = z.infer<
 export const projectMemberListQuerySchema = z.object({
   keyword: z.string().trim().optional(),
   roleId: z.coerce.number().int().positive().optional(),
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(50).optional().default(10),
 });
 
 export type ProjectMemberListQuery = z.infer<

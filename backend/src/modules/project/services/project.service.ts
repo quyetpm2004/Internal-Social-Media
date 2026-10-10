@@ -30,7 +30,7 @@ export async function createProjectFromTemplate(
   const projectId = await prisma.$transaction(
     (tx) =>
       projectRepository.createProjectFromTemplate(tx, input, userId, template),
-    { timeout: 20000 },
+    { timeout: 15000 },
   );
 
   const project = await projectRepository.findProjectById(projectId);

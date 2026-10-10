@@ -429,77 +429,230 @@ export function updateProject(
   });
 }
 
-const memberAssignmentSelect = {
-  userId: true,
-  joinedAt: true,
-  user: {
-    select: {
-      fullName: true,
-      email: true,
-      profile: { select: { avatarKey: true } },
-    },
-  },
-  projectRole: {
-    select: {
-      id: true,
-      key: true,
-      name: true,
-      description: true,
-      sortOrder: true,
-    },
-  },
-} satisfies Prisma.ProjectMemberSelect;
-
-function mapMemberAssignment(
-  row: Prisma.ProjectMemberGetPayload<{ select: typeof memberAssignmentSelect }>,
-) {
-  return {
-    userId: row.userId,
-    fullName: row.user.fullName,
-    email: row.user.email,
-    avatarKey: row.user.profile?.avatarKey ?? null,
-    joinedAt: row.joinedAt,
-    role: row.projectRole,
-  };
-}
-
-export function findAccessibleProject(projectId: number, userId: number) {
-  return prisma.project.findFirst({
+export async function findVisibleProject(projectId: number, userId: number) {
+  const project = await prisma.project.findFirst({
     where: { id: projectId, ...visibleWhere(userId) },
     select: { id: true },
   });
+  if (!project) {
+    throw new AppError(404, "Không tìm thấy dự án");
+  }
+  return project;
 }
 
-export function listProjectRoles(projectId: number) {
+export async function getProjectMembers(
+  projectId: number,
+  userId: number,
+  keyword?: string,
+  roleId?: number,
+  page: number = 1,
+  limit: number = 10,
+) {
+  await findVisibleProject(projectId, userId);
+
+  const where: Prisma.UserWhereInput = {
+    projectMembers: {
+      some: {
+        projectId,
+        ...(roleId ? { projectRoleId: roleId } : {}),
+      },
+    },
+    ...(keyword
+      ? {
+          OR: [
+            { fullName: { contains: keyword } },
+            { email: { contains: keyword } },
+          ],
+        }
+      : {}),
+  };
+
+  const [users, total] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { fullName: "asc" },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        profile: { select: { avatarKey: true } },
+        projectMembers: {
+          where: { projectId },
+          orderBy: { projectRole: { sortOrder: "asc" } },
+          select: {
+            joinedAt: true,
+            projectRole: {
+              select: {
+                id: true,
+                key: true,
+                name: true,
+                description: true,
+                sortOrder: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+    prisma.user.count({ where }),
+  ]);
+
+  return {
+    total,
+    members: users.map((user) => ({
+      userId: user.id,
+      fullName: user.fullName,
+      email: user.email,
+      avatarKey: user.profile?.avatarKey ?? null,
+      joinedAt: user.projectMembers.reduce(
+        (earliest, row) => (row.joinedAt < earliest ? row.joinedAt : earliest),
+        user.projectMembers[0].joinedAt,
+      ),
+      roles: user.projectMembers.map((row) => row.projectRole),
+    })),
+  };
+}
+
+const projectRoleSelect = {
+  id: true,
+  name: true,
+  key: true,
+  description: true,
+  sortOrder: true,
+} satisfies Prisma.ProjectRoleSelect;
+
+export async function getProjectRoles(projectId: number) {
   return prisma.projectRole.findMany({
     where: { projectId },
     orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
-    select: {
-      id: true,
-      key: true,
-      name: true,
-      description: true,
-      sortOrder: true,
-    },
+    select: projectRoleSelect,
   });
 }
 
-export async function listMemberAssignments(projectId: number) {
+export async function getProjectMyRoles(projectId: number, userId: number) {
   const rows = await prisma.projectMember.findMany({
-    where: { projectId },
-    select: memberAssignmentSelect,
+    where: { projectId, userId },
+    orderBy: { projectRole: { sortOrder: "asc" } },
+    select: { projectRole: { select: projectRoleSelect } },
   });
-  return rows.map(mapMemberAssignment);
+  return rows.map((row) => row.projectRole);
 }
 
-export function findUserForInvite(userId: number) {
+export async function canManageMembers(projectId: number, userId: number) {
+  const manager = await prisma.projectMember.findFirst({
+    where: {
+      projectId,
+      userId,
+      projectRole: { key: "PROJECT_MANAGER" },
+    },
+    select: { id: true },
+  });
+  return Boolean(manager);
+}
+
+export async function getProjectRolesByIds(projectId: number, roleIds: number[]) {
+  return prisma.projectRole.findMany({
+    where: { projectId, id: { in: roleIds } },
+    select: projectRoleSelect,
+  });
+}
+
+export async function getProjectManagerUserIds(projectId: number) {
+  const rows = await prisma.projectMember.findMany({
+    where: { projectId, projectRole: { key: "PROJECT_MANAGER" } },
+    select: { userId: true },
+  });
+  return [...new Set(rows.map((row) => row.userId))];
+}
+
+export async function getUserForInvite(userId: number) {
   return prisma.user.findUnique({
     where: { id: userId },
     select: { id: true, status: true },
   });
 }
 
-export async function searchInviteCandidates(projectId: number, keyword: string) {
+export async function getProjectMember(projectId: number, memberUserId: number) {
+  const user = await prisma.user.findFirst({
+    where: {
+      id: memberUserId,
+      projectMembers: { some: { projectId } },
+    },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      profile: { select: { avatarKey: true } },
+      projectMembers: {
+        where: { projectId },
+        orderBy: { projectRole: { sortOrder: "asc" } },
+        select: {
+          joinedAt: true,
+          projectRole: { select: projectRoleSelect },
+        },
+      },
+    },
+  });
+  if (!user || user.projectMembers.length === 0) return null;
+
+  return {
+    userId: user.id,
+    fullName: user.fullName,
+    email: user.email,
+    avatarKey: user.profile?.avatarKey ?? null,
+    joinedAt: user.projectMembers.reduce(
+      (earliest, row) => (row.joinedAt < earliest ? row.joinedAt : earliest),
+      user.projectMembers[0].joinedAt,
+    ),
+    roles: user.projectMembers.map((row) => row.projectRole),
+  };
+}
+
+export async function addProjectMember(
+  projectId: number,
+  userId: number,
+  roleIds: number[],
+) {
+  return prisma.projectMember.createMany({
+    data: roleIds.map((projectRoleId) => ({
+      projectId,
+      userId,
+      projectRoleId,
+      joinedAt: new Date(),
+    })),
+  });
+}
+
+export async function updateProjectMemberRoles(
+  projectId: number,
+  userId: number,
+  roleIds: number[],
+  joinedAt: Date,
+) {
+  return prisma.$transaction([
+    prisma.projectMember.deleteMany({
+      where: { projectId, userId },
+    }),
+    prisma.projectMember.createMany({
+      data: roleIds.map((projectRoleId) => ({
+        projectId,
+        userId,
+        projectRoleId,
+        joinedAt,
+      })),
+    }),
+  ]);
+}
+
+export async function removeProjectMember(projectId: number, userId: number) {
+  return prisma.projectMember.deleteMany({
+    where: { projectId, userId },
+  });
+}
+
+export async function searchMemberCandidates(projectId: number, keyword: string) {
   const users = await prisma.user.findMany({
     where: {
       status: "ACTIVE",
@@ -525,47 +678,4 @@ export async function searchInviteCandidates(projectId: number, keyword: string)
     email: user.email,
     avatarKey: user.profile?.avatarKey ?? null,
   }));
-}
-
-export function addMemberAssignments(input: {
-  projectId: number;
-  userId: number;
-  roleIds: number[];
-  joinedAt: Date;
-}) {
-  return prisma.projectMember.createMany({
-    data: input.roleIds.map((projectRoleId) => ({
-      projectId: input.projectId,
-      userId: input.userId,
-      projectRoleId,
-      joinedAt: input.joinedAt,
-    })),
-  });
-}
-
-export function replaceMemberAssignments(input: {
-  projectId: number;
-  userId: number;
-  roleIds: number[];
-  joinedAt: Date;
-}) {
-  return prisma.$transaction([
-    prisma.projectMember.deleteMany({
-      where: { projectId: input.projectId, userId: input.userId },
-    }),
-    prisma.projectMember.createMany({
-      data: input.roleIds.map((projectRoleId) => ({
-        projectId: input.projectId,
-        userId: input.userId,
-        projectRoleId,
-        joinedAt: input.joinedAt,
-      })),
-    }),
-  ]);
-}
-
-export function removeMemberAssignments(projectId: number, userId: number) {
-  return prisma.projectMember.deleteMany({
-    where: { projectId, userId },
-  });
 }

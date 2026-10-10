@@ -1,24 +1,14 @@
 import { getFileUrl } from "@/modules/file/file.service";
+import { AppError } from "@/shared/errors/app-error";
 import {
-  groupMemberAssignments,
-  mapInviteCandidate,
-  mapProjectMember,
-  mapProjectRole,
-  sortProjectRoles,
-  type GroupedProjectMember,
-  type InviteCandidateRecord,
-  type ProjectRoleRecord,
-} from "@/modules/project/project.mapper";
-import * as projectRepository from "@/modules/project/project.repository";
-import type {
   AddProjectMemberInput,
   MemberCandidateQuery,
   ProjectMemberListQuery,
   UpdateProjectMemberRolesInput,
-} from "@/modules/project/project.schema";
-import { AppError } from "@/shared/errors/app-error";
+} from "../project.schema";
+import * as projectRepository from "../project.repository";
+import * as projectMapper from "../project.mapper";
 
-const PROJECT_MANAGER_KEY = "PROJECT_MANAGER";
 const AVATAR_URL_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 async function avatarUrlMap(keys: Array<string | null>) {
@@ -34,173 +24,101 @@ async function avatarUrlMap(keys: Array<string | null>) {
   return new Map(entries);
 }
 
-function avatarUrlFor(
-  urls: Map<string, string>,
-  avatarKey: string | null,
+export async function getProjectMembers(
+  projectId: number,
+  userId: number,
+  query: ProjectMemberListQuery,
 ) {
-  if (!avatarKey) return null;
-  return urls.get(avatarKey) ?? null;
-}
-
-async function loadProjectMembers(projectId: number, actorId: number) {
-  const project = await projectRepository.findAccessibleProject(
-    projectId,
-    actorId,
+  const { page, limit, keyword, roleId } = query;
+  const [projectMember, projectRoles, projectMyRoles, canManage] =
+    await Promise.all([
+      projectRepository.getProjectMembers(
+        projectId,
+        userId,
+        keyword,
+        roleId,
+        page,
+        limit,
+      ),
+      projectRepository.getProjectRoles(projectId),
+      projectRepository.getProjectMyRoles(projectId, userId),
+      projectRepository.canManageMembers(projectId, userId),
+    ]);
+  const avatarUrls = await avatarUrlMap(
+    projectMember.members.map((member) => member.avatarKey),
   );
-  if (!project) {
-    throw new AppError(404, "Không tìm thấy dự án");
-  }
-
-  const [roles, rows] = await Promise.all([
-    projectRepository.listProjectRoles(projectId),
-    projectRepository.listMemberAssignments(projectId),
-  ]);
 
   return {
-    roles: sortProjectRoles(roles),
-    members: groupMemberAssignments(rows),
+    total: projectMember.total,
+    members: projectMapper.mapProjectMembers(
+      projectMember.members,
+      userId,
+      avatarUrls,
+    ),
+    roles: projectMapper.mapProjectRoles(projectRoles),
+    myRoles: projectMapper.mapProjectRoles(projectMyRoles),
+    canManage,
   };
 }
 
-function assertCanManage(members: GroupedProjectMember[], actorId: number) {
-  const actor = members.find((member) => member.userId === actorId);
-  const canManage = Boolean(
-    actor?.roles.some((role) => role.key === PROJECT_MANAGER_KEY),
-  );
+async function assertCanManage(projectId: number, userId: number) {
+  const canManage = await projectRepository.canManageMembers(projectId, userId);
   if (!canManage) {
     throw new AppError(403, "Bạn không có quyền quản lý thành viên");
   }
 }
 
-function pickRoles(roles: ProjectRoleRecord[], roleIds: number[]) {
-  const uniqueIds = [...new Set(roleIds)];
-  const selected = uniqueIds.map((roleId) =>
-    roles.find((role) => role.id === roleId),
-  );
-  if (selected.some((role) => !role)) {
-    throw new AppError(400, "Vai trò không thuộc dự án này");
-  }
-  return selected as ProjectRoleRecord[];
-}
-
 function assertManagerRemains(
-  members: GroupedProjectMember[],
+  managerIds: number[],
   targetUserId: number,
-  nextRoles: ProjectRoleRecord[] | null,
+  nextRoleKeys: string[],
 ) {
-  const managerIds = members
-    .filter((member) =>
-      member.roles.some((role) => role.key === PROJECT_MANAGER_KEY),
-    )
-    .map((member) => member.userId);
   const targetIsManager = managerIds.includes(targetUserId);
-  const keepsManager =
-    nextRoles?.some((role) => role.key === PROJECT_MANAGER_KEY) ?? false;
-
+  const keepsManager = nextRoleKeys.includes("PROJECT_MANAGER");
   if (targetIsManager && !keepsManager && managerIds.length <= 1) {
     throw new AppError(400, "Dự án phải còn ít nhất một Quản trị");
   }
 }
 
-async function mapMemberById(
+async function mapMember(
   projectId: number,
-  memberUserId: number,
   actorId: number,
+  memberUserId: number,
 ) {
-  const rows = await projectRepository.listMemberAssignments(projectId);
-  const member = groupMemberAssignments(rows).find(
-    (item) => item.userId === memberUserId,
+  const member = await projectRepository.getProjectMember(
+    projectId,
+    memberUserId,
   );
   if (!member) {
     throw new AppError(500, "Không đọc lại được thành viên");
   }
-
-  const urls = await avatarUrlMap([member.avatarKey]);
-  return mapProjectMember(
-    member,
-    actorId,
-    avatarUrlFor(urls, member.avatarKey),
-  );
-}
-
-export async function getProjectMembers(
-  projectId: number,
-  actorId: number,
-  query: ProjectMemberListQuery,
-) {
-  const { roles, members } = await loadProjectMembers(projectId, actorId);
-  const urls = await avatarUrlMap(members.map((member) => member.avatarKey));
-  const keyword = query.keyword?.trim().toLowerCase() ?? "";
-  const actor = members.find((member) => member.userId === actorId);
-
-  const filtered = members
-    .filter((member) => {
-      const matchesKeyword =
-        keyword.length === 0 ||
-        member.fullName.toLowerCase().includes(keyword) ||
-        member.email.toLowerCase().includes(keyword);
-      const matchesRole =
-        query.roleId == null ||
-        member.roles.some((role) => role.id === query.roleId);
-      return matchesKeyword && matchesRole;
-    })
-    .sort((left, right) => left.fullName.localeCompare(right.fullName, "vi"));
-
-  return {
-    total: members.length,
-    canManage: Boolean(
-      actor?.roles.some((role) => role.key === PROJECT_MANAGER_KEY),
-    ),
-    myRoles: (actor?.roles ?? []).map(mapProjectRole),
-    roles: roles.map(mapProjectRole),
-    members: filtered.map((member) =>
-      mapProjectMember(
-        member,
-        actorId,
-        avatarUrlFor(urls, member.avatarKey),
-      ),
-    ),
-  };
-}
-
-export async function searchMemberCandidates(
-  projectId: number,
-  actorId: number,
-  query: MemberCandidateQuery,
-) {
-  const { members } = await loadProjectMembers(projectId, actorId);
-  assertCanManage(members, actorId);
-
-  const candidates = await projectRepository.searchInviteCandidates(
-    projectId,
-    query.keyword.trim(),
-  );
-  const urls = await avatarUrlMap(
-    candidates.map((candidate: InviteCandidateRecord) => candidate.avatarKey),
-  );
-
-  return candidates.map((candidate: InviteCandidateRecord) =>
-    mapInviteCandidate(
-      candidate,
-      avatarUrlFor(urls, candidate.avatarKey),
-    ),
-  );
+  const avatarUrls = await avatarUrlMap([member.avatarKey]);
+  return projectMapper.mapProjectMembers([member], actorId, avatarUrls)[0];
 }
 
 export async function addProjectMember(
   projectId: number,
-  actorId: number,
+  userId: number,
   input: AddProjectMemberInput,
 ) {
-  const { roles, members } = await loadProjectMembers(projectId, actorId);
-  assertCanManage(members, actorId);
+  await projectRepository.findVisibleProject(projectId, userId);
+  await assertCanManage(projectId, userId);
 
-  const selectedRoles = pickRoles(roles, input.roleIds);
-  if (members.some((member) => member.userId === input.userId)) {
+  const roleIds = [...new Set(input.roleIds)];
+  const roles = await projectRepository.getProjectRolesByIds(projectId, roleIds);
+  if (roles.length !== roleIds.length) {
+    throw new AppError(400, "Vai trò không thuộc dự án này");
+  }
+
+  const existing = await projectRepository.getProjectMember(
+    projectId,
+    input.userId,
+  );
+  if (existing) {
     throw new AppError(400, "Người này đã ở trong dự án");
   }
 
-  const user = await projectRepository.findUserForInvite(input.userId);
+  const user = await projectRepository.getUserForInvite(input.userId);
   if (!user) {
     throw new AppError(404, "Không tìm thấy người dùng");
   }
@@ -208,56 +126,85 @@ export async function addProjectMember(
     throw new AppError(400, "Người dùng không hoạt động");
   }
 
-  await projectRepository.addMemberAssignments({
-    projectId,
-    userId: input.userId,
-    roleIds: selectedRoles.map((role) => role.id),
-    joinedAt: new Date(),
-  });
-
-  return mapMemberById(projectId, input.userId, actorId);
+  await projectRepository.addProjectMember(projectId, input.userId, roleIds);
+  return mapMember(projectId, userId, input.userId);
 }
 
 export async function updateProjectMemberRoles(
   projectId: number,
-  actorId: number,
+  userId: number,
   memberUserId: number,
   input: UpdateProjectMemberRolesInput,
 ) {
-  const { roles, members } = await loadProjectMembers(projectId, actorId);
-  assertCanManage(members, actorId);
+  await projectRepository.findVisibleProject(projectId, userId);
+  await assertCanManage(projectId, userId);
 
-  const target = members.find((member) => member.userId === memberUserId);
-  if (!target) {
+  const member = await projectRepository.getProjectMember(
+    projectId,
+    memberUserId,
+  );
+  if (!member) {
     throw new AppError(404, "Thành viên không tồn tại");
   }
 
-  const selectedRoles = pickRoles(roles, input.roleIds);
-  assertManagerRemains(members, memberUserId, selectedRoles);
+  const roleIds = [...new Set(input.roleIds)];
+  const roles = await projectRepository.getProjectRolesByIds(projectId, roleIds);
+  if (roles.length !== roleIds.length) {
+    throw new AppError(400, "Vai trò không thuộc dự án này");
+  }
 
-  await projectRepository.replaceMemberAssignments({
+  const managerIds = await projectRepository.getProjectManagerUserIds(projectId);
+  assertManagerRemains(
+    managerIds,
+    memberUserId,
+    roles.map((role) => role.key),
+  );
+
+  await projectRepository.updateProjectMemberRoles(
     projectId,
-    userId: memberUserId,
-    roleIds: selectedRoles.map((role) => role.id),
-    joinedAt: target.joinedAt,
-  });
-
-  return mapMemberById(projectId, memberUserId, actorId);
+    memberUserId,
+    roleIds,
+    member.joinedAt,
+  );
+  return mapMember(projectId, userId, memberUserId);
 }
 
 export async function removeProjectMember(
   projectId: number,
-  actorId: number,
+  userId: number,
   memberUserId: number,
 ) {
-  const { members } = await loadProjectMembers(projectId, actorId);
-  assertCanManage(members, actorId);
+  await projectRepository.findVisibleProject(projectId, userId);
+  await assertCanManage(projectId, userId);
 
-  const target = members.find((member) => member.userId === memberUserId);
-  if (!target) {
+  const member = await projectRepository.getProjectMember(
+    projectId,
+    memberUserId,
+  );
+  if (!member) {
     throw new AppError(404, "Thành viên không tồn tại");
   }
 
-  assertManagerRemains(members, memberUserId, null);
-  await projectRepository.removeMemberAssignments(projectId, memberUserId);
+  const managerIds = await projectRepository.getProjectManagerUserIds(projectId);
+  assertManagerRemains(managerIds, memberUserId, []);
+
+  await projectRepository.removeProjectMember(projectId, memberUserId);
+}
+
+export async function searchMemberCandidates(
+  projectId: number,
+  userId: number,
+  query: MemberCandidateQuery,
+) {
+  await projectRepository.findVisibleProject(projectId, userId);
+  await assertCanManage(projectId, userId);
+
+  const candidates = await projectRepository.searchMemberCandidates(
+    projectId,
+    query.keyword,
+  );
+  const avatarUrls = await avatarUrlMap(
+    candidates.map((candidate) => candidate.avatarKey),
+  );
+  return projectMapper.mapMemberCandidates(candidates, avatarUrls);
 }

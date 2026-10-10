@@ -156,7 +156,7 @@ export default function InviteMemberModal({
                       onClick={() => setSelected(candidate)}
                       className={cn(
                         "flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left hover:bg-slate-50",
-                        active && "bg-primary/5",
+                        active && "bg-primary/25 hover:bg-primary/30",
                       )}
                     >
                       <Avatar className="size-8">

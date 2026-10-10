@@ -1,5 +1,3 @@
-import { ProjectTemplate } from "@prisma/client";
-
 export function mapTemplateOptions(templates: any) {
   return templates.map((template: any) => ({
     id: template.id,
@@ -59,118 +57,68 @@ export function mapProjectList(projects: any) {
   }));
 }
 
-export type ProjectRoleRecord = {
+type ProjectMemberRoleRow = {
   id: number;
   key: string;
   name: string;
   description: string | null;
-  sortOrder: number;
+  sortOrder?: number;
 };
 
-export type MemberAssignmentRecord = {
+type ProjectMemberRow = {
   userId: number;
   fullName: string;
   email: string;
   avatarKey: string | null;
   joinedAt: Date;
-  role: ProjectRoleRecord;
+  roles: ProjectMemberRoleRow[];
 };
 
-export type InviteUserRecord = {
-  id: number;
-  status: "ACTIVE" | "INACTIVE" | "PENDING";
-};
-
-export type InviteCandidateRecord = {
-  id: number;
-  fullName: string;
-  email: string;
-  avatarKey: string | null;
-};
-
-export type GroupedProjectMember = {
-  userId: number;
-  fullName: string;
-  email: string;
-  avatarKey: string | null;
-  joinedAt: Date;
-  roles: ProjectRoleRecord[];
-};
-
-export function sortProjectRoles(roles: ProjectRoleRecord[]) {
-  return [...roles].sort(
-    (left, right) =>
-      left.sortOrder - right.sortOrder ||
-      left.name.localeCompare(right.name, "vi") ||
-      left.id - right.id,
-  );
-}
-
-export function mapProjectRole(role: ProjectRoleRecord) {
-  return {
-    id: role.id,
-    key: role.key,
-    name: role.name,
-    description: role.description,
-    sortOrder: role.sortOrder,
-  };
-}
-
-export function groupMemberAssignments(rows: MemberAssignmentRecord[]) {
-  const byUser = new Map<number, GroupedProjectMember>();
-
-  for (const row of rows) {
-    const current = byUser.get(row.userId);
-    if (!current) {
-      byUser.set(row.userId, {
-        userId: row.userId,
-        fullName: row.fullName,
-        email: row.email,
-        avatarKey: row.avatarKey,
-        joinedAt: row.joinedAt,
-        roles: [row.role],
-      });
-      continue;
-    }
-
-    if (row.joinedAt < current.joinedAt) {
-      current.joinedAt = row.joinedAt;
-    }
-    if (!current.roles.some((role) => role.id === row.role.id)) {
-      current.roles.push(row.role);
-    }
-  }
-
-  return [...byUser.values()].map((member) => ({
-    ...member,
-    roles: sortProjectRoles(member.roles),
+export function mapProjectRoles(projectRoles: ProjectMemberRoleRow[]) {
+  return projectRoles.map((projectRole) => ({
+    id: projectRole.id,
+    name: projectRole.name,
+    key: projectRole.key,
+    description: projectRole.description,
+    sortOrder: projectRole.sortOrder,
   }));
 }
 
-export function mapProjectMember(
-  member: GroupedProjectMember,
-  currentUserId: number,
-  avatarUrl: string | null,
+export function mapProjectMembers(
+  projectMembers: ProjectMemberRow[],
+  userId: number,
+  avatarUrls: Map<string, string>,
 ) {
-  return {
+  return projectMembers.map((member) => ({
     userId: member.userId,
     fullName: member.fullName,
     email: member.email,
-    avatarUrl,
-    isMe: member.userId === currentUserId,
+    avatarUrl: member.avatarKey
+      ? (avatarUrls.get(member.avatarKey) ?? null)
+      : null,
+    isMe: member.userId === userId,
     joinedAt: member.joinedAt,
-    roles: member.roles.map(mapProjectRole),
-  };
+    roles: mapProjectRoles(member.roles),
+  }));
 }
 
-export function mapInviteCandidate(
-  candidate: InviteCandidateRecord,
-  avatarUrl: string | null,
+type MemberCandidateRow = {
+  id: number;
+  fullName: string;
+  email: string;
+  avatarKey: string | null;
+};
+
+export function mapMemberCandidates(
+  candidates: MemberCandidateRow[],
+  avatarUrls: Map<string, string>,
 ) {
-  return {
+  return candidates.map((candidate) => ({
     id: candidate.id,
     fullName: candidate.fullName,
     email: candidate.email,
-    avatarUrl,
-  };
+    avatarUrl: candidate.avatarKey
+      ? (avatarUrls.get(candidate.avatarKey) ?? null)
+      : null,
+  }));
 }

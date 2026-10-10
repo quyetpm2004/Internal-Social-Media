@@ -12,7 +12,10 @@ import type {
   ProjectMemberItem,
   ProjectMembersData,
 } from "@/features/project/types/project.type";
-import { getApiErrorMessages, toastApiError } from "@/features/project-template/utils/api-error";
+import {
+  getApiErrorMessages,
+  toastApiError,
+} from "@/features/project-template/utils/api-error";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { cn } from "@/lib/utils";
 
@@ -40,7 +43,10 @@ export default function ProjectMembersPanel({
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setDebouncedKeyword(keyword.trim()), 300);
+    const timer = window.setTimeout(
+      () => setDebouncedKeyword(keyword.trim()),
+      300,
+    );
     return () => window.clearTimeout(timer);
   }, [keyword]);
 
@@ -95,11 +101,12 @@ export default function ProjectMembersPanel({
 
   const roles = sortRoles(data?.roles ?? []);
   const myRoleNames = (data?.myRoles ?? []).map((role) => role.name).join(", ");
-  const hint = data?.canManage && myRoleNames
-    ? t("pages.projects.membersPanel.manageHint", { roles: myRoleNames })
-    : myRoleNames
-      ? t("pages.projects.membersPanel.viewHint", { roles: myRoleNames })
-      : t("pages.projects.membersPanel.guestHint");
+  const hint =
+    data?.canManage && myRoleNames
+      ? t("pages.projects.membersPanel.manageHint", { roles: myRoleNames })
+      : myRoleNames
+        ? t("pages.projects.membersPanel.viewHint", { roles: myRoleNames })
+        : t("pages.projects.membersPanel.guestHint");
 
   const members = (data?.members ?? []).map((member) => ({
     ...member,
@@ -162,7 +169,7 @@ export default function ProjectMembersPanel({
 
       <div className="mt-4">
         {loading && !data ? (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 6 }, (_, index) => (
               <div
                 key={index}
@@ -190,7 +197,7 @@ export default function ProjectMembersPanel({
         ) : (
           <div
             className={cn(
-              "grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3",
+              "grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4",
               loading && "opacity-70",
             )}
           >
@@ -207,9 +214,7 @@ export default function ProjectMembersPanel({
             ))}
           </div>
         )}
-        {error && data && (
-          <p className="mt-3 text-sm text-red-600">{error}</p>
-        )}
+        {error && data && <p className="mt-3 text-sm text-red-600">{error}</p>}
       </div>
 
       <InviteMemberModal

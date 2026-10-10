@@ -2,12 +2,6 @@ import { Request, Response } from "express";
 import * as projectService from "@/modules/project/services/project.service";
 import * as projectMemberService from "@/modules/project/services/project-member.service";
 import { AppError } from "@/shared/errors/app-error";
-import type {
-  AddProjectMemberInput,
-  MemberCandidateQuery,
-  ProjectMemberListQuery,
-  UpdateProjectMemberRolesInput,
-} from "@/modules/project/project.schema";
 
 export async function getTemplateOptions(req: Request, res: Response) {
   const data = await projectService.getTemplateOptions();
@@ -69,31 +63,31 @@ export async function updateProject(req: Request, res: Response) {
   });
 }
 
-function requireUserId(req: Request) {
+export async function getProjectMembers(req: Request, res: Response) {
   const userId = req.user?.id;
   if (!userId) {
-    throw new AppError(401, "Bạn chưa đăng nhập");
+    throw new AppError(401, "Bạn không có quyền xem thành viên dự án");
   }
-  return userId;
-}
-
-export async function getProjectMembers(req: Request, res: Response) {
   const data = await projectMemberService.getProjectMembers(
     Number(req.params.id),
-    requireUserId(req),
-    req.validated as ProjectMemberListQuery,
+    userId,
+    req.validated,
   );
   res.status(200).json({
-    message: "Lấy danh sách thành viên thành công",
+    message: "Lấy danh sách thành viên dự án thành công",
     data,
   });
 }
 
 export async function searchMemberCandidates(req: Request, res: Response) {
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new AppError(401, "Bạn không có quyền tìm thành viên");
+  }
   const data = await projectMemberService.searchMemberCandidates(
     Number(req.params.id),
-    requireUserId(req),
-    req.validated as MemberCandidateQuery,
+    userId,
+    req.validated,
   );
   res.status(200).json({
     message: "Tìm người để mời thành công",
@@ -102,10 +96,14 @@ export async function searchMemberCandidates(req: Request, res: Response) {
 }
 
 export async function addProjectMember(req: Request, res: Response) {
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new AppError(401, "Bạn không có quyền mời thành viên");
+  }
   const data = await projectMemberService.addProjectMember(
     Number(req.params.id),
-    requireUserId(req),
-    req.validated as AddProjectMemberInput,
+    userId,
+    req.validated,
   );
   res.status(200).json({
     message: "Mời thành viên thành công",
@@ -114,11 +112,15 @@ export async function addProjectMember(req: Request, res: Response) {
 }
 
 export async function updateProjectMemberRoles(req: Request, res: Response) {
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new AppError(401, "Bạn không có quyền đổi vai trò thành viên");
+  }
   const data = await projectMemberService.updateProjectMemberRoles(
     Number(req.params.id),
-    requireUserId(req),
+    userId,
     Number(req.params.userId),
-    req.validated as UpdateProjectMemberRolesInput,
+    req.validated,
   );
   res.status(200).json({
     message: "Cập nhật vai trò thành công",
@@ -127,9 +129,13 @@ export async function updateProjectMemberRoles(req: Request, res: Response) {
 }
 
 export async function removeProjectMember(req: Request, res: Response) {
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new AppError(401, "Bạn không có quyền xóa thành viên");
+  }
   await projectMemberService.removeProjectMember(
     Number(req.params.id),
-    requireUserId(req),
+    userId,
     Number(req.params.userId),
   );
   res.status(200).json({
