@@ -181,6 +181,7 @@ export const addSearchHistory = async (userId: number, query: string) => {
     throw new AppError(400, "Từ khóa tìm kiếm không hợp lệ");
   }
 
+  // Nếu tồn tại query thì update thời gian
   await searchRepo.upsertSearchHistory(userId, normalized);
 
   const count = await searchRepo.countSearchHistory(userId);
