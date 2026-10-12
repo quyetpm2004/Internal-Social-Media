@@ -41,6 +41,7 @@ import Textarea from "@/components/shared/Textarea";
 import { projectApi } from "@/features/project/api/project.api";
 import ProjectMembersPanel from "@/features/project/components/members/ProjectMembersPanel";
 import ProjectOverview from "@/features/project/components/overview/ProjectOverview";
+import WorkflowTab from "@/features/project/components/workflow/WorkflowTab";
 import {
   UrgentSwitch,
   VisibilityPicker,
@@ -67,6 +68,7 @@ const TABS: ProjectTab[] = [
   "threads",
   "milestones",
   "members",
+  "workflow",
   "overview",
   "info",
 ];
@@ -129,6 +131,13 @@ const TAB_STYLE: Record<
     active: "bg-teal-100 text-teal-700",
     text: "text-teal-700",
     line: "border-teal-500",
+  },
+  workflow: {
+    icon: GitBranch,
+    idle: "bg-cyan-50 text-cyan-600",
+    active: "bg-cyan-100 text-cyan-700",
+    text: "text-cyan-700",
+    line: "border-cyan-500",
   },
   overview: {
     icon: LayoutDashboard,
@@ -252,6 +261,13 @@ export default function ProjectDetailPage() {
       cancelled = true;
     };
   }, [projectId, t]);
+
+  const refreshProject = useCallback(async () => {
+    const id = Number(projectId);
+    if (!Number.isInteger(id) || id <= 0) return;
+    const response = await projectApi.getProject(id);
+    setProject(response.data);
+  }, [projectId]);
 
   const handleMemberTotal = useCallback((total: number) => {
     setProject((current) =>
@@ -402,7 +418,7 @@ export default function ProjectDetailPage() {
           </div>
         </div>
 
-        <div className="mt-4 -mb-4 flex gap-1 overflow-x-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-track]:bg-transparent">
+        <div className="mt-4 -mb-4 flex gap-1 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {TABS.map((item) => {
             const style = TAB_STYLE[item];
             const Icon = style.icon;
@@ -566,6 +582,11 @@ export default function ProjectDetailPage() {
           <ProjectMembersPanel
             projectId={project.id}
             onTotalChange={handleMemberTotal}
+          />
+        ) : tab === "workflow" ? (
+          <WorkflowTab
+            projectId={project.id}
+            onProjectUpdated={refreshProject}
           />
         ) : (
           <div className="flex flex-col items-center rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-16 text-center">
