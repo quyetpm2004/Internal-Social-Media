@@ -33,6 +33,13 @@ type WorkflowPanelProps = {
 const selectClass =
   "h-8 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 outline-none";
 
+const STATUS_CATEGORIES: StatusCategory[] = [
+  "TODO",
+  "IN_PROGRESS",
+  "DONE",
+  "CANCELLED",
+];
+
 export default function WorkflowPanel({
   templateId,
   workflows,
@@ -55,7 +62,7 @@ export default function WorkflowPanel({
   const [stKey, setStKey] = useState("");
   const [stCategory, setStCategory] = useState<StatusCategory>("TODO");
   const [stSortOrder, setStSortOrder] = useState("");
-  const [stColor, setStColor] = useState("");
+  const [stColor, setStColor] = useState("#3B82F6");
   const [stIsInitial, setStIsInitial] = useState(false);
   const [stIsFinal, setStIsFinal] = useState(false);
 
@@ -157,7 +164,7 @@ export default function WorkflowPanel({
           key: stKey,
           category: stCategory,
           sortOrder: stSortOrder ? Number(stSortOrder) : undefined,
-          color: stColor || undefined,
+          color: stColor,
           isInitial: stIsInitial,
           isFinal: stIsFinal,
         },
@@ -166,7 +173,7 @@ export default function WorkflowPanel({
       setStName("");
       setStKey("");
       setStSortOrder("");
-      setStColor("");
+      setStColor("#3B82F6");
       setStIsInitial(false);
       setStIsFinal(false);
       onChanged();
@@ -456,10 +463,11 @@ export default function WorkflowPanel({
                   }
                   className={selectClass}
                 >
-                  <option value="TODO">TODO</option>
-                  <option value="IN_PROGRESS">IN_PROGRESS</option>
-                  <option value="DONE">DONE</option>
-                  <option value="CANCELLED">CANCELLED</option>
+                  {STATUS_CATEGORIES.map((category) => (
+                    <option key={category} value={category}>
+                      {t(`pages.admin.projectTemplateCategories.${category}`)}
+                    </option>
+                  ))}
                 </select>
                 <Input
                   placeholder={t("pages.admin.projectTemplateSortOrder")}
@@ -468,11 +476,12 @@ export default function WorkflowPanel({
                   className="max-w-[100px]"
                   type="number"
                 />
-                <Input
-                  placeholder={t("pages.admin.projectTemplateColor")}
+                <input
+                  type="color"
+                  aria-label={t("pages.admin.projectTemplateColor")}
                   value={stColor}
                   onChange={(e) => setStColor(e.target.value)}
-                  className="max-w-[100px]"
+                  className="h-8 w-12 cursor-pointer rounded-md border border-gray-200 bg-white p-1"
                 />
                 <label className="flex items-center gap-1 text-sm">
                   <input
@@ -529,7 +538,11 @@ export default function WorkflowPanel({
                 <TableRow key={status.id}>
                   <TableCell>{status.name}</TableCell>
                   <TableCell>{status.key}</TableCell>
-                  <TableCell>{status.category}</TableCell>
+                  <TableCell>
+                    {t(
+                      `pages.admin.projectTemplateCategories.${status.category}`,
+                    )}
+                  </TableCell>
                   <TableCell>{status.sortOrder}</TableCell>
                   <TableCell>{status.color ?? "—"}</TableCell>
                   <TableCell>{status.isInitial ? "✓" : "—"}</TableCell>

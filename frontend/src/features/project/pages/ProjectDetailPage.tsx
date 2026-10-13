@@ -24,7 +24,6 @@ import {
   ListTodo,
   Lock,
   MessageCircle,
-  MessagesSquare,
   Pencil,
   Plus,
   Sparkles,
@@ -65,7 +64,6 @@ const TABS: ProjectTab[] = [
   "phases",
   "tasks",
   "bugs",
-  "threads",
   "milestones",
   "members",
   "workflow",
@@ -110,13 +108,6 @@ const TAB_STYLE: Record<
     active: "bg-rose-100 text-rose-700",
     text: "text-rose-700",
     line: "border-rose-500",
-  },
-  threads: {
-    icon: MessagesSquare,
-    idle: "bg-indigo-50 text-indigo-600",
-    active: "bg-indigo-100 text-indigo-700",
-    text: "text-indigo-700",
-    line: "border-indigo-500",
   },
   milestones: {
     icon: Flag,
@@ -182,9 +173,15 @@ const priorityClass: Record<ProjectPriority, string> = {
 const flowPalette = [
   { chip: "border-slate-200 bg-slate-100 text-slate-700", dot: "bg-slate-500" },
   { chip: "border-blue-200 bg-blue-50 text-blue-700", dot: "bg-blue-500" },
-  { chip: "border-violet-200 bg-violet-50 text-violet-700", dot: "bg-violet-500" },
+  {
+    chip: "border-violet-200 bg-violet-50 text-violet-700",
+    dot: "bg-violet-500",
+  },
   { chip: "border-amber-200 bg-amber-50 text-amber-700", dot: "bg-amber-500" },
-  { chip: "border-emerald-200 bg-emerald-50 text-emerald-700", dot: "bg-emerald-500" },
+  {
+    chip: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    dot: "bg-emerald-500",
+  },
 ];
 
 function flowChipStyle(isInitial: boolean, isFinal: boolean, index: number) {
@@ -214,7 +211,7 @@ export default function ProjectDetailPage() {
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [tab, setTab] = useState<ProjectTab>("overview");
+  const [tab, setTab] = useState<ProjectTab>("chat");
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<EditState | null>(null);
@@ -375,8 +372,13 @@ export default function ProjectDetailPage() {
               >
                 {t(`pages.projects.status.${project.status}`)}
               </span>
-              <span className="font-medium text-slate-500">
+              <span className="inline-flex items-center gap-1.5 font-medium text-slate-500">
                 {t("pages.projects.workflow")}: {project.workflowName}
+                {project.workflowName && (
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                    {t("pages.projects.workflowPanel.default")}
+                  </span>
+                )}
               </span>
               <span className="inline-flex items-center gap-1 text-slate-500">
                 <VisibilityIcon className="size-3.5" />
@@ -492,7 +494,11 @@ export default function ProjectDetailPage() {
                   />
                 </Field>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field label={t("pages.projects.startDate")} htmlFor="edit-start" required>
+                  <Field
+                    label={t("pages.projects.startDate")}
+                    htmlFor="edit-start"
+                    required
+                  >
                     <Input
                       id="edit-start"
                       type="date"
@@ -502,7 +508,11 @@ export default function ProjectDetailPage() {
                       }
                     />
                   </Field>
-                  <Field label={t("pages.projects.endDate")} htmlFor="edit-end" required>
+                  <Field
+                    label={t("pages.projects.endDate")}
+                    htmlFor="edit-end"
+                    required
+                  >
                     <Input
                       id="edit-end"
                       type="date"
@@ -512,7 +522,10 @@ export default function ProjectDetailPage() {
                       }
                     />
                   </Field>
-                  <Field label={t("pages.projects.statusLabel")} htmlFor="edit-status">
+                  <Field
+                    label={t("pages.projects.statusLabel")}
+                    htmlFor="edit-status"
+                  >
                     <Select
                       id="edit-status"
                       value={form.status}
@@ -530,7 +543,10 @@ export default function ProjectDetailPage() {
                       ))}
                     </Select>
                   </Field>
-                  <Field label={t("pages.projects.priority")} htmlFor="edit-priority">
+                  <Field
+                    label={t("pages.projects.priority")}
+                    htmlFor="edit-priority"
+                  >
                     <Select
                       id="edit-priority"
                       value={form.priority}
@@ -553,7 +569,9 @@ export default function ProjectDetailPage() {
                   checked={form.isUrgent}
                   onChange={(isUrgent) => setForm({ ...form, isUrgent })}
                 />
-                {formError && <p className="text-sm text-red-600">{formError}</p>}
+                {formError && (
+                  <p className="text-sm text-red-600">{formError}</p>
+                )}
                 <div className="flex justify-end gap-2">
                   <button
                     type="button"
@@ -725,7 +743,16 @@ function InfoView({
       icon: GitBranch,
       iconClass: "bg-teal-50 text-teal-600",
       label: t("pages.projects.workflow"),
-      value: project.workflowName,
+      value: project.workflowName ? (
+        <span className="inline-flex items-center gap-2">
+          {project.workflowName}
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+            {t("pages.projects.workflowPanel.default")}
+          </span>
+        </span>
+      ) : (
+        "—"
+      ),
     },
     {
       icon: UserRound,
@@ -783,32 +810,41 @@ function InfoView({
                 index,
               );
               return (
-              <li key={status.id} className="flex items-center gap-2">
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold",
-                    status.color ? "border-slate-200 bg-slate-50 text-slate-700" : tone.chip,
-                  )}
-                  style={
-                    status.color
-                      ? {
-                          borderColor: status.color,
-                          color: status.color,
-                          backgroundColor: `${status.color}18`,
-                        }
-                      : undefined
-                  }
-                >
+                <li key={status.id} className="flex items-center gap-2">
                   <span
-                    className={cn("size-1.5 rounded-full", status.color ? "" : tone.dot)}
-                    style={status.color ? { backgroundColor: status.color } : undefined}
-                  />
-                  {status.name}
-                </span>
-                {index < project.workflowStatuses.length - 1 && (
-                  <span className="text-slate-300">→</span>
-                )}
-              </li>
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold",
+                      status.color
+                        ? "border-slate-200 bg-slate-50 text-slate-700"
+                        : tone.chip,
+                    )}
+                    style={
+                      status.color
+                        ? {
+                            borderColor: status.color,
+                            color: status.color,
+                            backgroundColor: `${status.color}18`,
+                          }
+                        : undefined
+                    }
+                  >
+                    <span
+                      className={cn(
+                        "size-1.5 rounded-full",
+                        status.color ? "" : tone.dot,
+                      )}
+                      style={
+                        status.color
+                          ? { backgroundColor: status.color }
+                          : undefined
+                      }
+                    />
+                    {status.name}
+                  </span>
+                  {index < project.workflowStatuses.length - 1 && (
+                    <span className="text-slate-300">→</span>
+                  )}
+                </li>
               );
             })}
           </ol>

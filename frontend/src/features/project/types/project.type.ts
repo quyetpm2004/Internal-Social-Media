@@ -22,6 +22,7 @@ export type ProjectListItem = {
   templateName: string;
   workflowName: string;
   memberCount: number;
+  isMember: boolean;
 };
 
 export type ProjectWorkflowStatus = {
@@ -100,7 +101,6 @@ export type ProjectTab =
   | "phases"
   | "tasks"
   | "bugs"
-  | "threads"
   | "milestones"
   | "members"
   | "workflow"
@@ -125,8 +125,34 @@ export type ProjectWorkflowRole = {
 
 export type ProjectWorkflowTaskType = {
   id: number;
+  key: string;
   name: string;
+  description: string | null;
+  sortOrder: number;
+  isActive: boolean;
   workflowId: number | null;
+};
+
+export type SaveProjectRolePayload = {
+  name: string;
+  description: string | null;
+  sortOrder: number;
+};
+
+export type CreateProjectRolePayload = SaveProjectRolePayload & {
+  key: string;
+};
+
+export type SaveProjectTaskTypePayload = {
+  name: string;
+  description: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  workflowId: number | null;
+};
+
+export type CreateProjectTaskTypePayload = SaveProjectTaskTypePayload & {
+  key: string;
 };
 
 export type ProjectWorkflowApprovalRule = {

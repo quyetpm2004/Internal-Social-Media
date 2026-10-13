@@ -9,14 +9,33 @@ import {
 } from "@/shared/middlewares/validate.middleware";
 import {
   addProjectMemberSchema,
+  approvalRuleIdParamsSchema,
+  createProjectApprovalRuleSchema,
+  createProjectRoleCatalogSchema,
   createProjectSchema,
+  createProjectTaskTypeSchema,
+  createProjectWorkflowSchema,
+  createProjectWorkflowStatusSchema,
+  createProjectWorkflowTransitionSchema,
   getProjectListSchema,
   memberCandidateQuerySchema,
   projectIdParamsSchema,
   projectMemberListQuerySchema,
   projectMemberUserParamsSchema,
+  projectRoleParamsSchema,
+  projectTaskTypeParamsSchema,
+  reorderProjectWorkflowStatusesSchema,
+  statusIdParamsSchema,
+  transitionIdParamsSchema,
+  updateProjectApprovalRuleSchema,
   updateProjectMemberRolesSchema,
+  updateProjectRoleCatalogSchema,
   updateProjectSchema,
+  updateProjectTaskTypeSchema,
+  updateProjectWorkflowSchema,
+  updateProjectWorkflowStatusSchema,
+  updateProjectWorkflowTransitionSchema,
+  workflowIdParamsSchema,
 } from "@/modules/project/project.schema";
 
 const router = Router();
@@ -85,6 +104,139 @@ router.delete(
   "/:id/members/:userId",
   validateParams(projectMemberUserParamsSchema),
   asyncHandler(projectController.removeProjectMember),
+);
+
+router.post(
+  "/:id/roles",
+  validateParams(projectIdParamsSchema),
+  validateBody(createProjectRoleCatalogSchema),
+  asyncHandler(projectController.createProjectRole),
+);
+
+router.patch(
+  "/:id/roles/:roleId",
+  validateParams(projectRoleParamsSchema),
+  validateBody(updateProjectRoleCatalogSchema),
+  asyncHandler(projectController.updateProjectRole),
+);
+
+router.delete(
+  "/:id/roles/:roleId",
+  validateParams(projectRoleParamsSchema),
+  asyncHandler(projectController.deleteProjectRole),
+);
+
+router.post(
+  "/:id/task-types",
+  validateParams(projectIdParamsSchema),
+  validateBody(createProjectTaskTypeSchema),
+  asyncHandler(projectController.createProjectTaskType),
+);
+
+router.patch(
+  "/:id/task-types/:taskTypeId",
+  validateParams(projectTaskTypeParamsSchema),
+  validateBody(updateProjectTaskTypeSchema),
+  asyncHandler(projectController.updateProjectTaskType),
+);
+
+router.delete(
+  "/:id/task-types/:taskTypeId",
+  validateParams(projectTaskTypeParamsSchema),
+  asyncHandler(projectController.deleteProjectTaskType),
+);
+
+router.get(
+  "/:id/workflows",
+  validateParams(projectIdParamsSchema),
+  asyncHandler(projectController.getProjectWorkflows),
+);
+
+router.post(
+  "/:id/workflows",
+  validateParams(projectIdParamsSchema),
+  validateBody(createProjectWorkflowSchema),
+  asyncHandler(projectController.createProjectWorkflow),
+);
+
+router.patch(
+  "/:id/workflows/:workflowId",
+  validateParams(workflowIdParamsSchema),
+  validateBody(updateProjectWorkflowSchema),
+  asyncHandler(projectController.updateProjectWorkflow),
+);
+
+router.delete(
+  "/:id/workflows/:workflowId",
+  validateParams(workflowIdParamsSchema),
+  asyncHandler(projectController.deleteProjectWorkflow),
+);
+
+router.post(
+  "/:id/workflows/:workflowId/statuses",
+  validateParams(workflowIdParamsSchema),
+  validateBody(createProjectWorkflowStatusSchema),
+  asyncHandler(projectController.createProjectWorkflowStatus),
+);
+
+router.patch(
+  "/:id/workflows/:workflowId/statuses/reorder",
+  validateParams(workflowIdParamsSchema),
+  validateBody(reorderProjectWorkflowStatusesSchema),
+  asyncHandler(projectController.reorderProjectWorkflowStatuses),
+);
+
+router.patch(
+  "/:id/workflows/:workflowId/statuses/:statusId",
+  validateParams(statusIdParamsSchema),
+  validateBody(updateProjectWorkflowStatusSchema),
+  asyncHandler(projectController.updateProjectWorkflowStatus),
+);
+
+router.delete(
+  "/:id/workflows/:workflowId/statuses/:statusId",
+  validateParams(statusIdParamsSchema),
+  asyncHandler(projectController.deleteProjectWorkflowStatus),
+);
+
+router.post(
+  "/:id/workflows/:workflowId/transitions",
+  validateParams(workflowIdParamsSchema),
+  validateBody(createProjectWorkflowTransitionSchema),
+  asyncHandler(projectController.createProjectWorkflowTransition),
+);
+
+router.patch(
+  "/:id/workflows/:workflowId/transitions/:transitionId",
+  validateParams(transitionIdParamsSchema),
+  validateBody(updateProjectWorkflowTransitionSchema),
+  asyncHandler(projectController.updateProjectWorkflowTransition),
+);
+
+router.delete(
+  "/:id/workflows/:workflowId/transitions/:transitionId",
+  validateParams(transitionIdParamsSchema),
+  asyncHandler(projectController.deleteProjectWorkflowTransition),
+);
+
+router.post(
+  "/:id/workflows/:workflowId/transitions/:transitionId/approval-rules",
+  validateParams(transitionIdParamsSchema),
+  validateBody(createProjectApprovalRuleSchema),
+  asyncHandler(projectController.createProjectApprovalRule),
+);
+
+router.patch(
+  "/:id/workflows/:workflowId/transitions/:transitionId/approval-rules/:ruleId",
+  validateParams(approvalRuleIdParamsSchema),
+  validateBody(updateProjectApprovalRuleSchema),
+  asyncHandler(projectController.updateProjectApprovalRule),
+);
+
+router.delete(
+  "/:id/workflows/:workflowId/transitions/:transitionId/approval-rules/:ruleId",
+  validateParams(approvalRuleIdParamsSchema),
+  asyncHandler(projectController.deleteProjectApprovalRule),
 );
 
 export default router;

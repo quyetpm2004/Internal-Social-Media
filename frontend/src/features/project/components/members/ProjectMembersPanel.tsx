@@ -7,6 +7,7 @@ import { projectApi } from "@/features/project/api/project.api";
 import EditMemberRolesModal from "@/features/project/components/members/EditMemberRolesModal";
 import InviteMemberModal from "@/features/project/components/members/InviteMemberModal";
 import MemberCard from "@/features/project/components/members/MemberCard";
+import RoleCatalog from "@/features/project/components/members/RoleCatalog";
 import { sortRoles } from "@/features/project/components/members/member-style";
 import type {
   ProjectMemberItem,
@@ -63,6 +64,12 @@ export default function ProjectMembersPanel({
         setData(response.data);
         setError("");
         onTotalChange(response.data.total);
+        if (
+          roleId != null &&
+          !response.data.roles.some((role) => role.id === roleId)
+        ) {
+          setRoleId(null);
+        }
       } catch (loadError) {
         if (cancelled) return;
         const message = getApiErrorMessages(loadError)[0];
@@ -140,6 +147,17 @@ export default function ProjectMembersPanel({
           </button>
         )}
       </div>
+
+      {data?.canManage && (
+        <div className="mt-5">
+          <RoleCatalog
+            projectId={projectId}
+            roles={roles}
+            canManage
+            onChanged={refresh}
+          />
+        </div>
+      )}
 
       <div className="mt-5 flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3">
         <Search className="size-4 text-slate-400" />

@@ -38,20 +38,37 @@ export default function ProjectCard({ project }: ProjectCardProps) {
       className="flex flex-col rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
     >
       <div className="flex items-start justify-between gap-3">
-        <h2 className="line-clamp-2 text-base font-semibold text-slate-900">
-          {project.name}
-        </h2>
-        {project.isUrgent && (
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700">
-            <Flame className="size-3" />
-            {t("pages.projects.urgentShort")}
+        <div className="min-w-0 flex-1">
+          <h2 className="line-clamp-2 text-base font-semibold text-slate-900">
+            {project.name}
+          </h2>
+          <p className="mt-2 line-clamp-2 min-h-10 text-sm text-slate-500">
+            {project.description || t("pages.projects.noDescription")}
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          {project.isUrgent && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700">
+              <Flame className="size-3" />
+              {t("pages.projects.urgentShort")}
+            </span>
+          )}
+          <span
+            className={cn(
+              "rounded-full px-2 py-0.5 text-[11px] font-semibold",
+              project.isMember
+                ? "bg-emerald-50 text-emerald-700"
+                : "bg-slate-100 text-slate-500",
+            )}
+          >
+            {t(
+              project.isMember
+                ? "pages.projects.joined"
+                : "pages.projects.viewOnly",
+            )}
           </span>
-        )}
+        </div>
       </div>
-
-      <p className="mt-2 line-clamp-2 min-h-10 text-sm text-slate-500">
-        {project.description || t("pages.projects.noDescription")}
-      </p>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
         <span
@@ -90,7 +107,14 @@ export default function ProjectCard({ project }: ProjectCardProps) {
         </div>
         <div className="flex justify-between gap-3">
           <dt>{t("pages.projects.workflow")}</dt>
-          <dd className="truncate text-slate-700">{project.workflowName}</dd>
+          <dd className="inline-flex min-w-0 items-center justify-end gap-1.5 text-slate-700">
+            <span className="truncate">{project.workflowName}</span>
+            {project.workflowName && (
+              <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                {t("pages.projects.workflowPanel.default")}
+              </span>
+            )}
+          </dd>
         </div>
         <div className="flex justify-between gap-3">
           <dt>{t("pages.projects.originTemplate")}</dt>

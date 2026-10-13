@@ -2,6 +2,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import Checkbox from "@/components/shared/Checkbox";
 import Input from "@/components/shared/Input";
 import Modal from "@/components/shared/Modal";
 import Select from "@/components/shared/Select";
@@ -10,6 +11,7 @@ import StatusFormModal from "@/features/project/components/workflow/StatusFormMo
 import {
   STATUS_CATEGORIES,
   STATUS_KEY_REGEX,
+  flagsForCategory,
   moveStatusIds,
 } from "@/features/project/components/workflow/workflow-flow";
 import type {
@@ -38,6 +40,8 @@ export default function StatusList({
   const [key, setKey] = useState("");
   const [category, setCategory] = useState<WorkflowStatusCategory>("TODO");
   const [color, setColor] = useState("#3B82F6");
+  const [isInitial, setIsInitial] = useState(false);
+  const [isFinal, setIsFinal] = useState(false);
   const [editing, setEditing] = useState<ProjectWorkflowStatusDetail | null>(
     null,
   );
@@ -51,6 +55,15 @@ export default function StatusList({
     setKey("");
     setCategory("TODO");
     setColor("#3B82F6");
+    setIsInitial(false);
+    setIsFinal(false);
+  };
+
+  const handleCategory = (next: WorkflowStatusCategory) => {
+    const flags = flagsForCategory(next, { isInitial, isFinal });
+    setCategory(flags.category);
+    setIsInitial(flags.isInitial);
+    setIsFinal(flags.isFinal);
   };
 
   const handleAdd = async (event: FormEvent) => {
@@ -71,8 +84,8 @@ export default function StatusList({
         sortOrder: workflow.statuses.length,
         category,
         color,
-        isInitial: false,
-        isFinal: false,
+        isInitial,
+        isFinal,
       });
       toast.success(t("pages.projects.workflowPanel.statusCreated"));
       resetAdd();
@@ -198,7 +211,7 @@ export default function StatusList({
               aria-label={t("pages.projects.workflowPanel.categoryLabel")}
               value={category}
               onChange={(event) =>
-                setCategory(event.target.value as WorkflowStatusCategory)
+                handleCategory(event.target.value as WorkflowStatusCategory)
               }
             >
               {STATUS_CATEGORIES.map((item) => (
@@ -208,6 +221,27 @@ export default function StatusList({
               ))}
             </Select>
           </div>
+          <Checkbox
+            label={t("pages.projects.workflowPanel.initial")}
+            checked={isInitial}
+            disabled={category !== "TODO" || busy}
+            onChange={(event) => {
+              const checked = event.target.checked;
+              setIsInitial(checked);
+              if (checked) {
+                setIsFinal(false);
+                setCategory("TODO");
+              }
+            }}
+          />
+          <Checkbox
+            label={t("pages.projects.workflowPanel.final")}
+            checked={isFinal}
+            disabled={
+              category === "TODO" || category === "IN_PROGRESS" || busy
+            }
+            onChange={(event) => setIsFinal(event.target.checked)}
+          />
           <button
             type="submit"
             disabled={busy}
@@ -215,6 +249,12 @@ export default function StatusList({
           >
             {t("pages.projects.workflowPanel.add")}
           </button>
+          {isInitial &&
+            workflow.statuses.some((status) => status.isInitial) && (
+              <p className="w-full text-xs text-amber-700">
+                {t("pages.projects.workflowPanel.initialReplaced")}
+              </p>
+            )}
         </form>
       )}
 

@@ -38,7 +38,7 @@ export function mapProjectDetail(project: any, currentUserId: number) {
   };
 }
 
-export function mapProjectList(projects: any) {
+export function mapProjectList(projects: any, currentUserId: number) {
   return projects.map((project: any) => ({
     id: project.id,
     name: project.name,
@@ -54,6 +54,10 @@ export function mapProjectList(projects: any) {
     memberCount: new Set(
       project.members?.map((member: { userId: number }) => member.userId) ?? [],
     ).size,
+    isMember:
+      project.members?.some(
+        (member: { userId: number }) => member.userId === currentUserId,
+      ) ?? false,
   }));
 }
 
@@ -121,4 +125,142 @@ export function mapMemberCandidates(
       ? (avatarUrls.get(candidate.avatarKey) ?? null)
       : null,
   }));
+}
+
+type WorkflowRoleRow = {
+  id: number;
+  key: string;
+  name: string;
+  sortOrder: number;
+};
+
+type WorkflowTaskTypeRow = {
+  id: number;
+  key: string;
+  name: string;
+  description: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  workflowId: number | null;
+};
+
+type WorkflowStatusRow = {
+  id: number;
+  name: string;
+  key: string;
+  description: string | null;
+  sortOrder: number;
+  category: "TODO" | "IN_PROGRESS" | "DONE" | "CANCELLED";
+  color: string | null;
+  isInitial: boolean;
+  isFinal: boolean;
+};
+
+type WorkflowApprovalRuleRow = {
+  id: number;
+  approverType: "PROJECT_ROLE" | "TASK_ROLE";
+  projectRoleId: number | null;
+  taskRole: "ASSIGNEE" | "REVIEWER" | "REPORTER" | null;
+  minApprovals: number;
+  onRejectStatusId: number;
+};
+
+type WorkflowTransitionRow = {
+  id: number;
+  fromStatusId: number;
+  toStatusId: number;
+  name: string;
+  isActive: boolean;
+  approvalRules: WorkflowApprovalRuleRow[];
+};
+
+type WorkflowRow = {
+  id: number;
+  name: string;
+  description: string | null;
+  isDefault: boolean;
+  isActive: boolean;
+  statuses?: WorkflowStatusRow[];
+  transitions?: WorkflowTransitionRow[];
+};
+
+export function mapProjectWorkflowStatus(status: WorkflowStatusRow) {
+  return {
+    id: status.id,
+    name: status.name,
+    key: status.key,
+    description: status.description,
+    sortOrder: status.sortOrder,
+    category: status.category,
+    color: status.color,
+    isInitial: status.isInitial,
+    isFinal: status.isFinal,
+  };
+}
+
+export function mapProjectApprovalRule(rule: WorkflowApprovalRuleRow) {
+  return {
+    id: rule.id,
+    approverType: rule.approverType,
+    projectRoleId: rule.projectRoleId,
+    taskRole: rule.taskRole,
+    minApprovals: rule.minApprovals,
+    onRejectStatusId: rule.onRejectStatusId,
+  };
+}
+
+export function mapProjectWorkflowTransition(transition: WorkflowTransitionRow) {
+  return {
+    id: transition.id,
+    fromStatusId: transition.fromStatusId,
+    toStatusId: transition.toStatusId,
+    name: transition.name,
+    isActive: transition.isActive,
+    approvalRules: transition.approvalRules.map(mapProjectApprovalRule),
+  };
+}
+
+export function mapProjectWorkflowSummary(workflow: WorkflowRow) {
+  return {
+    id: workflow.id,
+    name: workflow.name,
+    description: workflow.description,
+    isDefault: workflow.isDefault,
+    isActive: workflow.isActive,
+  };
+}
+
+export function mapProjectWorkflow(workflow: WorkflowRow) {
+  return {
+    ...mapProjectWorkflowSummary(workflow),
+    statuses: (workflow.statuses ?? []).map(mapProjectWorkflowStatus),
+    transitions: (workflow.transitions ?? []).map(mapProjectWorkflowTransition),
+  };
+}
+
+export function mapWorkflowConfig(input: {
+  canConfigure: boolean;
+  projectRoles: WorkflowRoleRow[];
+  taskTypes: WorkflowTaskTypeRow[];
+  workflows: WorkflowRow[];
+}) {
+  return {
+    canConfigure: input.canConfigure,
+    projectRoles: input.projectRoles.map((role) => ({
+      id: role.id,
+      key: role.key,
+      name: role.name,
+      sortOrder: role.sortOrder,
+    })),
+    taskTypes: input.taskTypes.map((taskType) => ({
+      id: taskType.id,
+      key: taskType.key,
+      name: taskType.name,
+      description: taskType.description,
+      sortOrder: taskType.sortOrder,
+      isActive: taskType.isActive,
+      workflowId: taskType.workflowId,
+    })),
+    workflows: input.workflows.map((workflow) => mapProjectWorkflow(workflow)),
+  };
 }

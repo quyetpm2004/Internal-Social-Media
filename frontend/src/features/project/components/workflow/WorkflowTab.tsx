@@ -5,11 +5,11 @@ import Modal from "@/components/shared/Modal";
 import { projectApi } from "@/features/project/api/project.api";
 import ApprovalRuleList from "@/features/project/components/workflow/ApprovalRuleList";
 import StatusList from "@/features/project/components/workflow/StatusList";
+import TaskTypeList from "@/features/project/components/workflow/TaskTypeList";
 import TransitionList from "@/features/project/components/workflow/TransitionList";
 import TransitionPreview from "@/features/project/components/workflow/TransitionPreview";
 import WorkflowFormModal from "@/features/project/components/workflow/WorkflowFormModal";
 import { pickWorkflowId } from "@/features/project/components/workflow/workflow-flow";
-import { USE_PROJECT_WORKFLOW_MOCK } from "@/features/project/api/project-workflow.mock";
 import type {
   ProjectWorkflow,
   ProjectWorkflowConfig,
@@ -135,7 +135,9 @@ export default function WorkflowTab({
           (taskType) => taskType.workflowId === removing.id,
         );
   const lastWorkflow = (config?.workflows.length ?? 0) <= 1;
-  const deleteBlocked = linkedTaskTypes.length > 0 || lastWorkflow;
+  const defaultWorkflow = removing?.isDefault === true;
+  const deleteBlocked =
+    defaultWorkflow || linkedTaskTypes.length > 0 || lastWorkflow;
 
   const handleDelete = async () => {
     if (!removing || deleteBlocked) {
@@ -182,11 +184,6 @@ export default function WorkflowTab({
 
   return (
     <div className="space-y-4">
-      {USE_PROJECT_WORKFLOW_MOCK && (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
-          {t("pages.projects.workflowPanel.mockNotice")}
-        </p>
-      )}
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-base font-semibold text-slate-900">
@@ -311,6 +308,14 @@ export default function WorkflowTab({
         )}
       </section>
 
+      <TaskTypeList
+        projectId={projectId}
+        taskTypes={config.taskTypes ?? []}
+        workflows={config.workflows}
+        canConfigure={config.canConfigure}
+        onChanged={() => afterWrite(selected?.id)}
+      />
+
       {selected && (
         <>
           <StatusList
@@ -355,15 +360,17 @@ export default function WorkflowTab({
         }}
         title={t("pages.projects.workflowPanel.deleteWorkflow")}
         description={
-          linkedTaskTypes.length > 0
-            ? t("pages.projects.workflowPanel.deleteBlocked")
-            : lastWorkflow
-              ? t("pages.projects.workflowPanel.deleteLast")
-              : t("pages.projects.workflowPanel.deleteCascade", {
-                  statuses: removing?.statuses.length ?? 0,
-                  transitions: removing?.transitions.length ?? 0,
-                  rules: removing ? ruleCount(removing) : 0,
-                })
+          defaultWorkflow
+            ? t("pages.projects.workflowPanel.deleteDefault")
+            : linkedTaskTypes.length > 0
+              ? t("pages.projects.workflowPanel.deleteBlocked")
+              : lastWorkflow
+                ? t("pages.projects.workflowPanel.deleteLast")
+                : t("pages.projects.workflowPanel.deleteCascade", {
+                    statuses: removing?.statuses.length ?? 0,
+                    transitions: removing?.transitions.length ?? 0,
+                    rules: removing ? ruleCount(removing) : 0,
+                  })
         }
         variant={deleteBlocked ? "primary" : "danger"}
         confirmText={
@@ -373,7 +380,7 @@ export default function WorkflowTab({
         loading={busy}
         onConfirm={handleDelete}
       >
-        {linkedTaskTypes.length > 0 && (
+        {!defaultWorkflow && linkedTaskTypes.length > 0 && (
           <ul className="list-disc space-y-1 pl-5 text-sm text-slate-700">
             {linkedTaskTypes.map((taskType) => (
               <li key={taskType.id}>{taskType.name}</li>

@@ -429,6 +429,7 @@ export function updateProject(
   });
 }
 
+// Kiểm tra xem dự án này user có xem được kh
 export async function findVisibleProject(projectId: number, userId: number) {
   const project = await prisma.project.findFirst({
     where: { id: projectId, ...visibleWhere(userId) },
@@ -540,6 +541,7 @@ export async function getProjectMyRoles(projectId: number, userId: number) {
   return rows.map((row) => row.projectRole);
 }
 
+// Check PM ?
 export async function canManageMembers(projectId: number, userId: number) {
   const manager = await prisma.projectMember.findFirst({
     where: {
@@ -552,7 +554,10 @@ export async function canManageMembers(projectId: number, userId: number) {
   return Boolean(manager);
 }
 
-export async function getProjectRolesByIds(projectId: number, roleIds: number[]) {
+export async function getProjectRolesByIds(
+  projectId: number,
+  roleIds: number[],
+) {
   return prisma.projectRole.findMany({
     where: { projectId, id: { in: roleIds } },
     select: projectRoleSelect,
@@ -574,7 +579,10 @@ export async function getUserForInvite(userId: number) {
   });
 }
 
-export async function getProjectMember(projectId: number, memberUserId: number) {
+export async function getProjectMember(
+  projectId: number,
+  memberUserId: number,
+) {
   const user = await prisma.user.findFirst({
     where: {
       id: memberUserId,
@@ -652,7 +660,10 @@ export async function removeProjectMember(projectId: number, userId: number) {
   });
 }
 
-export async function searchMemberCandidates(projectId: number, keyword: string) {
+export async function searchMemberCandidates(
+  projectId: number,
+  keyword: string,
+) {
   const users = await prisma.user.findMany({
     where: {
       status: "ACTIVE",
@@ -678,4 +689,605 @@ export async function searchMemberCandidates(projectId: number, keyword: string)
     email: user.email,
     avatarKey: user.profile?.avatarKey ?? null,
   }));
+}
+
+const projectWorkflowStatusSelect = {
+  id: true,
+  name: true,
+  key: true,
+  description: true,
+  sortOrder: true,
+  category: true,
+  color: true,
+  isInitial: true,
+  isFinal: true,
+} satisfies Prisma.ProjectWorkflowStatusSelect;
+
+const projectApprovalRuleSelect = {
+  id: true,
+  approverType: true,
+  projectRoleId: true,
+  taskRole: true,
+  minApprovals: true,
+  onRejectStatusId: true,
+} satisfies Prisma.ProjectApprovalRuleSelect;
+
+const projectWorkflowTransitionSelect = {
+  id: true,
+  fromStatusId: true,
+  toStatusId: true,
+  name: true,
+  isActive: true,
+  approvalRules: {
+    orderBy: { id: "asc" },
+    select: projectApprovalRuleSelect,
+  },
+} satisfies Prisma.ProjectWorkflowTransitionSelect;
+
+const projectWorkflowSummarySelect = {
+  id: true,
+  name: true,
+  description: true,
+  isDefault: true,
+  isActive: true,
+} satisfies Prisma.ProjectWorkflowSelect;
+
+export function listProjectWorkflows(projectId: number) {
+  return prisma.projectWorkflow.findMany({
+    where: { projectId },
+    orderBy: [{ isDefault: "desc" }, { id: "asc" }],
+    select: {
+      ...projectWorkflowSummarySelect,
+      statuses: {
+        orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+        select: projectWorkflowStatusSelect,
+      },
+      transitions: {
+        orderBy: { id: "asc" },
+        select: projectWorkflowTransitionSelect,
+      },
+    },
+  });
+}
+
+const projectTaskTypeSelect = {
+  id: true,
+  key: true,
+  name: true,
+  description: true,
+  sortOrder: true,
+  isActive: true,
+  workflowId: true,
+} satisfies Prisma.ProjectTaskTypeSelect;
+
+export function listProjectTaskTypes(projectId: number) {
+  return prisma.projectTaskType.findMany({
+    where: { projectId },
+    orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    select: projectTaskTypeSelect,
+  });
+}
+
+export function findProjectWorkflow(projectId: number, workflowId: number) {
+  return prisma.projectWorkflow.findFirst({
+    where: { id: workflowId, projectId },
+    select: projectWorkflowSummarySelect,
+  });
+}
+
+export function countProjectWorkflows(projectId: number) {
+  return prisma.projectWorkflow.count({ where: { projectId } });
+}
+
+export function countTaskTypesUsingWorkflow(workflowId: number) {
+  return prisma.projectTaskType.count({ where: { workflowId } });
+}
+
+export function createProjectWorkflow(
+  projectId: number,
+  data: {
+    name: string;
+    description: string | null;
+    isDefault: boolean;
+    isActive: boolean;
+  },
+) {
+  return prisma.$transaction(async (tx) => {
+    if (data.isDefault) {
+      // Nếu isDefault = true, update các workflow khác thành false
+      await tx.projectWorkflow.updateMany({
+        where: { projectId },
+        data: { isDefault: false },
+      });
+    }
+
+    return tx.projectWorkflow.create({
+      data: {
+        projectId,
+        name: data.name,
+        description: data.description,
+        isDefault: data.isDefault,
+        isActive: data.isActive,
+      },
+      select: projectWorkflowSummarySelect,
+    });
+  });
+}
+
+export function updateProjectWorkflow(
+  projectId: number,
+  workflowId: number,
+  data: {
+    name?: string;
+    description?: string | null;
+    isDefault?: boolean;
+    isActive?: boolean;
+  },
+) {
+  return prisma.$transaction(async (tx) => {
+    if (data.isDefault) {
+      await tx.projectWorkflow.updateMany({
+        where: { projectId, id: { not: workflowId } },
+        data: { isDefault: false },
+      });
+    }
+
+    return tx.projectWorkflow.update({
+      where: { id: workflowId },
+      data: {
+        ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.description !== undefined
+          ? { description: data.description }
+          : {}),
+        ...(data.isDefault !== undefined ? { isDefault: data.isDefault } : {}),
+        ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+      },
+      select: projectWorkflowSummarySelect,
+    });
+  });
+}
+
+export function deleteProjectWorkflow(workflowId: number) {
+  return prisma.$transaction(async (tx) => {
+    const transitions = await tx.projectWorkflowTransition.findMany({
+      where: { workflowId },
+      select: { id: true },
+    });
+    const transitionIds = transitions.map((transition) => transition.id);
+
+    if (transitionIds.length > 0) {
+      await tx.projectApprovalRule.deleteMany({
+        where: { transitionId: { in: transitionIds } },
+      });
+    }
+
+    await tx.projectWorkflowTransition.deleteMany({ where: { workflowId } });
+    await tx.projectWorkflowStatus.deleteMany({ where: { workflowId } });
+    await tx.projectWorkflow.delete({ where: { id: workflowId } });
+  });
+}
+
+export function findProjectWorkflowStatus(
+  workflowId: number,
+  statusId: number,
+) {
+  return prisma.projectWorkflowStatus.findFirst({
+    where: { id: statusId, workflowId },
+    select: projectWorkflowStatusSelect,
+  });
+}
+
+export function findProjectWorkflowStatusByKey(
+  workflowId: number,
+  key: string,
+) {
+  return prisma.projectWorkflowStatus.findFirst({
+    where: { workflowId, key },
+    select: { id: true },
+  });
+}
+
+export function findProjectWorkflowStatusByName(
+  workflowId: number,
+  name: string,
+) {
+  return prisma.projectWorkflowStatus.findFirst({
+    where: { workflowId, name },
+    select: { id: true },
+  });
+}
+
+export function listProjectWorkflowStatusIds(workflowId: number) {
+  return prisma.projectWorkflowStatus.findMany({
+    where: { workflowId },
+    select: { id: true },
+  });
+}
+
+export function countStatusesInWorkflow(
+  workflowId: number,
+  statusIds: number[],
+) {
+  return prisma.projectWorkflowStatus.count({
+    where: { workflowId, id: { in: statusIds } },
+  });
+}
+
+export function createProjectWorkflowStatus(
+  workflowId: number,
+  data: {
+    name: string;
+    key: string;
+    description: string | null;
+    sortOrder: number;
+    category: "TODO" | "IN_PROGRESS" | "DONE" | "CANCELLED";
+    color: string | null;
+    isInitial: boolean;
+    isFinal: boolean;
+  },
+) {
+  return prisma.$transaction(async (tx) => {
+    if (data.isInitial) {
+      await tx.projectWorkflowStatus.updateMany({
+        where: { workflowId },
+        data: { isInitial: false },
+      });
+    }
+
+    return tx.projectWorkflowStatus.create({
+      data: {
+        workflowId,
+        name: data.name,
+        key: data.key,
+        description: data.description,
+        sortOrder: data.sortOrder,
+        category: data.category,
+        color: data.color,
+        isInitial: data.isInitial,
+        isFinal: data.isFinal,
+      },
+      select: projectWorkflowStatusSelect,
+    });
+  });
+}
+
+export function updateProjectWorkflowStatus(
+  workflowId: number,
+  statusId: number,
+  data: {
+    name?: string;
+    description?: string | null;
+    sortOrder?: number;
+    category?: "TODO" | "IN_PROGRESS" | "DONE" | "CANCELLED";
+    color?: string | null;
+    isInitial?: boolean;
+    isFinal?: boolean;
+  },
+) {
+  return prisma.$transaction(async (tx) => {
+    if (data.isInitial) {
+      await tx.projectWorkflowStatus.updateMany({
+        where: { workflowId, id: { not: statusId } },
+        data: { isInitial: false },
+      });
+    }
+
+    return tx.projectWorkflowStatus.update({
+      where: { id: statusId },
+      data: {
+        ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.description !== undefined
+          ? { description: data.description }
+          : {}),
+        ...(data.sortOrder !== undefined ? { sortOrder: data.sortOrder } : {}),
+        ...(data.category !== undefined ? { category: data.category } : {}),
+        ...(data.color !== undefined ? { color: data.color } : {}),
+        ...(data.isInitial !== undefined ? { isInitial: data.isInitial } : {}),
+        ...(data.isFinal !== undefined ? { isFinal: data.isFinal } : {}),
+      },
+      select: projectWorkflowStatusSelect,
+    });
+  });
+}
+
+export function deleteProjectWorkflowStatus(statusId: number) {
+  return prisma.$transaction(async (tx) => {
+    // Xóa các approval rule liên quan
+    await tx.projectApprovalRule.deleteMany({
+      where: {
+        OR: [
+          { onRejectStatusId: statusId },
+          {
+            transition: {
+              OR: [{ fromStatusId: statusId }, { toStatusId: statusId }],
+            },
+          },
+        ],
+      },
+    });
+    // Xóa các transition liên quan
+    await tx.projectWorkflowTransition.deleteMany({
+      where: {
+        OR: [{ fromStatusId: statusId }, { toStatusId: statusId }],
+      },
+    });
+
+    await tx.projectWorkflowStatus.delete({ where: { id: statusId } });
+  });
+}
+
+export function reorderProjectWorkflowStatuses(statusIds: number[]) {
+  // statusIds = [3, 1, 2] gửi lên từ fe đã sort rồi, 3 có sortOrder = 0, 2 có sortOrder = 2
+  // sortOrder = index trong mảng
+  return prisma.$transaction(
+    statusIds.map((id, sortOrder) =>
+      prisma.projectWorkflowStatus.update({
+        where: { id },
+        data: { sortOrder },
+      }),
+    ),
+  );
+}
+
+export function findProjectWorkflowTransition(
+  workflowId: number,
+  transitionId: number,
+) {
+  return prisma.projectWorkflowTransition.findFirst({
+    where: { id: transitionId, workflowId },
+    select: projectWorkflowTransitionSelect,
+  });
+}
+
+export function findProjectWorkflowTransitionByPair(
+  workflowId: number,
+  fromStatusId: number,
+  toStatusId: number,
+  excludeId?: number,
+) {
+  return prisma.projectWorkflowTransition.findFirst({
+    where: {
+      workflowId,
+      fromStatusId,
+      toStatusId,
+      ...(excludeId !== undefined ? { id: { not: excludeId } } : {}),
+    },
+    select: { id: true },
+  });
+}
+
+export function createProjectWorkflowTransition(data: {
+  workflowId: number;
+  fromStatusId: number;
+  toStatusId: number;
+  name: string;
+}) {
+  return prisma.projectWorkflowTransition.create({
+    data: {
+      workflowId: data.workflowId,
+      fromStatusId: data.fromStatusId,
+      toStatusId: data.toStatusId,
+      name: data.name,
+      isActive: true,
+    },
+    select: projectWorkflowTransitionSelect,
+  });
+}
+
+export function updateProjectWorkflowTransition(
+  transitionId: number,
+  data: {
+    fromStatusId?: number;
+    toStatusId?: number;
+    name?: string;
+    isActive?: boolean;
+  },
+) {
+  return prisma.projectWorkflowTransition.update({
+    where: { id: transitionId },
+    data: {
+      ...(data.fromStatusId !== undefined
+        ? { fromStatusId: data.fromStatusId }
+        : {}),
+      ...(data.toStatusId !== undefined ? { toStatusId: data.toStatusId } : {}),
+      ...(data.name !== undefined ? { name: data.name } : {}),
+      ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+    },
+    select: projectWorkflowTransitionSelect,
+  });
+}
+
+export function deleteProjectWorkflowTransition(transitionId: number) {
+  return prisma.projectWorkflowTransition.delete({
+    where: { id: transitionId },
+  });
+}
+
+export function findProjectApprovalRule(transitionId: number, ruleId: number) {
+  return prisma.projectApprovalRule.findFirst({
+    where: { id: ruleId, transitionId },
+    select: projectApprovalRuleSelect,
+  });
+}
+
+export function findDuplicateProjectApprovalRule(input: {
+  transitionId: number;
+  approverType: "PROJECT_ROLE" | "TASK_ROLE";
+  projectRoleId: number | null;
+  taskRole: "ASSIGNEE" | "REVIEWER" | "REPORTER" | null;
+  excludeId?: number;
+}) {
+  return prisma.projectApprovalRule.findFirst({
+    where: {
+      transitionId: input.transitionId,
+      approverType: input.approverType,
+      ...(input.excludeId !== undefined
+        ? { id: { not: input.excludeId } }
+        : {}),
+      ...(input.approverType === "PROJECT_ROLE"
+        ? { projectRoleId: input.projectRoleId }
+        : { taskRole: input.taskRole }),
+    },
+    select: { id: true },
+  });
+}
+
+export function findProjectRoleInProject(projectId: number, roleId: number) {
+  return prisma.projectRole.findFirst({
+    where: { id: roleId, projectId },
+    select: { id: true },
+  });
+}
+
+export function createProjectApprovalRule(data: {
+  transitionId: number;
+  approverType: "PROJECT_ROLE" | "TASK_ROLE";
+  projectRoleId: number | null;
+  taskRole: "ASSIGNEE" | "REVIEWER" | "REPORTER" | null;
+  minApprovals: number;
+  onRejectStatusId: number;
+}) {
+  return prisma.projectApprovalRule.create({
+    data,
+    select: projectApprovalRuleSelect,
+  });
+}
+
+export function updateProjectApprovalRule(
+  ruleId: number,
+  data: {
+    approverType: "PROJECT_ROLE" | "TASK_ROLE";
+    projectRoleId: number | null;
+    taskRole: "ASSIGNEE" | "REVIEWER" | "REPORTER" | null;
+    minApprovals: number;
+    onRejectStatusId: number;
+  },
+) {
+  return prisma.projectApprovalRule.update({
+    where: { id: ruleId },
+    data,
+    select: projectApprovalRuleSelect,
+  });
+}
+
+export function deleteProjectApprovalRule(ruleId: number) {
+  return prisma.projectApprovalRule.delete({ where: { id: ruleId } });
+}
+
+export function findProjectRole(projectId: number, roleId: number) {
+  return prisma.projectRole.findFirst({
+    where: { id: roleId, projectId },
+    select: projectRoleSelect,
+  });
+}
+
+export function findProjectRoleByKey(projectId: number, key: string) {
+  return prisma.projectRole.findFirst({
+    where: { projectId, key },
+    select: projectRoleSelect,
+  });
+}
+
+export function findProjectRoleByName(projectId: number, name: string) {
+  return prisma.projectRole.findFirst({
+    where: { projectId, name },
+    select: projectRoleSelect,
+  });
+}
+
+export function createProjectRole(data: {
+  projectId: number;
+  key: string;
+  name: string;
+  description: string | null;
+  sortOrder: number;
+}) {
+  return prisma.projectRole.create({
+    data,
+    select: projectRoleSelect,
+  });
+}
+
+export function updateProjectRole(
+  roleId: number,
+  data: {
+    name?: string;
+    description?: string | null;
+    sortOrder?: number;
+  },
+) {
+  return prisma.projectRole.update({
+    where: { id: roleId },
+    data,
+    select: projectRoleSelect,
+  });
+}
+
+export function deleteProjectRole(roleId: number) {
+  return prisma.projectRole.delete({ where: { id: roleId } });
+}
+
+export function countMembersUsingRole(roleId: number) {
+  return prisma.projectMember.count({ where: { projectRoleId: roleId } });
+}
+
+export function countApprovalRulesUsingRole(roleId: number) {
+  return prisma.projectApprovalRule.count({ where: { projectRoleId: roleId } });
+}
+
+export function findProjectTaskType(projectId: number, taskTypeId: number) {
+  return prisma.projectTaskType.findFirst({
+    where: { id: taskTypeId, projectId },
+    select: projectTaskTypeSelect,
+  });
+}
+
+export function findProjectTaskTypeByKey(projectId: number, key: string) {
+  return prisma.projectTaskType.findFirst({
+    where: { projectId, key },
+    select: projectTaskTypeSelect,
+  });
+}
+
+export function findProjectTaskTypeByName(projectId: number, name: string) {
+  return prisma.projectTaskType.findFirst({
+    where: { projectId, name },
+    select: projectTaskTypeSelect,
+  });
+}
+
+export function createProjectTaskType(data: {
+  projectId: number;
+  workflowId: number | null;
+  key: string;
+  name: string;
+  description: string | null;
+  sortOrder: number;
+  isActive: boolean;
+}) {
+  return prisma.projectTaskType.create({
+    data,
+    select: projectTaskTypeSelect,
+  });
+}
+
+export function updateProjectTaskType(
+  taskTypeId: number,
+  data: {
+    name?: string;
+    description?: string | null;
+    sortOrder?: number;
+    isActive?: boolean;
+    workflowId?: number | null;
+  },
+) {
+  return prisma.projectTaskType.update({
+    where: { id: taskTypeId },
+    data,
+    select: projectTaskTypeSelect,
+  });
+}
+
+export function deleteProjectTaskType(taskTypeId: number) {
+  return prisma.projectTaskType.delete({ where: { id: taskTypeId } });
 }

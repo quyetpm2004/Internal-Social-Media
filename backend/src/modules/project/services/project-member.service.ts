@@ -1,10 +1,13 @@
+import { Prisma } from "@prisma/client";
 import { getFileUrl } from "@/modules/file/file.service";
 import { AppError } from "@/shared/errors/app-error";
 import {
   AddProjectMemberInput,
+  CreateProjectRoleCatalogInput,
   MemberCandidateQuery,
   ProjectMemberListQuery,
   UpdateProjectMemberRolesInput,
+  UpdateProjectRoleCatalogInput,
 } from "../project.schema";
 import * as projectRepository from "../project.repository";
 import * as projectMapper from "../project.mapper";
@@ -207,4 +210,125 @@ export async function searchMemberCandidates(
     candidates.map((candidate) => candidate.avatarKey),
   );
   return projectMapper.mapMemberCandidates(candidates, avatarUrls);
+}
+
+function rethrowUnique(error: unknown, message: string): never {
+  if (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  ) {
+    throw new AppError(409, message);
+  }
+  throw error;
+}
+
+export async function createProjectRole(
+  projectId: number,
+  userId: number,
+  input: CreateProjectRoleCatalogInput,
+) {
+  await projectRepository.findVisibleProject(projectId, userId);
+  await assertCanManage(projectId, userId);
+
+  const existingKey = await projectRepository.findProjectRoleByKey(
+    projectId,
+    input.key,
+  );
+  if (existingKey) {
+    throw new AppError(409, "Key vai trò đã tồn tại trong dự án");
+  }
+
+  const existingName = await projectRepository.findProjectRoleByName(
+    projectId,
+    input.name,
+  );
+  if (existingName) {
+    throw new AppError(409, "Tên vai trò đã tồn tại trong dự án");
+  }
+
+  try {
+    const role = await projectRepository.createProjectRole({
+      projectId,
+      key: input.key,
+      name: input.name,
+      description: input.description,
+      sortOrder: input.sortOrder,
+    });
+    return projectMapper.mapProjectRoles([role])[0];
+  } catch (error) {
+    rethrowUnique(error, "Key hoặc tên vai trò đã tồn tại");
+  }
+}
+
+export async function updateProjectRole(
+  projectId: number,
+  roleId: number,
+  userId: number,
+  input: UpdateProjectRoleCatalogInput,
+) {
+  await projectRepository.findVisibleProject(projectId, userId);
+  await assertCanManage(projectId, userId);
+
+  const role = await projectRepository.findProjectRole(projectId, roleId);
+  if (!role) {
+    throw new AppError(404, "Không tìm thấy vai trò dự án");
+  }
+
+  if (input.name) {
+    const existingName = await projectRepository.findProjectRoleByName(
+      projectId,
+      input.name,
+    );
+    if (existingName && existingName.id !== roleId) {
+      throw new AppError(409, "Tên vai trò đã tồn tại trong dự án");
+    }
+  }
+
+  try {
+    const updated = await projectRepository.updateProjectRole(roleId, {
+      ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(input.description !== undefined
+        ? { description: input.description }
+        : {}),
+      ...(input.sortOrder !== undefined ? { sortOrder: input.sortOrder } : {}),
+    });
+    return projectMapper.mapProjectRoles([updated])[0];
+  } catch (error) {
+    rethrowUnique(error, "Tên vai trò đã tồn tại trong dự án");
+  }
+}
+
+export async function deleteProjectRole(
+  projectId: number,
+  roleId: number,
+  userId: number,
+) {
+  await projectRepository.findVisibleProject(projectId, userId);
+  await assertCanManage(projectId, userId);
+
+  const role = await projectRepository.findProjectRole(projectId, roleId);
+  if (!role) {
+    throw new AppError(404, "Không tìm thấy vai trò dự án");
+  }
+
+  if (role.key === "PROJECT_MANAGER") {
+    throw new AppError(400, "Không thể xóa vai trò Quản trị dự án");
+  }
+
+  const [memberCount, ruleCount] = await Promise.all([
+    projectRepository.countMembersUsingRole(roleId),
+    projectRepository.countApprovalRulesUsingRole(roleId),
+  ]);
+  if (memberCount > 0) {
+    throw new AppError(400, "Không thể xóa vai trò đang được gán cho thành viên");
+  }
+  if (ruleCount > 0) {
+    throw new AppError(
+      400,
+      "Không thể xóa vai trò đang được quy tắc duyệt sử dụng",
+    );
+  }
+
+  await projectRepository.deleteProjectRole(roleId);
+  return true;
 }

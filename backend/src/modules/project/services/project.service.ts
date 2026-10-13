@@ -59,7 +59,7 @@ export async function getProjectList(
   ]);
 
   return {
-    projects: mapProjectList(projects),
+    projects: mapProjectList(projects, userId),
     pagination: {
       page,
       limit,
