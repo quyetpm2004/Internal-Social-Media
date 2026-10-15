@@ -28,7 +28,13 @@ const RICH_TEXT_DISPLAY_CLASS =
   "[&_p]:mb-1 [&_p:last-child]:mb-0 [&_br]:leading-normal " +
   "[&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1 " +
   "[&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1 " +
-  "[&_a]:text-blue-600 [&_a]:underline dark:[&_a]:text-blue-400";
+  "[&_a]:text-blue-600 [&_a]:underline dark:[&_a]:text-blue-400 " +
+  "[&_blockquote]:border-l-2 [&_blockquote]:border-slate-300 [&_blockquote]:pl-3 [&_blockquote]:my-1 " +
+  "[&_code]:font-mono [&_code]:text-[0.85em] [&_code]:bg-slate-100 [&_code]:rounded [&_code]:px-1 dark:[&_code]:bg-slate-800 " +
+  "[&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-slate-100 [&_pre]:p-3 [&_pre]:my-1 dark:[&_pre]:bg-slate-800 " +
+  "[&_pre_code]:bg-transparent [&_pre_code]:p-0 " +
+  "[&_hr]:my-3 [&_hr]:border-slate-200 " +
+  "[&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg";
 
 const RichTextContent = ({
   content,

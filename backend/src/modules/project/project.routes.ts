@@ -23,8 +23,13 @@ import {
   projectMemberListQuerySchema,
   projectMemberUserParamsSchema,
   projectRoleParamsSchema,
+  projectTaskListQuerySchema,
+  projectTaskParamsSchema,
   projectTaskTypeParamsSchema,
   reorderProjectWorkflowStatusesSchema,
+  createProjectTaskCommentSchema,
+  saveProjectTaskSchema,
+  updateProjectTaskStatusSchema,
   statusIdParamsSchema,
   transitionIdParamsSchema,
   updateProjectApprovalRuleSchema,
@@ -237,6 +242,59 @@ router.delete(
   "/:id/workflows/:workflowId/transitions/:transitionId/approval-rules/:ruleId",
   validateParams(approvalRuleIdParamsSchema),
   asyncHandler(projectController.deleteProjectApprovalRule),
+);
+
+router.get(
+  "/:id/tasks",
+  validateParams(projectIdParamsSchema),
+  validateQuery(projectTaskListQuerySchema),
+  asyncHandler(projectController.getProjectTasks),
+);
+
+router.post(
+  "/:id/tasks",
+  validateParams(projectIdParamsSchema),
+  validateBody(saveProjectTaskSchema),
+  asyncHandler(projectController.createProjectTask),
+);
+
+router.get(
+  "/:id/tasks/:taskId",
+  validateParams(projectTaskParamsSchema),
+  asyncHandler(projectController.getProjectTask),
+);
+
+router.get(
+  "/:id/tasks/:taskId/comments",
+  validateParams(projectTaskParamsSchema),
+  asyncHandler(projectController.getProjectTaskComments),
+);
+
+router.post(
+  "/:id/tasks/:taskId/comments",
+  validateParams(projectTaskParamsSchema),
+  validateBody(createProjectTaskCommentSchema),
+  asyncHandler(projectController.createProjectTaskComment),
+);
+
+router.patch(
+  "/:id/tasks/:taskId/status",
+  validateParams(projectTaskParamsSchema),
+  validateBody(updateProjectTaskStatusSchema),
+  asyncHandler(projectController.updateProjectTaskStatus),
+);
+
+router.patch(
+  "/:id/tasks/:taskId",
+  validateParams(projectTaskParamsSchema),
+  validateBody(saveProjectTaskSchema),
+  asyncHandler(projectController.updateProjectTask),
+);
+
+router.delete(
+  "/:id/tasks/:taskId",
+  validateParams(projectTaskParamsSchema),
+  asyncHandler(projectController.deleteProjectTask),
 );
 
 export default router;

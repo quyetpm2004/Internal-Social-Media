@@ -221,6 +221,11 @@ model User {
   updatedProjects Project[]       @relation("ProjectUpdater")
   projectMembers  ProjectMember[]
 
+  createdProjectTasks ProjectTask[]       @relation("ProjectTaskCreator")
+  updatedProjectTasks ProjectTask[]       @relation("ProjectTaskUpdater")
+  projectTaskMembers  ProjectTaskMember[]
+  projectTaskComments ProjectTaskComment[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@map("users")
@@ -739,9 +744,9 @@ enum ApprovalApproverType {
 }
 
 enum TemplateTaskRole {
-  ASSIGNEE
-  REVIEWER
-  REPORTER
+  ASSIGNEE // Người thực hiện tác vụ
+  REVIEWER // Người phê duyệt tác vụ
+  REPORTER // Người khởi tạo tác vụ
 }
 
 model ProjectTemplate {
@@ -922,6 +927,7 @@ model Project {
   templateVersion Int               @map("template_version")
   createdById     Int               @map("created_by_id")
   updatedById     Int?              @map("updated_by_id")
+  nextTaskNumber  Int               @default(0) @map("next_task_number")
 
   template  ProjectTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
   createdBy User            @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: Restrict)
@@ -931,6 +937,7 @@ model Project {
   workflows ProjectWorkflow[]
   taskTypes ProjectTaskType[]
   members   ProjectMember[]
+  tasks     ProjectTask[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -970,6 +977,7 @@ model ProjectRole {
   project       Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
   members       ProjectMember[]
   approvalRules ProjectApprovalRule[]
+  taskMembers   ProjectTaskMember[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -992,6 +1000,7 @@ model ProjectWorkflow {
   statuses    ProjectWorkflowStatus[]
   transitions ProjectWorkflowTransition[]
   taskTypes   ProjectTaskType[]
+  tasks       ProjectTask[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1012,6 +1021,7 @@ model ProjectTaskType {
 
   project  Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
   workflow ProjectWorkflow? @relation(fields: [workflowId], references: [id], onDelete: Restrict)
+  tasks    ProjectTask[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1039,6 +1049,7 @@ model ProjectWorkflowStatus {
   transitionsFrom ProjectWorkflowTransition[] @relation("ProjectTransitionFrom")
   transitionsTo   ProjectWorkflowTransition[] @relation("ProjectTransitionTo")
   rejectionRules  ProjectApprovalRule[]       @relation("ProjectApprovalReject")
+  tasks           ProjectTask[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1092,4 +1103,79 @@ model ProjectApprovalRule {
   @@index([projectRoleId])
   @@index([onRejectStatusId])
   @@map("project_approval_rules")
+}
+
+model ProjectTask {
+  id               Int             @id @default(autoincrement())
+  projectId        Int             @map("project_id")
+  code             String          @db.VarChar(20)
+  title            String          @db.VarChar(200)
+  description      String?         @db.Text
+  workflowId       Int             @map("workflow_id")
+  taskTypeId       Int             @map("task_type_id")
+  statusId         Int             @map("status_id")
+  priority         ProjectPriority @default(MEDIUM)
+  startDate        DateTime?       @map("start_date") @db.Date
+  dueDate          DateTime?       @map("due_date") @db.Date
+  estimatedMinutes Int?            @map("estimated_minutes")
+  parentTaskId     Int?            @map("parent_task_id")
+  createdById      Int             @map("created_by_id")
+  updatedById      Int?            @map("updated_by_id")
+
+  project   Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workflow  ProjectWorkflow       @relation(fields: [workflowId], references: [id], onDelete: Restrict)
+  taskType  ProjectTaskType       @relation(fields: [taskTypeId], references: [id], onDelete: Restrict)
+  status    ProjectWorkflowStatus @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  parent    ProjectTask?          @relation("TaskTree", fields: [parentTaskId], references: [id], onDelete: Restrict)
+  children  ProjectTask[]         @relation("TaskTree")
+  members   ProjectTaskMember[]
+  comments  ProjectTaskComment[]
+  createdBy User                  @relation("ProjectTaskCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy User?                 @relation("ProjectTaskUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([projectId, code])
+  @@index([projectId])
+  @@index([workflowId])
+  @@index([taskTypeId])
+  @@index([statusId])
+  @@index([parentTaskId])
+  @@index([createdById])
+  @@map("project_tasks")
+}
+
+model ProjectTaskMember {
+  id            Int              @id @default(autoincrement())
+  taskId        Int              @map("task_id")
+  userId        Int              @map("user_id")
+  taskRole      TemplateTaskRole @map("task_role")
+  projectRoleId Int?             @map("project_role_id")
+
+  task        ProjectTask  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  projectRole ProjectRole? @relation(fields: [projectRoleId], references: [id], onDelete: Restrict)
+
+  @@index([taskId])
+  @@index([userId, taskRole])
+  @@index([projectRoleId])
+  @@map("project_task_members")
+}
+
+model ProjectTaskComment {
+  id      Int    @id @default(autoincrement())
+  taskId  Int    @map("task_id")
+  userId  Int    @map("user_id")
+  content String @db.Text
+
+  task ProjectTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([taskId, createdAt])
+  @@index([userId])
+  @@map("project_task_comments")
 }

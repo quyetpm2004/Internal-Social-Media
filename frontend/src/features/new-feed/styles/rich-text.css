@@ -50,6 +50,77 @@
   cursor: pointer;
 }
 
+.tiptap-editor blockquote,
+.rich-text-display blockquote {
+  margin: 0.35rem 0;
+  padding-left: 0.75rem;
+  border-left: 3px solid #cbd5e1;
+  color: #475569;
+}
+
+.tiptap-editor code,
+.rich-text-display code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  background: #f1f5f9;
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.3rem;
+}
+
+.tiptap-editor pre,
+.rich-text-display pre {
+  margin: 0.4rem 0;
+  padding: 0.75rem;
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  background: #f1f5f9;
+}
+
+.tiptap-editor pre code,
+.rich-text-display pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.tiptap-editor hr,
+.rich-text-display hr {
+  margin: 0.75rem 0;
+  border: 0;
+  border-top: 1px solid #e2e8f0;
+}
+
+.tiptap-editor mark,
+.rich-text-display mark {
+  border-radius: 0.15rem;
+  padding: 0 0.1rem;
+}
+
+.tiptap-editor img,
+.rich-text-display img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 0.4rem 0;
+}
+
+.dark .tiptap-editor blockquote,
+.dark .rich-text-display blockquote {
+  border-left-color: #475569;
+  color: #cbd5e1;
+}
+
+.dark .tiptap-editor code,
+.dark .rich-text-display code,
+.dark .tiptap-editor pre,
+.dark .rich-text-display pre {
+  background: #1e293b;
+}
+
+.dark .tiptap-editor hr,
+.dark .rich-text-display hr {
+  border-top-color: #334155;
+}
+
 .dark .tiptap-editor a {
   color: #60a5fa;
 }

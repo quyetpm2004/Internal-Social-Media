@@ -3,7 +3,10 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import { Color } from "@tiptap/extension-color";
+import Highlight from "@tiptap/extension-highlight";
+import Image from "@tiptap/extension-image";
 import { TextStyle } from "@tiptap/extension-text-style";
+import TextAlign from "@tiptap/extension-text-align";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import MentionAutocomplete from "@/features/mention/components/MentionAutocomplete";
@@ -19,16 +22,27 @@ import {
 import { MentionMark } from "@/features/mention/extensions/mention-mark";
 import type { SearchUser } from "@/features/search/types/search.type";
 import {
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
   Bold,
+  Code,
   Heading1,
   Heading2,
   Heading3,
+  Highlighter,
+  ImageIcon,
   Italic,
   Link2,
   List,
   ListOrdered,
+  Minus,
   Palette,
+  Quote,
   Redo2,
+  RemoveFormatting,
+  SquareCode,
   Strikethrough,
   Underline as UnderlineIcon,
   Undo2,
@@ -47,7 +61,11 @@ type RichTextEditorProps = {
   placeholder?: string;
   minRows?: number;
   className?: string;
+  /** Extra formatting used by the task description, matching the task form toolbar. */
+  extended?: boolean;
 };
+
+type ToolbarMenu = "heading" | "color" | "highlight" | "align";
 
 const TEXT_COLORS = [
   { key: "default", value: "" },
@@ -58,6 +76,25 @@ const TEXT_COLORS = [
   { key: "blue", value: "#2563eb" },
   { key: "purple", value: "#9333ea" },
 ];
+
+const HIGHLIGHT_COLORS = [
+  { key: "default", value: "" },
+  { key: "yellow", value: "#fef08a" },
+  { key: "orange", value: "#fed7aa" },
+  { key: "green", value: "#bbf7d0" },
+  { key: "blue", value: "#bfdbfe" },
+  { key: "purple", value: "#e9d5ff" },
+  { key: "red", value: "#fecaca" },
+];
+
+function isSafeHttpUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
 const RichTextEditor = ({
   value,
@@ -70,15 +107,14 @@ const RichTextEditor = ({
   placeholder,
   minRows = 3,
   className = "",
+  extended = false,
 }: RichTextEditorProps) => {
   const { t } = useTranslation();
   const effectivePlaceholder = placeholder ?? t("pages.posts.creatorPlaceholder");
-  const [colorOpen, setColorOpen] = useState(false);
-  const [headingOpen, setHeadingOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState<ToolbarMenu | null>(null);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
-  const colorRef = useRef<HTMLDivElement>(null);
-  const headingRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
   const editorWrapRef = useRef<HTMLDivElement>(null);
   const { users: mentionUsers, loading: mentionLoading } = useMentionSearch(
     mentionQuery,
@@ -98,6 +134,19 @@ const RichTextEditor = ({
       Underline,
       TextStyle,
       Color,
+      ...(extended
+        ? [
+            Highlight.configure({ multicolor: true }),
+            TextAlign.configure({
+              types: ["heading", "paragraph"],
+            }),
+            Image.configure({
+              HTMLAttributes: {
+                class: "max-w-full h-auto rounded-lg",
+              },
+            }),
+          ]
+        : []),
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
@@ -253,21 +302,22 @@ const RichTextEditor = ({
   }, [editor, value]);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (colorRef.current && !colorRef.current.contains(e.target as Node)) {
-        setColorOpen(false);
-      }
+    const handleClickOutside = (event: MouseEvent) => {
       if (
-        headingRef.current &&
-        !headingRef.current.contains(e.target as Node)
+        toolbarRef.current &&
+        !toolbarRef.current.contains(event.target as Node)
       ) {
-        setHeadingOpen(false);
+        setOpenMenu(null);
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const toggleMenu = (menu: ToolbarMenu) => {
+    setOpenMenu((current) => (current === menu ? null : menu));
+  };
 
   const minHeight = minRows * 24 + 32;
 
@@ -287,6 +337,35 @@ const RichTextEditor = ({
     editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
   };
 
+  const setImage = () => {
+    const url = window.prompt(t("pages.editor.enterImageUrl"), "https://");
+    if (!url?.trim()) return;
+
+    if (!isSafeHttpUrl(url.trim())) {
+      window.alert(t("pages.editor.invalidImageUrl"));
+      return;
+    }
+
+    editor.chain().focus().setImage({ src: url.trim() }).run();
+  };
+
+  const textAlign = editor.isActive({ textAlign: "center" })
+    ? "center"
+    : editor.isActive({ textAlign: "right" })
+      ? "right"
+      : editor.isActive({ textAlign: "justify" })
+        ? "justify"
+        : "left";
+
+  const AlignIcon =
+    textAlign === "center"
+      ? AlignCenter
+      : textAlign === "right"
+        ? AlignRight
+        : textAlign === "justify"
+          ? AlignJustify
+          : AlignLeft;
+
   const activeHeading = editor.isActive("heading", { level: 1 })
     ? "H1"
     : editor.isActive("heading", { level: 2 })
@@ -297,9 +376,12 @@ const RichTextEditor = ({
 
   return (
     <div
-      className={`rounded-xl border border-slate-200/80 dark:border-slate-700/80 overflow-hidden ${className}`}
+      className={`rounded-xl border border-slate-200/80 dark:border-slate-700/80 ${className}`}
     >
-      <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-slate-200/80 dark:border-slate-700/80 bg-slate-100/60 dark:bg-slate-800/40">
+      <div
+        ref={toolbarRef}
+        className={`relative z-10 flex items-center gap-0.5 px-2 py-1.5 rounded-t-xl border-b border-slate-200/80 dark:border-slate-700/80 bg-slate-100/60 dark:bg-slate-800/40 ${extended ? "flex-nowrap" : "flex-wrap"}`}
+      >
         <ToolbarButton
           title={t("pages.editor.undo")}
           onClick={() => editor.chain().focus().undo().run()}
@@ -315,18 +397,18 @@ const RichTextEditor = ({
           <Redo2 size={16} />
         </ToolbarButton>
 
-        <span className="w-px h-5 bg-slate-300 dark:bg-slate-600 mx-0.5" />
+        <ToolbarDivider />
 
-        <div ref={headingRef} className="relative">
+        <div className="relative">
           <ToolbarButton
             title={t("pages.editor.heading")}
-            active={editor.isActive("heading")}
-            onClick={() => setHeadingOpen((o) => !o)}
+            active={editor.isActive("heading") || openMenu === "heading"}
+            onClick={() => toggleMenu("heading")}
             className="min-w-13 text-xs font-semibold"
           >
             {activeHeading}
           </ToolbarButton>
-          {headingOpen && (
+          {openMenu === "heading" && (
             <div className="absolute left-0 top-full mt-1 z-30 flex flex-col min-w-30 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg">
               <HeadingMenuItem
                 label={t("pages.editor.paragraph")}
@@ -334,7 +416,7 @@ const RichTextEditor = ({
                 active={editor.isActive("paragraph")}
                 onClick={() => {
                   editor.chain().focus().setParagraph().run();
-                  setHeadingOpen(false);
+                  setOpenMenu(null);
                 }}
               />
               <HeadingMenuItem
@@ -343,7 +425,7 @@ const RichTextEditor = ({
                 active={editor.isActive("heading", { level: 1 })}
                 onClick={() => {
                   editor.chain().focus().toggleHeading({ level: 1 }).run();
-                  setHeadingOpen(false);
+                  setOpenMenu(null);
                 }}
               />
               <HeadingMenuItem
@@ -352,7 +434,7 @@ const RichTextEditor = ({
                 active={editor.isActive("heading", { level: 2 })}
                 onClick={() => {
                   editor.chain().focus().toggleHeading({ level: 2 }).run();
-                  setHeadingOpen(false);
+                  setOpenMenu(null);
                 }}
               />
               <HeadingMenuItem
@@ -361,7 +443,7 @@ const RichTextEditor = ({
                 active={editor.isActive("heading", { level: 3 })}
                 onClick={() => {
                   editor.chain().focus().toggleHeading({ level: 3 }).run();
-                  setHeadingOpen(false);
+                  setOpenMenu(null);
                 }}
               />
             </div>
@@ -397,45 +479,57 @@ const RichTextEditor = ({
           <Strikethrough size={16} />
         </ToolbarButton>
 
-        <div ref={colorRef} className="relative">
+        <div className="relative">
           <ToolbarButton
             title={t("pages.editor.textColor")}
-            active={colorOpen}
-            onClick={() => setColorOpen((o) => !o)}
+            active={openMenu === "color" || Boolean(editor.getAttributes("textStyle").color)}
+            onClick={() => toggleMenu("color")}
           >
             <Palette size={16} />
           </ToolbarButton>
-          {colorOpen && (
-            <div className="absolute left-0 top-full mt-1 z-30 flex flex-wrap gap-1.5 p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg w-[180px]">
-              {TEXT_COLORS.map((color) => (
-                <button
-                  key={color.key}
-                  type="button"
-                  title={t(`pages.editor.colors.${color.key}`)}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => {
-                    if (!color.value) {
-                      editor.chain().focus().unsetColor().run();
-                    } else {
-                      editor.chain().focus().setColor(color.value).run();
-                    }
-                    setColorOpen(false);
-                  }}
-                  className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${
-                    color.value
-                      ? "border-slate-200 dark:border-slate-600"
-                      : "border-dashed border-slate-400 bg-white dark:bg-slate-700"
-                  }`}
-                  style={
-                    color.value ? { backgroundColor: color.value } : undefined
-                  }
-                />
-              ))}
-            </div>
+          {openMenu === "color" && (
+            <ColorSwatches
+              colors={TEXT_COLORS}
+              label={(key) => t(`pages.editor.colors.${key}`)}
+              onPick={(value) => {
+                if (!value) {
+                  editor.chain().focus().unsetColor().run();
+                } else {
+                  editor.chain().focus().setColor(value).run();
+                }
+                setOpenMenu(null);
+              }}
+            />
           )}
         </div>
 
-        <span className="w-px h-5 bg-slate-300 dark:bg-slate-600 mx-0.5" />
+        {extended && (
+          <div className="relative">
+            <ToolbarButton
+              title={t("pages.editor.highlight")}
+              active={openMenu === "highlight" || editor.isActive("highlight")}
+              onClick={() => toggleMenu("highlight")}
+            >
+              <Highlighter size={16} />
+            </ToolbarButton>
+            {openMenu === "highlight" && (
+              <ColorSwatches
+                colors={HIGHLIGHT_COLORS}
+                label={(key) => t(`pages.editor.colors.${key}`)}
+                onPick={(value) => {
+                  if (!value) {
+                    editor.chain().focus().unsetHighlight().run();
+                  } else {
+                    editor.chain().focus().setHighlight({ color: value }).run();
+                  }
+                  setOpenMenu(null);
+                }}
+              />
+            )}
+          </div>
+        )}
+
+        <ToolbarDivider />
 
         <ToolbarButton
           title={t("pages.editor.bulletList")}
@@ -451,6 +545,59 @@ const RichTextEditor = ({
         >
           <ListOrdered size={16} />
         </ToolbarButton>
+
+        {extended && (
+          <div className="relative">
+            <ToolbarButton
+              title={t("pages.editor.align")}
+              active={openMenu === "align" || textAlign !== "left"}
+              onClick={() => toggleMenu("align")}
+            >
+              <AlignIcon size={16} />
+            </ToolbarButton>
+            {openMenu === "align" && (
+              <div className="absolute left-0 top-full mt-1 z-30 flex flex-col min-w-36 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg">
+                <HeadingMenuItem
+                  label={t("pages.editor.alignLeft")}
+                  icon={<AlignLeft size={16} />}
+                  active={textAlign === "left"}
+                  onClick={() => {
+                    editor.chain().focus().setTextAlign("left").run();
+                    setOpenMenu(null);
+                  }}
+                />
+                <HeadingMenuItem
+                  label={t("pages.editor.alignCenter")}
+                  icon={<AlignCenter size={16} />}
+                  active={textAlign === "center"}
+                  onClick={() => {
+                    editor.chain().focus().setTextAlign("center").run();
+                    setOpenMenu(null);
+                  }}
+                />
+                <HeadingMenuItem
+                  label={t("pages.editor.alignRight")}
+                  icon={<AlignRight size={16} />}
+                  active={textAlign === "right"}
+                  onClick={() => {
+                    editor.chain().focus().setTextAlign("right").run();
+                    setOpenMenu(null);
+                  }}
+                />
+                <HeadingMenuItem
+                  label={t("pages.editor.alignJustify")}
+                  icon={<AlignJustify size={16} />}
+                  active={textAlign === "justify"}
+                  onClick={() => {
+                    editor.chain().focus().setTextAlign("justify").run();
+                    setOpenMenu(null);
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         <ToolbarButton
           title={t("pages.editor.link")}
           active={editor.isActive("link")}
@@ -458,6 +605,49 @@ const RichTextEditor = ({
         >
           <Link2 size={16} />
         </ToolbarButton>
+
+        {extended && (
+          <>
+            <ToolbarButton title={t("pages.editor.image")} onClick={setImage}>
+              <ImageIcon size={16} />
+            </ToolbarButton>
+            <ToolbarButton
+              title={t("pages.editor.code")}
+              active={editor.isActive("code")}
+              onClick={() => editor.chain().focus().toggleCode().run()}
+            >
+              <Code size={16} />
+            </ToolbarButton>
+            <ToolbarButton
+              title={t("pages.editor.codeBlock")}
+              active={editor.isActive("codeBlock")}
+              onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+            >
+              <SquareCode size={16} />
+            </ToolbarButton>
+            <ToolbarButton
+              title={t("pages.editor.quote")}
+              active={editor.isActive("blockquote")}
+              onClick={() => editor.chain().focus().toggleBlockquote().run()}
+            >
+              <Quote size={16} />
+            </ToolbarButton>
+            <ToolbarButton
+              title={t("pages.editor.horizontalRule")}
+              onClick={() => editor.chain().focus().setHorizontalRule().run()}
+            >
+              <Minus size={16} />
+            </ToolbarButton>
+            <ToolbarButton
+              title={t("pages.editor.clearFormatting")}
+              onClick={() =>
+                editor.chain().focus().unsetAllMarks().clearNodes().run()
+              }
+            >
+              <RemoveFormatting size={16} />
+            </ToolbarButton>
+          </>
+        )}
       </div>
 
       <div
@@ -488,6 +678,38 @@ type ToolbarButtonProps = {
   className?: string;
   children: ReactNode;
 };
+
+const ToolbarDivider = () => (
+  <span className="w-px h-5 bg-slate-300 dark:bg-slate-600 mx-0.5" />
+);
+
+const ColorSwatches = ({
+  colors,
+  label,
+  onPick,
+}: {
+  colors: { key: string; value: string }[];
+  label: (key: string) => string;
+  onPick: (value: string) => void;
+}) => (
+  <div className="absolute left-0 top-full mt-1 z-30 flex flex-wrap gap-1.5 p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg w-[180px]">
+    {colors.map((color) => (
+      <button
+        key={color.key}
+        type="button"
+        title={label(color.key)}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => onPick(color.value)}
+        className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${
+          color.value
+            ? "border-slate-200 dark:border-slate-600"
+            : "border-dashed border-slate-400 bg-white dark:bg-slate-700"
+        }`}
+        style={color.value ? { backgroundColor: color.value } : undefined}
+      />
+    ))}
+  </div>
+);
 
 const ToolbarButton = ({
   title,

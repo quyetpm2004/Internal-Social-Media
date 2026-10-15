@@ -100,7 +100,6 @@ export type ProjectTab =
   | "chat"
   | "phases"
   | "tasks"
-  | "bugs"
   | "milestones"
   | "members"
   | "workflow"

@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import * as projectService from "@/modules/project/services/project.service";
 import * as projectMemberService from "@/modules/project/services/project-member.service";
+import * as projectTaskService from "@/modules/project/services/project-task.service";
 import * as projectWorkflowService from "@/modules/project/services/project-workflow.service";
 import { AppError } from "@/shared/errors/app-error";
 
@@ -405,6 +406,105 @@ export async function deleteProjectTaskType(req: Request, res: Response) {
   );
   res.status(200).json({
     message: "Xóa loại công việc thành công",
+    data,
+  });
+}
+
+export async function getProjectTasks(req: Request, res: Response) {
+  const data = await projectTaskService.getProjectTasks(
+    Number(req.params.id),
+    requireUserId(req),
+    req.validated,
+  );
+  res.status(200).json({
+    message: "Lấy danh sách công việc thành công",
+    data,
+  });
+}
+
+export async function createProjectTask(req: Request, res: Response) {
+  const data = await projectTaskService.createProjectTask(
+    Number(req.params.id),
+    requireUserId(req),
+    req.validated,
+  );
+  res.status(201).json({
+    message: "Tạo công việc thành công",
+    data,
+  });
+}
+
+export async function getProjectTask(req: Request, res: Response) {
+  const data = await projectTaskService.getProjectTask(
+    Number(req.params.id),
+    Number(req.params.taskId),
+    requireUserId(req),
+  );
+  res.status(200).json({
+    message: "Lấy chi tiết công việc thành công",
+    data,
+  });
+}
+
+export async function updateProjectTask(req: Request, res: Response) {
+  const data = await projectTaskService.updateProjectTask(
+    Number(req.params.id),
+    Number(req.params.taskId),
+    requireUserId(req),
+    req.validated,
+  );
+  res.status(200).json({
+    message: "Cập nhật công việc thành công",
+    data,
+  });
+}
+
+export async function updateProjectTaskStatus(req: Request, res: Response) {
+  const data = await projectTaskService.updateProjectTaskStatus(
+    Number(req.params.id),
+    Number(req.params.taskId),
+    requireUserId(req),
+    req.validated,
+  );
+  res.status(200).json({
+    message: "Đã chuyển trạng thái",
+    data,
+  });
+}
+
+export async function getProjectTaskComments(req: Request, res: Response) {
+  const data = await projectTaskService.listTaskComments(
+    Number(req.params.id),
+    Number(req.params.taskId),
+    requireUserId(req),
+  );
+  res.status(200).json({
+    message: "Lấy bình luận công việc thành công",
+    data,
+  });
+}
+
+export async function createProjectTaskComment(req: Request, res: Response) {
+  const data = await projectTaskService.createTaskComment(
+    Number(req.params.id),
+    Number(req.params.taskId),
+    requireUserId(req),
+    req.validated,
+  );
+  res.status(201).json({
+    message: "Đã thêm bình luận",
+    data,
+  });
+}
+
+export async function deleteProjectTask(req: Request, res: Response) {
+  const data = await projectTaskService.deleteProjectTask(
+    Number(req.params.id),
+    Number(req.params.taskId),
+    requireUserId(req),
+  );
+  res.status(200).json({
+    message: "Xóa công việc thành công",
     data,
   });
 }

@@ -264,3 +264,212 @@ export function mapWorkflowConfig(input: {
     workflows: input.workflows.map((workflow) => mapProjectWorkflow(workflow)),
   };
 }
+
+type TaskStatusRow = {
+  id: number;
+  name: string;
+  key: string;
+  color: string | null;
+  category: "TODO" | "IN_PROGRESS" | "DONE" | "CANCELLED";
+};
+
+type TaskUserRow = {
+  fullName: string;
+  profile: { avatarKey: string | null } | null;
+};
+
+type TaskAssigneeRow = {
+  userId: number;
+  user: TaskUserRow;
+  projectRole: {
+    id: number;
+    key: string;
+    name: string;
+    sortOrder: number;
+  } | null;
+};
+
+type TaskMemberRow = TaskAssigneeRow & {
+  taskRole: "ASSIGNEE" | "REVIEWER" | "REPORTER";
+};
+
+function formatDateOnly(value: Date | null) {
+  if (!value) return null;
+  const year = value.getUTCFullYear();
+  const month = String(value.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(value.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function mapAvatarUrl(
+  user: TaskUserRow,
+  avatarUrls: Map<string, string>,
+) {
+  const key = user.profile?.avatarKey;
+  if (!key) return null;
+  return avatarUrls.get(key) ?? null;
+}
+
+function mapTaskStatus(status: TaskStatusRow) {
+  return {
+    id: status.id,
+    name: status.name,
+    key: status.key,
+    color: status.color,
+    category: status.category,
+  };
+}
+
+function mapAssignees(
+  members: TaskAssigneeRow[],
+  avatarUrls: Map<string, string>,
+) {
+  return members
+    .flatMap((member) => {
+      if (!member.projectRole) return [];
+      return [
+        {
+          userId: member.userId,
+          fullName: member.user.fullName,
+          avatarUrl: mapAvatarUrl(member.user, avatarUrls),
+          projectRole: {
+            id: member.projectRole.id,
+            key: member.projectRole.key,
+            name: member.projectRole.name,
+          },
+          sortOrder: member.projectRole.sortOrder,
+        },
+      ];
+    })
+    .sort(
+      (left, right) =>
+        left.sortOrder - right.sortOrder ||
+        left.projectRole.id - right.projectRole.id,
+    )
+    .map(({ sortOrder: _sortOrder, ...assignee }) => assignee);
+}
+
+function mapTaskPerson(member: TaskMemberRow, avatarUrls: Map<string, string>) {
+  return {
+    userId: member.userId,
+    fullName: member.user.fullName,
+    avatarUrl: mapAvatarUrl(member.user, avatarUrls),
+  };
+}
+
+export function mapProjectTaskListItem(
+  task: {
+    id: number;
+    code: string;
+    title: string;
+    taskType: { id: number; name: string; key: string };
+    workflow: { id: number; name: string };
+    status: TaskStatusRow;
+    members: TaskAssigneeRow[];
+    priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+    startDate: Date | null;
+    dueDate: Date | null;
+    createdAt: Date;
+    estimatedMinutes: number | null;
+    parent: { id: number; code: string; title: string } | null;
+    _count: { children: number };
+  },
+  avatarUrls: Map<string, string>,
+) {
+  return {
+    id: task.id,
+    code: task.code,
+    title: task.title,
+    taskType: task.taskType,
+    workflow: task.workflow,
+    status: mapTaskStatus(task.status),
+    assignees: mapAssignees(task.members, avatarUrls),
+    priority: task.priority,
+    startDate: formatDateOnly(task.startDate),
+    dueDate: formatDateOnly(task.dueDate),
+    createdAt: task.createdAt,
+    estimatedMinutes: task.estimatedMinutes,
+    parent: task.parent,
+    childCount: task._count.children,
+  };
+}
+
+export function mapProjectTaskDetail(
+  task: {
+    id: number;
+    code: string;
+    title: string;
+    description: string | null;
+    workflowId: number;
+    taskTypeId: number;
+    statusId: number;
+    taskType: { id: number; name: string; key: string };
+    workflow: {
+      id: number;
+      name: string;
+      statuses: TaskStatusRow[];
+    };
+    status: TaskStatusRow;
+    priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+    startDate: Date | null;
+    dueDate: Date | null;
+    estimatedMinutes: number | null;
+    parent: { id: number; code: string; title: string } | null;
+    children: Array<{
+      id: number;
+      code: string;
+      title: string;
+      estimatedMinutes: number | null;
+      priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+      status: TaskStatusRow;
+    }>;
+    members: TaskMemberRow[];
+    createdAt: Date;
+    updatedAt: Date;
+  },
+  avatarUrls: Map<string, string>,
+  access: { canEdit: boolean; canChangeStatus: boolean },
+) {
+  const assignees = mapAssignees(
+    task.members.filter((member) => member.taskRole === "ASSIGNEE"),
+    avatarUrls,
+  );
+  const reporter = task.members.find((member) => member.taskRole === "REPORTER");
+  const reviewers = task.members
+    .filter((member) => member.taskRole === "REVIEWER")
+    .map((member) => mapTaskPerson(member, avatarUrls));
+
+  return {
+    id: task.id,
+    code: task.code,
+    title: task.title,
+    description: task.description,
+    workflowId: task.workflowId,
+    taskTypeId: task.taskTypeId,
+    statusId: task.statusId,
+    taskType: task.taskType,
+    workflow: { id: task.workflow.id, name: task.workflow.name },
+    status: mapTaskStatus(task.status),
+    statusOptions: task.workflow.statuses.map(mapTaskStatus),
+    priority: task.priority,
+    startDate: formatDateOnly(task.startDate),
+    dueDate: formatDateOnly(task.dueDate),
+    estimatedMinutes: task.estimatedMinutes,
+    parent: task.parent,
+    children: task.children.map((child) => ({
+      id: child.id,
+      code: child.code,
+      title: child.title,
+      estimatedMinutes: child.estimatedMinutes,
+      priority: child.priority,
+      status: mapTaskStatus(child.status),
+    })),
+    assignees,
+    reporter: reporter ? mapTaskPerson(reporter, avatarUrls) : null,
+    reviewers,
+    createdAt: task.createdAt,
+    updatedAt: task.updatedAt,
+    canEdit: access.canEdit,
+    canChangeStatus: access.canChangeStatus,
+  };
+}

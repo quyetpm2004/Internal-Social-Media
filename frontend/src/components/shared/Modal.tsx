@@ -31,6 +31,7 @@ type ModalProps = {
   size?: ModalSize;
   className?: string;
   containerClassName?: string;
+  bodyClassName?: string;
   footerClassName?: string;
 };
 
@@ -63,6 +64,7 @@ export default function Modal({
   size = "md",
   className,
   containerClassName,
+  bodyClassName,
   footerClassName,
 }: ModalProps) {
   const { t } = useTranslation();
@@ -187,7 +189,14 @@ export default function Modal({
         )}
 
         {children && (
-          <div className="mt-4 min-h-0 flex-1 overflow-y-auto">{children}</div>
+          <div
+            className={cn(
+              "mt-4 min-h-0 flex-1 overflow-y-auto",
+              bodyClassName,
+            )}
+          >
+            {children}
+          </div>
         )}
 
         {(showDefaultFooter || showCustomFooter) && (

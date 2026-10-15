@@ -4,6 +4,7 @@ import {
 } from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
 import * as projectRepository from "@/modules/project/project.repository";
+import * as projectTaskRepository from "@/modules/project/project-task.repository";
 import {
   mapProjectApprovalRule,
   mapProjectWorkflowStatus,
@@ -38,12 +39,24 @@ type ApprovalRuleFields = {
   onRejectStatusId: number;
 };
 
+const TASK_IN_USE_MESSAGE = "Đang có công việc sử dụng dữ liệu này";
+
 function rethrowUnique(error: unknown, message: string): never {
   if (
     error instanceof Prisma.PrismaClientKnownRequestError &&
     error.code === "P2002"
   ) {
     throw new AppError(409, message);
+  }
+  throw error;
+}
+
+function rethrowIfTaskInUse(error: unknown): never {
+  if (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2003"
+  ) {
+    throw new AppError(400, TASK_IN_USE_MESSAGE);
   }
   throw error;
 }
@@ -246,7 +259,18 @@ export async function deleteWorkflow(
     );
   }
 
-  await projectRepository.deleteProjectWorkflow(workflowId);
+  const taskCount = await projectTaskRepository.countTasksUsingWorkflow(
+    workflowId,
+  );
+  if (taskCount > 0) {
+    throw new AppError(400, TASK_IN_USE_MESSAGE);
+  }
+
+  try {
+    await projectRepository.deleteProjectWorkflow(workflowId);
+  } catch (error) {
+    rethrowIfTaskInUse(error);
+  }
   return true;
 }
 
@@ -350,7 +374,16 @@ export async function deleteStatus(
     throw new AppError(404, "Không tìm thấy trạng thái");
   }
 
-  await projectRepository.deleteProjectWorkflowStatus(statusId);
+  const taskCount = await projectTaskRepository.countTasksUsingStatus(statusId);
+  if (taskCount > 0) {
+    throw new AppError(400, TASK_IN_USE_MESSAGE);
+  }
+
+  try {
+    await projectRepository.deleteProjectWorkflowStatus(statusId);
+  } catch (error) {
+    rethrowIfTaskInUse(error);
+  }
   return true;
 }
 
@@ -765,6 +798,17 @@ export async function deleteTaskType(
     throw new AppError(404, "Không tìm thấy loại công việc");
   }
 
-  await projectRepository.deleteProjectTaskType(taskTypeId);
+  const taskCount = await projectTaskRepository.countTasksUsingTaskType(
+    taskTypeId,
+  );
+  if (taskCount > 0) {
+    throw new AppError(400, TASK_IN_USE_MESSAGE);
+  }
+
+  try {
+    await projectRepository.deleteProjectTaskType(taskTypeId);
+  } catch (error) {
+    rethrowIfTaskInUse(error);
+  }
   return true;
 }

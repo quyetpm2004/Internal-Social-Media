@@ -367,3 +367,97 @@ export type CreateProjectTaskTypeInput = z.infer<
 export type UpdateProjectTaskTypeInput = z.infer<
   typeof updateProjectTaskTypeSchema
 >;
+
+const taskDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Ngày không hợp lệ");
+
+const taskChildSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(1, "Tên không được để trống")
+    .max(200, "Tên tối đa 200 ký tự"),
+  estimatedMinutes: z.number().int().min(0).max(1_000_000).nullable(),
+});
+
+export const projectTaskParamsSchema = z.object({
+  id: z.coerce.number().int().positive("ID dự án không hợp lệ"),
+  taskId: z.coerce.number().int().positive("ID công việc không hợp lệ"),
+});
+
+export const projectTaskListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(50).optional().default(10),
+  keyword: z.string().trim().optional(),
+  match: z.enum(["title", "title_or_code"]).optional().default("title"),
+  workflowId: z.coerce.number().int().positive().optional(),
+  taskTypeId: z.coerce.number().int().positive().optional(),
+  statusId: z.coerce.number().int().positive().optional(),
+  statusIds: z.preprocess((value) => {
+    if (value == null || value === "") return undefined;
+    const raw = Array.isArray(value) ? value : [value];
+    const parts = raw
+      .flatMap((item) => String(item).split(","))
+      .map((part) => part.trim())
+      .filter(Boolean);
+    return parts.length > 0 ? parts : undefined;
+  }, z.array(z.coerce.number().int().positive()).optional()),
+  assigneeId: z.coerce.number().int().positive().optional(),
+  reporterId: z.coerce.number().int().positive().optional(),
+  reviewerId: z.coerce.number().int().positive().optional(),
+  date: taskDateSchema.optional(),
+});
+
+export const saveProjectTaskSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(1, "Tên không được để trống")
+    .max(200, "Tên tối đa 200 ký tự"),
+  description: z.string().max(20000, "Mô tả tối đa 20000 ký tự").nullable(),
+  workflowId: z.number().int().positive("Quy trình không hợp lệ"),
+  taskTypeId: z.number().int().positive("Loại công việc không hợp lệ"),
+  statusId: z.number().int().positive("Trạng thái không hợp lệ").nullable().optional(),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
+  startDate: taskDateSchema.nullable(),
+  dueDate: taskDateSchema.nullable(),
+  estimatedMinutes: z.number().int().min(0).max(1_000_000).nullable(),
+  parentTaskId: z.number().int().positive().nullable(),
+  assignees: z
+    .array(
+      z.object({
+        projectRoleId: z.number().int().positive(),
+        userId: z.number().int().positive(),
+      }),
+    )
+    .default([]),
+  reporterId: z.number().int().positive(),
+  reviewerIds: z.array(z.number().int().positive()).default([]),
+  children: z
+    .array(taskChildSchema)
+    .max(20, "Tối đa 20 việc con mỗi lần")
+    .default([]),
+});
+
+export const updateProjectTaskStatusSchema = z.object({
+  statusId: z.number().int().positive("Trạng thái không hợp lệ"),
+});
+
+export const createProjectTaskCommentSchema = z.object({
+  content: z
+    .string()
+    .trim()
+    .min(1, "Nội dung không được để trống")
+    .max(5000, "Bình luận tối đa 5000 ký tự"),
+});
+
+export type ProjectTaskParams = z.infer<typeof projectTaskParamsSchema>;
+export type ProjectTaskListQuery = z.infer<typeof projectTaskListQuerySchema>;
+export type SaveProjectTaskInput = z.infer<typeof saveProjectTaskSchema>;
+export type UpdateProjectTaskStatusInput = z.infer<
+  typeof updateProjectTaskStatusSchema
+>;
+export type CreateProjectTaskCommentInput = z.infer<
+  typeof createProjectTaskCommentSchema
+>;

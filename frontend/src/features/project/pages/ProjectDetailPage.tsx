@@ -9,7 +9,6 @@ import {
 import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeft,
-  Bug,
   CalendarRange,
   CircleDot,
   FileText,
@@ -39,6 +38,7 @@ import Select from "@/components/shared/Select";
 import Textarea from "@/components/shared/Textarea";
 import { projectApi } from "@/features/project/api/project.api";
 import ProjectMembersPanel from "@/features/project/components/members/ProjectMembersPanel";
+import ProjectTasksPanel from "@/features/project/components/tasks/ProjectTasksPanel";
 import ProjectOverview from "@/features/project/components/overview/ProjectOverview";
 import WorkflowTab from "@/features/project/components/workflow/WorkflowTab";
 import {
@@ -63,7 +63,6 @@ const TABS: ProjectTab[] = [
   "chat",
   "phases",
   "tasks",
-  "bugs",
   "milestones",
   "members",
   "workflow",
@@ -101,13 +100,6 @@ const TAB_STYLE: Record<
     active: "bg-emerald-100 text-emerald-700",
     text: "text-emerald-700",
     line: "border-emerald-500",
-  },
-  bugs: {
-    icon: Bug,
-    idle: "bg-rose-50 text-rose-600",
-    active: "bg-rose-100 text-rose-700",
-    text: "text-rose-700",
-    line: "border-rose-500",
   },
   milestones: {
     icon: Flag,
@@ -212,6 +204,7 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<ProjectTab>("chat");
+  const [taskCreateSignal, setTaskCreateSignal] = useState(0);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<EditState | null>(null);
@@ -410,9 +403,11 @@ export default function ProjectDetailPage() {
             )}
             <button
               type="button"
-              disabled
-              title={t("pages.projects.developing")}
-              className="inline-flex h-10 cursor-not-allowed items-center gap-2 rounded-xl bg-primary/50 px-4 text-sm font-semibold text-white"
+              onClick={() => {
+                setTab("tasks");
+                setTaskCreateSignal((value) => value + 1);
+              }}
+              className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white hover:bg-primary/90"
             >
               <Plus className="size-4" />
               {t("pages.projects.createTask")}
@@ -605,6 +600,11 @@ export default function ProjectDetailPage() {
           <WorkflowTab
             projectId={project.id}
             onProjectUpdated={refreshProject}
+          />
+        ) : tab === "tasks" ? (
+          <ProjectTasksPanel
+            projectId={project.id}
+            createSignal={taskCreateSignal}
           />
         ) : (
           <div className="flex flex-col items-center rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-16 text-center">

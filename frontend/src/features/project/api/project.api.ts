@@ -24,6 +24,13 @@ import type {
   SaveProjectWorkflowTransitionPayload,
   UpdateProjectPayload,
 } from "@/features/project/types/project.type";
+import type {
+  SaveTaskPayload,
+  TaskComment,
+  TaskDetail,
+  TaskListParams,
+  TaskListResponse,
+} from "@/features/project/types/task.type";
 
 export const projectApi = {
   getProjects(params?: { page?: number; limit?: number; keyword?: string }) {
@@ -283,6 +290,66 @@ export const projectApi = {
   ) {
     return axiosClient.delete<ApiResponse<boolean>>(
       `/projects/${projectId}/workflows/${workflowId}/transitions/${transitionId}/approval-rules/${ruleId}`,
+    );
+  },
+
+  getTasks(projectId: number, params: TaskListParams = {}) {
+    const { statusIds, ...rest } = params;
+    return axiosClient.get<ApiResponse<TaskListResponse>>(
+      `/projects/${projectId}/tasks`,
+      {
+        params: {
+          ...rest,
+          statusIds:
+            statusIds && statusIds.length > 0 ? statusIds.join(",") : undefined,
+        },
+      },
+    );
+  },
+
+  getTask(projectId: number, taskId: number) {
+    return axiosClient.get<ApiResponse<TaskDetail>>(
+      `/projects/${projectId}/tasks/${taskId}`,
+    );
+  },
+
+  createTask(projectId: number, data: SaveTaskPayload) {
+    return axiosClient.post<ApiResponse<TaskDetail>>(
+      `/projects/${projectId}/tasks`,
+      data,
+    );
+  },
+
+  updateTask(projectId: number, taskId: number, data: SaveTaskPayload) {
+    return axiosClient.patch<ApiResponse<TaskDetail>>(
+      `/projects/${projectId}/tasks/${taskId}`,
+      data,
+    );
+  },
+
+  updateTaskStatus(projectId: number, taskId: number, statusId: number) {
+    return axiosClient.patch<ApiResponse<TaskDetail>>(
+      `/projects/${projectId}/tasks/${taskId}/status`,
+      { statusId },
+    );
+  },
+
+  deleteTask(projectId: number, taskId: number) {
+    return axiosClient.delete<ApiResponse<{ id: number }>>(
+      `/projects/${projectId}/tasks/${taskId}`,
+    );
+  },
+
+  getTaskComments(projectId: number, taskId: number) {
+    return axiosClient.get<ApiResponse<TaskComment[]>>(
+      `/projects/${projectId}/tasks/${taskId}/comments`,
+    );
+  },
+
+  createTaskComment(projectId: number, taskId: number, content: string) {
+    return axiosClient.post<ApiResponse<TaskComment>>(
+      `/projects/${projectId}/tasks/${taskId}/comments`,
+      { content },
     );
   },
 };

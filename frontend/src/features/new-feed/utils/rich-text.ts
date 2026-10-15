@@ -1,5 +1,32 @@
 import DOMPurify, { type Config } from "dompurify";
 
+const SAFE_COLOR =
+  /^(?:#[0-9a-f]{3,8}|rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)|rgba\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*(?:0|1|0?\.\d+)\s*\))$/i;
+
+function keepSafeStyle(declaration: string) {
+  const match = declaration.trim().match(/^([a-z-]+)\s*:\s*(.+)$/i);
+  if (!match) return null;
+
+  const property = match[1].toLowerCase();
+  const value = match[2].trim();
+
+  if (
+    (property === "color" || property === "background-color") &&
+    SAFE_COLOR.test(value)
+  ) {
+    return `${property}: ${value}`;
+  }
+
+  if (
+    property === "text-align" &&
+    /^(left|center|right|justify)$/i.test(value)
+  ) {
+    return `text-align: ${value.toLowerCase()}`;
+  }
+
+  return null;
+}
+
 let styleHookInstalled = false;
 
 function ensureColorStyleHook() {
@@ -10,8 +37,8 @@ function ensureColorStyleHook() {
 
     const safeDecls = data.attrValue
       .split(";")
-      .map((decl) => decl.trim())
-      .filter((decl) => /^color\s*:/i.test(decl));
+      .map((decl) => keepSafeStyle(decl))
+      .filter((decl): decl is string => Boolean(decl));
 
     if (safeDecls.length === 0) {
       data.keepAttr = false;
@@ -44,8 +71,24 @@ const SANITIZE_CONFIG: Config = {
     "ol",
     "li",
     "a",
+    "blockquote",
+    "code",
+    "pre",
+    "hr",
+    "mark",
+    "img",
   ],
-  ALLOWED_ATTR: ["style", "href", "target", "rel", "class", "data-mention-id"],
+  ALLOWED_ATTR: [
+    "style",
+    "href",
+    "target",
+    "rel",
+    "class",
+    "data-mention-id",
+    "data-color",
+    "src",
+    "alt",
+  ],
 };
 
 export type PostContentFormat = "PLAIN" | "HTML";
@@ -59,6 +102,8 @@ export function isRichTextEmpty(html: string): boolean {
   if (!html?.trim()) return true;
 
   const doc = new DOMParser().parseFromString(html, "text/html");
+  if (doc.body.querySelector("img")) return false;
+
   const text =
     doc.body.textContent?.replace(/\u00a0/g, " ").trim() ?? "";
 

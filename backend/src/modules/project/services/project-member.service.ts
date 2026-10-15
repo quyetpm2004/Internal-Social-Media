@@ -10,6 +10,7 @@ import {
   UpdateProjectRoleCatalogInput,
 } from "../project.schema";
 import * as projectRepository from "../project.repository";
+import * as projectTaskRepository from "../project-task.repository";
 import * as projectMapper from "../project.mapper";
 
 const AVATAR_URL_TTL_SECONDS = 7 * 24 * 60 * 60;
@@ -329,6 +330,23 @@ export async function deleteProjectRole(
     );
   }
 
-  await projectRepository.deleteProjectRole(roleId);
+  const taskCount = await projectTaskRepository.countTasksUsingProjectRole(
+    roleId,
+  );
+  if (taskCount > 0) {
+    throw new AppError(400, "Đang có công việc sử dụng dữ liệu này");
+  }
+
+  try {
+    await projectRepository.deleteProjectRole(roleId);
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2003"
+    ) {
+      throw new AppError(400, "Đang có công việc sử dụng dữ liệu này");
+    }
+    throw error;
+  }
   return true;
 }
