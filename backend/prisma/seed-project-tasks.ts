@@ -1,9 +1,9 @@
-import { seedProjectTasks } from "./seeds/project-task.seed";
+import { seedProjects } from "./seeds/project.seed";
 import prisma from "../src/shared/utils/prisma";
 
 async function main() {
-  await seedProjectTasks(prisma);
-  console.log("Project task seed finished.");
+  await seedProjects(prisma);
+  console.log("Đã tạo xong dự án và công việc.");
 }
 
 main()

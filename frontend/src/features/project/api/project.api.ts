@@ -9,6 +9,7 @@ import type {
   CreateProjectWorkflowTransitionPayload,
   ProjectDetail,
   ProjectListResponse,
+  ProjectMembershipFilter,
   ProjectMemberCandidate,
   ProjectMemberItem,
   ProjectMemberRole,
@@ -24,8 +25,17 @@ import type {
   SaveProjectWorkflowTransitionPayload,
   UpdateProjectPayload,
 } from "@/features/project/types/project.type";
+import type { ProjectOverviewData } from "@/features/project/types/overview.type";
+import type {
+  MilestoneList,
+  PhaseList,
+  PlanningTaskList,
+  SaveMilestonePayload,
+  SavePhasePayload,
+} from "@/features/project/types/planning.type";
 import type {
   SaveTaskPayload,
+  TaskAttachmentGroups,
   TaskComment,
   TaskDetail,
   TaskListParams,
@@ -33,7 +43,12 @@ import type {
 } from "@/features/project/types/task.type";
 
 export const projectApi = {
-  getProjects(params?: { page?: number; limit?: number; keyword?: string }) {
+  getProjects(params?: {
+    page?: number;
+    limit?: number;
+    keyword?: string;
+    membership?: ProjectMembershipFilter;
+  }) {
     return axiosClient.get<ApiResponse<ProjectListResponse>>("/projects", {
       params,
     });
@@ -49,6 +64,12 @@ export const projectApi = {
     return axiosClient.get<ApiResponse<ProjectDetail>>(`/projects/${id}`);
   },
 
+  getOverview(projectId: number) {
+    return axiosClient.get<ApiResponse<ProjectOverviewData>>(
+      `/projects/${projectId}/overview`,
+    );
+  },
+
   createProject(data: CreateProjectPayload) {
     return axiosClient.post<ApiResponse<ProjectDetail>>("/projects", data);
   },
@@ -62,7 +83,7 @@ export const projectApi = {
 
   getMembers(
     projectId: number,
-    params?: { keyword?: string; roleId?: number },
+    params?: { keyword?: string; roleId?: number; limit?: number },
   ) {
     return axiosClient.get<ApiResponse<ProjectMembersData>>(
       `/projects/${projectId}/members`,
@@ -70,6 +91,7 @@ export const projectApi = {
         params: {
           ...(params?.keyword ? { keyword: params.keyword } : {}),
           ...(params?.roleId ? { roleId: params.roleId } : {}),
+          ...(params?.limit ? { limit: params.limit } : {}),
         },
       },
     );
@@ -346,10 +368,82 @@ export const projectApi = {
     );
   },
 
-  createTaskComment(projectId: number, taskId: number, content: string) {
+  getTaskAttachments(projectId: number, taskId: number) {
+    return axiosClient.get<ApiResponse<TaskAttachmentGroups>>(
+      `/projects/${projectId}/tasks/${taskId}/attachments`,
+    );
+  },
+
+  createTaskComment(
+    projectId: number,
+    taskId: number,
+    data: { content: string; attachmentIds: number[] },
+  ) {
     return axiosClient.post<ApiResponse<TaskComment>>(
       `/projects/${projectId}/tasks/${taskId}/comments`,
-      { content },
+      data,
+    );
+  },
+
+  getPhases(projectId: number) {
+    return axiosClient.get<ApiResponse<PhaseList>>(
+      `/projects/${projectId}/phases`,
+    );
+  },
+
+  getPlanningTasks(projectId: number) {
+    return axiosClient.get<ApiResponse<PlanningTaskList>>(
+      `/projects/${projectId}/planning-tasks`,
+    );
+  },
+
+  createPhase(projectId: number, data: SavePhasePayload) {
+    return axiosClient.post<ApiResponse<{ id: number }>>(
+      `/projects/${projectId}/phases`,
+      data,
+    );
+  },
+
+  updatePhase(projectId: number, phaseId: number, data: SavePhasePayload) {
+    return axiosClient.patch<ApiResponse<{ id: number }>>(
+      `/projects/${projectId}/phases/${phaseId}`,
+      data,
+    );
+  },
+
+  deletePhase(projectId: number, phaseId: number) {
+    return axiosClient.delete<ApiResponse<{ id: number }>>(
+      `/projects/${projectId}/phases/${phaseId}`,
+    );
+  },
+
+  getMilestones(projectId: number) {
+    return axiosClient.get<ApiResponse<MilestoneList>>(
+      `/projects/${projectId}/milestones`,
+    );
+  },
+
+  createMilestone(projectId: number, data: SaveMilestonePayload) {
+    return axiosClient.post<ApiResponse<{ id: number }>>(
+      `/projects/${projectId}/milestones`,
+      data,
+    );
+  },
+
+  updateMilestone(
+    projectId: number,
+    milestoneId: number,
+    data: SaveMilestonePayload,
+  ) {
+    return axiosClient.patch<ApiResponse<{ id: number }>>(
+      `/projects/${projectId}/milestones/${milestoneId}`,
+      data,
+    );
+  },
+
+  deleteMilestone(projectId: number, milestoneId: number) {
+    return axiosClient.delete<ApiResponse<{ id: number }>>(
+      `/projects/${projectId}/milestones/${milestoneId}`,
     );
   },
 };

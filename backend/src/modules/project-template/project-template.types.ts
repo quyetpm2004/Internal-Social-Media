@@ -3,6 +3,7 @@ import {
   ProjectTemplateStatus,
   TemplateTaskRole,
   WorkflowStatusCategory,
+  WorkflowTransitionMode,
 } from "@prisma/client";
 
 export type TemplateSummary = {
@@ -68,6 +69,7 @@ export type WorkflowDetail = {
   description: string | null;
   isDefault: boolean;
   isActive: boolean;
+  transitionMode: WorkflowTransitionMode;
   statuses: StatusDetail[];
   transitions: TransitionDetail[];
 };

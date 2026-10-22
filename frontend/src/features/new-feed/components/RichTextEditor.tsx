@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -34,6 +34,7 @@ import {
   Highlighter,
   ImageIcon,
   Italic,
+  Loader2,
   Link2,
   List,
   ListOrdered,
@@ -49,6 +50,13 @@ import {
 } from "lucide-react";
 import "@/features/new-feed/styles/rich-text.css";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+
+type UploadedEditorImage = {
+  src: string;
+  fileKey: string;
+  alt?: string;
+};
 
 type RichTextEditorProps = {
   value: string;
@@ -63,7 +71,52 @@ type RichTextEditorProps = {
   className?: string;
   /** Extra formatting used by the task description, matching the task form toolbar. */
   extended?: boolean;
+  /** Upload a picked or pasted image and return the URL stored in the description. */
+  uploadImage?: (file: File) => Promise<UploadedEditorImage>;
+  onUploadingChange?: (uploading: boolean) => void;
 };
+
+const DescriptionImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      fileKey: {
+        default: null,
+        parseHTML: (element: HTMLElement) => element.getAttribute("data-file-key"),
+        renderHTML: (attributes: { fileKey?: string | null }) => {
+          if (!attributes.fileKey) return {};
+          return { "data-file-key": attributes.fileKey };
+        },
+      },
+    };
+  },
+}).configure({
+  HTMLAttributes: {
+    class: "max-w-full h-auto rounded-lg",
+  },
+});
+
+function isImageFile(file: File) {
+  return (
+    file.type.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(file.name)
+  );
+}
+
+function imageFilesFromList(list: FileList | null | undefined) {
+  return Array.from(list ?? []).filter(isImageFile);
+}
+
+function imageFilesFromClipboard(data: DataTransfer | null) {
+  const fromFiles = imageFilesFromList(data?.files);
+  if (fromFiles.length > 0) return fromFiles;
+  const fromItems: File[] = [];
+  for (const item of Array.from(data?.items ?? [])) {
+    if (item.kind !== "file" || !item.type.startsWith("image/")) continue;
+    const file = item.getAsFile();
+    if (file) fromItems.push(file);
+  }
+  return fromItems;
+}
 
 type ToolbarMenu = "heading" | "color" | "highlight" | "align";
 
@@ -108,6 +161,8 @@ const RichTextEditor = ({
   minRows = 3,
   className = "",
   extended = false,
+  uploadImage,
+  onUploadingChange,
 }: RichTextEditorProps) => {
   const { t } = useTranslation();
   const effectivePlaceholder = placeholder ?? t("pages.posts.creatorPlaceholder");
@@ -116,6 +171,13 @@ const RichTextEditor = ({
   const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const editorWrapRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const uploadImageRef = useRef(uploadImage);
+  const onUploadingChangeRef = useRef(onUploadingChange);
+  const insertImagesRef = useRef<(files: File[]) => Promise<void>>(async () => {});
+  const [imageUploading, setImageUploading] = useState(false);
+  uploadImageRef.current = uploadImage;
+  onUploadingChangeRef.current = onUploadingChange;
   const { users: mentionUsers, loading: mentionLoading } = useMentionSearch(
     mentionQuery,
     mentionQuery != null,
@@ -140,11 +202,7 @@ const RichTextEditor = ({
             TextAlign.configure({
               types: ["heading", "paragraph"],
             }),
-            Image.configure({
-              HTMLAttributes: {
-                class: "max-w-full h-auto rounded-lg",
-              },
-            }),
+            DescriptionImage,
           ]
         : []),
       Link.configure({
@@ -162,6 +220,22 @@ const RichTextEditor = ({
       attributes: {
         class:
           "tiptap-editor prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[inherit] text-slate-900 dark:text-slate-100",
+      },
+      handlePaste: (_view, event) => {
+        if (!uploadImageRef.current) return false;
+        const files = imageFilesFromClipboard(event.clipboardData);
+        if (files.length === 0) return false;
+        event.preventDefault();
+        void insertImagesRef.current(files);
+        return true;
+      },
+      handleDrop: (_view, event) => {
+        if (!uploadImageRef.current) return false;
+        const files = imageFilesFromList(event.dataTransfer?.files);
+        if (files.length === 0) return false;
+        event.preventDefault();
+        void insertImagesRef.current(files);
+        return true;
       },
     },
     onUpdate: ({ editor: ed }) => {
@@ -186,6 +260,40 @@ const RichTextEditor = ({
   useEffect(() => {
     setMentionActiveIndex(0);
   }, [mentionUsers]);
+
+  useEffect(() => {
+    onUploadingChangeRef.current?.(imageUploading);
+  }, [imageUploading]);
+
+  useEffect(() => {
+    insertImagesRef.current = async (files: File[]) => {
+      const upload = uploadImageRef.current;
+      if (!editor || !upload || files.length === 0) return;
+      setImageUploading(true);
+      try {
+        for (const file of files) {
+          const uploaded = await upload(file);
+          editor
+            .chain()
+            .focus()
+            .insertContent({
+              type: "image",
+              attrs: {
+                src: uploaded.src,
+                alt: uploaded.alt ?? file.name,
+                fileKey: uploaded.fileKey,
+              },
+            })
+            .run();
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "";
+        toast.error(message || t("pages.editor.imageUploadFailed"));
+      } finally {
+        setImageUploading(false);
+      }
+    };
+  }, [editor, t]);
 
   const insertMentionAll = () => {
     if (!editor) return;
@@ -338,6 +446,10 @@ const RichTextEditor = ({
   };
 
   const setImage = () => {
+    if (uploadImageRef.current) {
+      imageInputRef.current?.click();
+      return;
+    }
     const url = window.prompt(t("pages.editor.enterImageUrl"), "https://");
     if (!url?.trim()) return;
 
@@ -374,10 +486,24 @@ const RichTextEditor = ({
         ? "H3"
         : t("pages.editor.paragraph");
 
+  const onPickImages = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    void insertImagesRef.current(files);
+  };
+
   return (
     <div
       className={`rounded-xl border border-slate-200/80 dark:border-slate-700/80 ${className}`}
     >
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        multiple
+        className="hidden"
+        onChange={onPickImages}
+      />
       <div
         ref={toolbarRef}
         className={`relative z-10 flex items-center gap-0.5 px-2 py-1.5 rounded-t-xl border-b border-slate-200/80 dark:border-slate-700/80 bg-slate-100/60 dark:bg-slate-800/40 ${extended ? "flex-nowrap" : "flex-wrap"}`}
@@ -608,8 +734,20 @@ const RichTextEditor = ({
 
         {extended && (
           <>
-            <ToolbarButton title={t("pages.editor.image")} onClick={setImage}>
-              <ImageIcon size={16} />
+            <ToolbarButton
+              title={
+                imageUploading
+                  ? t("pages.editor.imageUploading")
+                  : t("pages.editor.image")
+              }
+              disabled={imageUploading}
+              onClick={setImage}
+            >
+              {imageUploading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <ImageIcon size={16} />
+              )}
             </ToolbarButton>
             <ToolbarButton
               title={t("pages.editor.code")}

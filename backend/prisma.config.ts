@@ -11,14 +11,19 @@ function databaseUrl() {
 
   const queryIndex = url.indexOf("?");
   const base = queryIndex === -1 ? url : url.slice(0, queryIndex);
+  const isTidb = base.includes("tidbcloud.com");
+
+  // Local MySQL: không ép xác thực SSL. TiDB Cloud luôn cần TLS.
+  if (process.env.NODE_ENV !== "production" && !isTidb) {
+    return base;
+  }
+
   const params = new URLSearchParams(
     queryIndex === -1 ? "" : url.slice(queryIndex + 1),
   );
 
   params.delete("ssl");
-  if (!params.has("sslaccept")) {
-    params.set("sslaccept", "strict");
-  }
+  params.set("sslaccept", "strict");
 
   const query = params.toString();
   return query ? `${base}?${query}` : base;

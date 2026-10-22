@@ -124,6 +124,8 @@ export type SaveTaskPayload = {
   reporterId: number;
   reviewerIds: number[];
   children: TaskChildPayload[];
+  attachmentIds: number[];
+  phaseId: number | null;
 };
 
 export type TaskChild = {
@@ -135,11 +137,28 @@ export type TaskChild = {
   priority: ProjectPriority;
 };
 
+export type TaskAttachmentType = "IMAGE" | "VIDEO" | "FILE";
+
+export type TaskAttachment = {
+  id: number;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  attachmentType: TaskAttachmentType;
+  fileUrl: string;
+};
+
+export type TaskAttachmentGroups = {
+  images: TaskAttachment[];
+  files: TaskAttachment[];
+};
+
 export type TaskComment = {
   id: number;
   content: string;
   createdAt: string;
   author: TaskPerson;
+  attachments: TaskAttachment[];
 };
 
 export type TaskDetail = {
@@ -158,6 +177,7 @@ export type TaskDetail = {
   startDate: string | null;
   dueDate: string | null;
   estimatedMinutes: number | null;
+  phaseId: number | null;
   parent: TaskRef | null;
   children: TaskChild[];
   assignees: TaskAssignee[];

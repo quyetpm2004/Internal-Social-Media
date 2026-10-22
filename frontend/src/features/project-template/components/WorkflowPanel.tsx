@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import TransitionModePicker from "@/features/project/components/workflow/TransitionModePicker";
 import { projectTemplateApi } from "@/features/project-template/api/project-template.api";
 import type {
   ApproverType,
@@ -8,6 +9,7 @@ import type {
   StatusCategory,
   TaskRole,
   Workflow,
+  WorkflowTransitionMode,
 } from "@/features/project-template/types/project-template.type";
 import { toastApiError } from "@/features/project-template/utils/api-error";
 import { Badge } from "@/components/ui/badge";
@@ -112,6 +114,22 @@ export default function WorkflowPanel({
       setWfDescription("");
       setWfIsDefault(false);
       setWfIsActive(true);
+      onChanged();
+    } catch (error) {
+      toastApiError(error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSetTransitionMode = async (mode: WorkflowTransitionMode) => {
+    if (!selectedWorkflow || selectedWorkflow.transitionMode === mode) return;
+    setSubmitting(true);
+    try {
+      await projectTemplateApi.updateWorkflow(templateId, selectedWorkflow.id, {
+        transitionMode: mode,
+      });
+      toast.success(t("pages.projects.workflowPanel.transitionModeUpdated"));
       onChanged();
     } catch (error) {
       toastApiError(error);
@@ -343,6 +361,11 @@ export default function WorkflowPanel({
                       {t("pages.admin.projectTemplateDefault")}
                     </Badge>
                   )}
+                  <Badge variant="inactive" className="ml-2">
+                    {wf.transitionMode === "FREE"
+                      ? t("pages.projects.workflowPanel.transitionModeFree")
+                      : t("pages.projects.workflowPanel.transitionModeStrict")}
+                  </Badge>
                 </TableCell>
                 <TableCell>
                   <Badge variant={wf.isActive ? "active" : "inactive"}>
@@ -564,6 +587,19 @@ export default function WorkflowPanel({
             </TableBody>
           </Table>
 
+          <TransitionModePicker
+            mode={selectedWorkflow.transitionMode}
+            disabled={!isDraft || submitting}
+            emptyStrict={
+              !selectedWorkflow.transitions.some(
+                (transition) => transition.isActive,
+              )
+            }
+            onChange={(mode) => void handleSetTransitionMode(mode)}
+          />
+
+          {selectedWorkflow.transitionMode === "STRICT" && (
+            <>
           <h3 className="text-base font-semibold">
             {t("pages.admin.projectTemplateTransitions")}
           </h3>
@@ -806,6 +842,8 @@ export default function WorkflowPanel({
                 </Button>
               </div>
             </form>
+          )}
+            </>
           )}
         </div>
       )}

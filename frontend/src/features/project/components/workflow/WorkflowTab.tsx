@@ -6,6 +6,7 @@ import { projectApi } from "@/features/project/api/project.api";
 import ApprovalRuleList from "@/features/project/components/workflow/ApprovalRuleList";
 import StatusList from "@/features/project/components/workflow/StatusList";
 import TaskTypeList from "@/features/project/components/workflow/TaskTypeList";
+import TransitionModePicker from "@/features/project/components/workflow/TransitionModePicker";
 import TransitionList from "@/features/project/components/workflow/TransitionList";
 import TransitionPreview from "@/features/project/components/workflow/TransitionPreview";
 import WorkflowFormModal from "@/features/project/components/workflow/WorkflowFormModal";
@@ -14,6 +15,7 @@ import type {
   ProjectWorkflow,
   ProjectWorkflowConfig,
   SaveProjectWorkflowPayload,
+  WorkflowTransitionMode,
 } from "@/features/project/types/project.type";
 import {
   getApiErrorMessages,
@@ -106,6 +108,24 @@ export default function WorkflowTab({
         setFormOpen(false);
         await afterWrite(response.data.id);
       }
+    } catch (saveError) {
+      toastApiError(saveError);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleTransitionMode = async (
+    workflowId: number,
+    transitionMode: WorkflowTransitionMode,
+  ) => {
+    setBusy(true);
+    try {
+      await projectApi.updateWorkflow(projectId, workflowId, {
+        transitionMode,
+      });
+      toast.success(t("pages.projects.workflowPanel.transitionModeUpdated"));
+      await afterWrite(workflowId);
     } catch (saveError) {
       toastApiError(saveError);
     } finally {
@@ -250,6 +270,13 @@ export default function WorkflowTab({
                           {t("pages.projects.workflowPanel.default")}
                         </span>
                       )}
+                      <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                        {workflow.transitionMode === "FREE"
+                          ? t("pages.projects.workflowPanel.transitionModeFree")
+                          : t(
+                              "pages.projects.workflowPanel.transitionModeStrict",
+                            )}
+                      </span>
                     </td>
                     <td className="max-w-xs truncate py-3 pr-3 text-slate-500">
                       {workflow.description || "—"}
@@ -324,20 +351,32 @@ export default function WorkflowTab({
             canConfigure={config.canConfigure}
             onChanged={() => afterWrite(selected.id)}
           />
-          <TransitionList
-            projectId={projectId}
-            workflow={selected}
-            canConfigure={config.canConfigure}
-            onChanged={() => afterWrite(selected.id)}
+          <TransitionModePicker
+            mode={selected.transitionMode}
+            disabled={!config.canConfigure || busy}
+            emptyStrict={
+              !selected.transitions.some((transition) => transition.isActive)
+            }
+            onChange={(mode) => void handleTransitionMode(selected.id, mode)}
           />
-          <TransitionPreview workflow={selected} />
-          <ApprovalRuleList
-            projectId={projectId}
-            workflow={selected}
-            roles={config.projectRoles}
-            canConfigure={config.canConfigure}
-            onChanged={() => afterWrite(selected.id)}
-          />
+          {selected.transitionMode === "STRICT" && (
+            <>
+              <TransitionList
+                projectId={projectId}
+                workflow={selected}
+                canConfigure={config.canConfigure}
+                onChanged={() => afterWrite(selected.id)}
+              />
+              <TransitionPreview workflow={selected} />
+              <ApprovalRuleList
+                projectId={projectId}
+                workflow={selected}
+                roles={config.projectRoles}
+                canConfigure={config.canConfigure}
+                onChanged={() => afterWrite(selected.id)}
+              />
+            </>
+          )}
         </>
       )}
 

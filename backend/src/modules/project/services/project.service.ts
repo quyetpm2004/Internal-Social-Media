@@ -52,10 +52,15 @@ export async function getProjectList(
     projectRepository.getProjectList({
       userId,
       keyword: query.keyword,
+      membership: query.membership,
       skip,
       take: limit,
     }),
-    projectRepository.countVisibleProjects(userId, query.keyword),
+    projectRepository.countVisibleProjects(
+      userId,
+      query.keyword,
+      query.membership,
+    ),
   ]);
 
   return {

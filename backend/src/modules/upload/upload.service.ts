@@ -1,5 +1,6 @@
 import { HeadObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { getFileUrl } from "@/modules/file/file.service";
 import { AppError } from "@/shared/errors/app-error";
 import { s3 } from "@/shared/lib/s3";
 import type {
@@ -29,6 +30,47 @@ type ConfirmUploadsParams = {
   items: ConfirmUploadInput["items"];
 };
 
+const FILE_URL_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+const DOCUMENT_TYPES = [
+  "application/pdf",
+  "application/zip",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.oasis.opendocument.text",
+  "application/vnd.oasis.opendocument.spreadsheet",
+  "application/vnd.oasis.opendocument.presentation",
+  "text/plain",
+];
+
+function imageRule(folder: string): UploadRule {
+  return {
+    maxSize: 10 * 1024 * 1024,
+    allowedTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+    folder,
+  };
+}
+
+function videoRule(folder: string): UploadRule {
+  return {
+    maxSize: 100 * 1024 * 1024,
+    allowedTypes: ["video/mp4", "video/webm"],
+    folder,
+  };
+}
+
+function documentRule(folder: string): UploadRule {
+  return {
+    maxSize: 20 * 1024 * 1024,
+    allowedTypes: DOCUMENT_TYPES,
+    folder,
+  };
+}
+
 function getAttachmentType(
   purpose: string,
   prefix: "post" | "message",
@@ -36,6 +78,24 @@ function getAttachmentType(
   if (purpose === `${prefix}-image`) return "IMAGE";
   if (purpose === `${prefix}-video`) return "VIDEO";
   return "FILE";
+}
+
+function taskMediaType(purpose: string): "IMAGE" | "VIDEO" | "FILE" {
+  if (purpose.endsWith("image")) return "IMAGE";
+  if (purpose.endsWith("video")) return "VIDEO";
+  return "FILE";
+}
+
+function fileExtension(fileName: string, fileType: string) {
+  const fromName = fileName.includes(".")
+    ? (fileName.split(".").pop() ?? "")
+    : "";
+  if (/^[a-z0-9]{1,8}$/i.test(fromName)) return fromName.toLowerCase();
+  const fromType = (fileType.split("/")[1] ?? "bin")
+    .split("+")[0]
+    .replace(/[^a-z0-9]/gi, "")
+    .slice(0, 8);
+  return fromType || "bin";
 }
 
 export async function createUploadUrls(input: CreateUploadUrlsParams) {
@@ -112,6 +172,13 @@ export async function createUploadUrls(input: CreateUploadUrlsParams) {
       ],
       folder: "chat/files",
     },
+    "task-image": imageRule("tasks/images"),
+    "task-file-image": imageRule("tasks/files"),
+    "task-file-video": videoRule("tasks/videos"),
+    "task-file": documentRule("tasks/files"),
+    "task-comment-image": imageRule("tasks/comment-images"),
+    "task-comment-video": videoRule("tasks/comment-videos"),
+    "task-comment-file": documentRule("tasks/comment-files"),
   };
 
   const items = await Promise.all(
@@ -126,7 +193,7 @@ export async function createUploadUrls(input: CreateUploadUrlsParams) {
         throw new AppError(400, "File too large");
       }
 
-      const extension = file.fileName.split(".").pop();
+      const extension = fileExtension(file.fileName, file.fileType);
       const key = `${rule.folder}/${userId}/${crypto.randomUUID()}.${extension}`;
 
       let attachmentId: number | null = null;
@@ -148,6 +215,31 @@ export async function createUploadUrls(input: CreateUploadUrlsParams) {
           fileName: file.fileName,
           fileKey: key,
           attachmentType: getAttachmentType(file.purpose, "message"),
+          mimeType: file.fileType,
+          uploadedById: userId,
+          fileSize: file.fileSize,
+        });
+        attachmentId = attachment.id;
+      }
+
+      if (file.purpose === "task-image" || file.purpose.startsWith("task-file")) {
+        const attachment = await uploadRepo.createPendingTaskAttachment({
+          fileName: file.fileName,
+          fileKey: key,
+          attachmentType: taskMediaType(file.purpose),
+          mimeType: file.fileType,
+          uploadedById: userId,
+          fileSize: file.fileSize,
+          source: file.purpose === "task-image" ? "DESCRIPTION" : "FILE",
+        });
+        attachmentId = attachment.id;
+      }
+
+      if (file.purpose.startsWith("task-comment-")) {
+        const attachment = await uploadRepo.createPendingTaskCommentAttachment({
+          fileName: file.fileName,
+          fileKey: key,
+          attachmentType: taskMediaType(file.purpose),
           mimeType: file.fileType,
           uploadedById: userId,
           fileSize: file.fileSize,
@@ -268,6 +360,60 @@ export async function confirmUploads(input: ConfirmUploadsParams) {
       results.push({
         type: "message-attachment",
         attachment: updatedAttachment,
+      });
+      continue;
+    }
+
+    if (purpose === "task-image" || purpose.startsWith("task-file")) {
+      if (!attachmentId) {
+        throw new AppError(400, "Attachment ID is required");
+      }
+
+      const attachment = await uploadRepo.getPendingTaskAttachment(
+        attachmentId,
+        userId,
+      );
+      if (!attachment || attachment.fileKey !== key) {
+        throw new AppError(404, "Attachment not found");
+      }
+
+      const updatedAttachment = await uploadRepo.markTaskAttachmentReady(
+        attachment.id,
+        headObject.ContentType,
+        headObject.ContentLength,
+      );
+      results.push({
+        type: "task-attachment",
+        attachmentId: updatedAttachment.id,
+        key,
+        fileUrl: await getFileUrl(key, FILE_URL_TTL_SECONDS),
+      });
+      continue;
+    }
+
+    if (purpose.startsWith("task-comment-")) {
+      if (!attachmentId) {
+        throw new AppError(400, "Attachment ID is required");
+      }
+
+      const attachment = await uploadRepo.getPendingTaskCommentAttachment(
+        attachmentId,
+        userId,
+      );
+      if (!attachment || attachment.fileKey !== key) {
+        throw new AppError(404, "Attachment not found");
+      }
+
+      const updatedAttachment = await uploadRepo.markTaskCommentAttachmentReady(
+        attachment.id,
+        headObject.ContentType,
+        headObject.ContentLength,
+      );
+      results.push({
+        type: "task-comment-attachment",
+        attachmentId: updatedAttachment.id,
+        key,
+        fileUrl: await getFileUrl(key, FILE_URL_TTL_SECONDS),
       });
       continue;
     }

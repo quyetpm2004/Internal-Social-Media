@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -13,11 +14,139 @@ import NoticeList from "@/components/shared/dashboard/NoticeList";
 import ProgressRing from "@/components/shared/dashboard/ProgressRing";
 import ShareBars from "@/components/shared/dashboard/ShareBars";
 import StatCard from "@/components/shared/dashboard/StatCard";
+import { projectApi } from "@/features/project/api/project.api";
+import type {
+  OverviewCategory,
+  OverviewPriority,
+  ProjectOverviewData,
+} from "@/features/project/types/overview.type";
+import {
+  getApiErrorMessages,
+  toastApiError,
+} from "@/features/project-template/utils/api-error";
 
-const UPDATED_AT = "01/10/2026 09:12";
+const CATEGORY_COLORS: Record<OverviewCategory, string> = {
+  TODO: "#94a3b8",
+  IN_PROGRESS: "#0A6AF6",
+  DONE: "#10b981",
+  CANCELLED: "#f59e0b",
+};
 
-export default function ProjectOverview() {
+const PRIORITY_COLORS: Record<OverviewPriority, string> = {
+  URGENT: "#e11d48",
+  HIGH: "#f97316",
+  MEDIUM: "#0A6AF6",
+  LOW: "#94a3b8",
+};
+
+const MEMBER_COLORS = [
+  "#0A6AF6",
+  "#7c3aed",
+  "#0891b2",
+  "#f59e0b",
+  "#e11d48",
+  "#10b981",
+];
+
+const STATUS_FALLBACK = [
+  "#94a3b8",
+  "#0A6AF6",
+  "#f59e0b",
+  "#8b5cf6",
+  "#f97316",
+  "#14b8a6",
+  "#38bdf8",
+  "#10b981",
+];
+
+function pad(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function formatUpdated(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function formatDayMonth(value: string | null) {
+  if (!value) return "—";
+  const [, month, day] = value.split("-");
+  if (!month || !day) return value;
+  return `${Number(day)}/${Number(month)}`;
+}
+
+function weekLabel(weekStart: string, index: number) {
+  const [, month, day] = weekStart.split("-");
+  return `T${index + 1} (${Number(day)}/${Number(month)})`;
+}
+
+function EmptyNote({ children }: { children: string }) {
+  return <p className="py-6 text-center text-sm text-slate-400">{children}</p>;
+}
+
+type ProjectOverviewProps = {
+  projectId: number;
+};
+
+export default function ProjectOverview({ projectId }: ProjectOverviewProps) {
   const { t } = useTranslation();
+  const [data, setData] = useState<ProjectOverviewData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const response = await projectApi.getOverview(projectId);
+        if (!cancelled) setData(response.data);
+      } catch (loadError) {
+        if (cancelled) return;
+        setData(null);
+        setError(
+          getApiErrorMessages(loadError)[0] ??
+            t("pages.projects.overviewPanel.loadFailed"),
+        );
+        toastApiError(loadError);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, t]);
+
+  if (loading && !data) {
+    return <p className="text-sm text-slate-500">{t("common.loading")}</p>;
+  }
+
+  if (error || !data) {
+    return (
+      <p className="text-sm text-red-600">
+        {error || t("pages.projects.overviewPanel.loadFailed")}
+      </p>
+    );
+  }
+
+  const progressItems = data.progress.items.map((item, index) => {
+    if (item.kind === "category") {
+      return {
+        label: t(`pages.projects.overviewPanel.category.${item.category}`),
+        value: item.count,
+        color: CATEGORY_COLORS[item.category],
+      };
+    }
+    return {
+      label: item.name,
+      value: item.count,
+      color: item.color || STATUS_FALLBACK[index % STATUS_FALLBACK.length],
+    };
+  });
 
   return (
     <div className="space-y-4">
@@ -31,7 +160,9 @@ export default function ProjectOverview() {
           </p>
         </div>
         <p className="text-xs text-slate-400">
-          {t("pages.projects.overviewPanel.updated", { time: UPDATED_AT })}
+          {t("pages.projects.overviewPanel.updated", {
+            time: formatUpdated(data.updatedAt),
+          })}
         </p>
       </div>
 
@@ -40,59 +171,50 @@ export default function ProjectOverview() {
           tone="blue"
           icon={<ListTodo className="size-4" />}
           label={t("pages.projects.overviewPanel.totalTasks")}
-          value="63"
-          hint={t("pages.projects.overviewPanel.completedHint", { count: 6 })}
+          value={String(data.summary.total)}
+          hint={t("pages.projects.overviewPanel.completedHint", {
+            count: data.summary.done,
+          })}
         />
         <StatCard
           tone="violet"
           icon={<CheckCircle2 className="size-4" />}
           label={t("pages.projects.overviewPanel.inProgress")}
-          value="12"
+          value={String(data.summary.inProgress)}
           hint={t("pages.projects.overviewPanel.inProgressHint", {
-            reopened: 5,
-            resolved: 4,
+            count: data.summary.todo,
           })}
         />
         <StatCard
           tone="rose"
           icon={<AlertTriangle className="size-4" />}
           label={t("pages.projects.overviewPanel.overdue")}
-          value="9"
-          hint={t("pages.projects.overviewPanel.overdueHint", { count: 10 })}
+          value={String(data.summary.overdue)}
+          hint={t("pages.projects.overviewPanel.overdueHint", {
+            count: data.summary.urgentOpen,
+          })}
         />
         <StatCard
           tone="emerald"
           icon={<Clock3 className="size-4" />}
           label={t("pages.projects.overviewPanel.time")}
-          value="3h"
-          hint={t("pages.projects.overviewPanel.timeHint", { hours: "1h" })}
+          value={t("pages.projects.overviewPanel.timeEmpty")}
+          hint={t("pages.projects.overviewPanel.timeEmpty")}
         />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <DashboardCard title={t("pages.projects.overviewPanel.overall")}>
-          <ProgressRing
-            percent={9.52}
-            items={[
-              { label: "Mới", value: 3, color: "#94a3b8" },
-              { label: "Chỉ định", value: 8, color: "#0A6AF6" },
-              { label: "Tạm dừng", value: 2, color: "#f59e0b" },
-              { label: "Chờ upcode", value: 3, color: "#8b5cf6" },
-              { label: "Mở lại", value: 2, color: "#f97316" },
-              { label: "Giải quyết", value: 5, color: "#14b8a6" },
-              { label: "Đã nhận", value: 2, color: "#38bdf8" },
-              { label: "Đóng", value: 6, color: "#10b981" },
-            ]}
-          />
+          <ProgressRing percent={data.progress.percent} items={progressItems} />
         </DashboardCard>
         <DashboardCard title={t("pages.projects.overviewPanel.prioritySplit")}>
           <ShareBars
-            items={[
-              { label: "Khẩn cấp", value: 11, percent: 17.46, color: "#e11d48" },
-              { label: "Cao", value: 7, percent: 11.11, color: "#f97316" },
-              { label: "Trung bình", value: 39, percent: 61.9, color: "#0A6AF6" },
-              { label: "Thấp", value: 6, percent: 9.53, color: "#94a3b8" },
-            ]}
+            items={data.priorities.map((item) => ({
+              label: t(`pages.projects.tasks.priority.${item.priority}`),
+              value: item.count,
+              percent: item.percent,
+              color: PRIORITY_COLORS[item.priority],
+            }))}
           />
         </DashboardCard>
       </div>
@@ -109,101 +231,75 @@ export default function ProjectOverview() {
               color: "#0A6AF6",
             },
           ]}
-          groups={[
-            { label: "T1 (24/2)", values: [8, 6] },
-            { label: "T2 (3/3)", values: [5, 7] },
-            { label: "T3 (10/3)", values: [9, 4] },
-            { label: "T4 (17/3)", values: [11, 3] },
-          ]}
+          groups={data.weekly.map((week, index) => ({
+            label: weekLabel(week.weekStart, index),
+            values: [week.completed, week.created],
+          }))}
         />
       </DashboardCard>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <DashboardCard title={t("pages.projects.overviewPanel.memberPerformance")}>
-          <MeterList
-            rows={[
-              { name: "Admin", detail: "2/5", percent: 40, color: "#0A6AF6" },
-              { name: "Nhân viên QA", detail: "3/9", percent: 33, color: "#7c3aed" },
-              { name: "Tài khoản Dev", detail: "2/17", percent: 12, color: "#0891b2" },
-              { name: "Admin QA", detail: "0/5", percent: 0, color: "#f59e0b" },
-              { name: "Tài khoản PM", detail: "0/4", percent: 0, color: "#e11d48" },
-              { name: "Mai Thị Thanh Xuân", detail: "0/3", percent: 0, color: "#10b981" },
-            ]}
-          />
+          {data.members.length === 0 ? (
+            <EmptyNote>{t("pages.projects.overviewPanel.membersEmpty")}</EmptyNote>
+          ) : (
+            <MeterList
+              rows={data.members.map((member, index) => ({
+                name: member.name,
+                detail: `${member.done}/${member.assigned}`,
+                percent: member.percent,
+                color: MEMBER_COLORS[index % MEMBER_COLORS.length],
+              }))}
+            />
+          )}
         </DashboardCard>
         <DashboardCard title={t("pages.projects.overviewPanel.upcoming")}>
-          <NoticeList
-            items={[
-              {
-                title: "Nút Lưu không phản hồi khi tạo bug",
-                meta: "22/8",
-                badge: "Quá 40d",
-                tone: "rose",
-              },
-              {
-                title: "Nút Lưu không phản hồi khi tạo bug (copy)",
-                meta: "22/8",
-                badge: "Quá 40d",
-                tone: "rose",
-              },
-              {
-                title: "Lỗi không tìm được dự án khi danh sách lọc dài",
-                meta: "28/8",
-                badge: "Quá 34d",
-                tone: "rose",
-              },
-              {
-                title: "Lỗi làm tròn tỷ lệ % phân bổ theo mức ưu tiên",
-                meta: "30/8",
-                badge: "Quá 33d",
-                tone: "rose",
-              },
-              {
-                title: "Thiết kế giao diện đăng nhập",
-                meta: "30/8",
-                badge: "Quá 32d",
-                tone: "rose",
-              },
-            ]}
-          />
+          {data.upcoming.length === 0 ? (
+            <EmptyNote>{t("pages.projects.overviewPanel.upcomingEmpty")}</EmptyNote>
+          ) : (
+            <NoticeList
+              items={data.upcoming.map((task) => ({
+                id: task.id,
+                title: task.title,
+                meta: formatDayMonth(task.dueDate),
+                tone: "slate",
+              }))}
+            />
+          )}
         </DashboardCard>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <DashboardCard title={t("pages.projects.overviewPanel.timeBudget")}>
           <BudgetMeter
-            usedLabel={`${t("pages.projects.overviewPanel.used")} 3h`}
-            totalLabel="1h"
-            percent={305}
-            over
-            status={t("pages.projects.overviewPanel.overBudget")}
+            usedLabel={`${t("pages.projects.overviewPanel.used")} ${t("pages.projects.overviewPanel.timeEmpty")}`}
+            totalLabel={t("pages.projects.overviewPanel.timeEmpty")}
+            percent={0}
+            status={t("pages.projects.overviewPanel.timeBudgetEmpty")}
           />
         </DashboardCard>
         <DashboardCard
-          title={t("pages.projects.overviewPanel.attention", { count: 17 })}
+          title={t("pages.projects.overviewPanel.attention", {
+            count: data.attention.total,
+          })}
         >
-          <NoticeList
-            items={[
-              {
-                title: "Nút Lưu không phản hồi khi tạo bug",
-                meta: "22/8",
-                badge: "Quá hạn",
-                tone: "rose",
-              },
-              {
-                title: "Không hiển thị thông báo khi tạo bug thành công",
-                meta: "25/8",
-                badge: "Khẩn cấp",
-                tone: "orange",
-              },
-              {
-                title: "Test lỗi",
-                meta: "01/9",
-                badge: "Quá hạn",
-                tone: "amber",
-              },
-            ]}
-          />
+          {data.attention.items.length === 0 ? (
+            <EmptyNote>{t("pages.projects.overviewPanel.attentionEmpty")}</EmptyNote>
+          ) : (
+            <NoticeList
+              items={data.attention.items.map((task) => ({
+                id: task.id,
+                title: task.title,
+                meta: formatDayMonth(task.dueDate),
+                badge: t(
+                  task.reason === "OVERDUE"
+                    ? "pages.projects.overviewPanel.overdueBadge"
+                    : "pages.projects.overviewPanel.urgentBadge",
+                ),
+                tone: task.reason === "OVERDUE" ? "rose" : "orange",
+              }))}
+            />
+          )}
         </DashboardCard>
       </div>
     </div>

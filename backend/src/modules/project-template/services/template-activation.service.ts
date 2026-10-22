@@ -1,6 +1,7 @@
 import {
   ApprovalApproverType,
   WorkflowStatusCategory,
+  WorkflowTransitionMode,
 } from "@prisma/client";
 import type { ActivationError } from "@/modules/project-template/project-template.types";
 import type { findTemplateDetailForActivation } from "@/modules/project-template/project-template.repository";
@@ -264,7 +265,9 @@ export function validateTemplateForActivation(
       validateStatusFlags(status, workflow.name, errors);
     }
 
-    validateWorkflowReachability(workflow, errors);
+    if (workflow.transitionMode !== WorkflowTransitionMode.FREE) {
+      validateWorkflowReachability(workflow, errors);
+    }
 
     for (const transition of workflow.transitions.filter((t) => t.isActive)) {
       for (const rule of transition.approvalRules) {

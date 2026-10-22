@@ -88,6 +88,7 @@ const SANITIZE_CONFIG: Config = {
     "data-color",
     "src",
     "alt",
+    "data-file-key",
   ],
 };
 

@@ -1,13 +1,18 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
   ChevronDown,
+  FileText,
   History,
+  Image as ImageIcon,
   ListTree,
+  Loader2,
   MessageSquare,
   Paperclip,
   Pencil,
   ScrollText,
+  Video,
+  X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -18,7 +23,19 @@ import {
   priorityBadgeClass,
   taskStatusColor,
 } from "@/features/project/components/tasks/task-display";
-import type { TaskComment, TaskDetail, TaskPerson } from "@/features/project/types/task.type";
+import type {
+  TaskAttachment,
+  TaskAttachmentGroups,
+  TaskComment,
+  TaskDetail,
+  TaskPerson,
+} from "@/features/project/types/task.type";
+import {
+  TASK_FILE_ACCEPT,
+  TaskUploadError,
+  formatFileSize,
+  uploadTaskFiles,
+} from "@/features/project/utils/upload-task-file";
 import { formatProjectDate } from "@/features/project/utils/project-date";
 import { toastApiError } from "@/features/project-template/utils/api-error";
 import RichTextContent from "@/features/new-feed/components/RichTextContent";
@@ -125,6 +142,62 @@ function TaskStatusControl({
   );
 }
 
+function CommentAttachments({ files }: { files: TaskAttachment[] }) {
+  if (files.length === 0) return null;
+  return (
+    <div className="mt-2 space-y-2">
+      {files.some((file) => file.attachmentType === "IMAGE" && file.fileUrl) && (
+        <div className="flex flex-wrap gap-2">
+          {files
+            .filter((file) => file.attachmentType === "IMAGE" && file.fileUrl)
+            .map((file) => (
+              <a
+                key={file.id}
+                href={file.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block overflow-hidden rounded-lg border border-slate-200"
+              >
+                <img
+                  src={file.fileUrl}
+                  alt={file.fileName}
+                  className="max-h-48 max-w-full object-cover"
+                />
+              </a>
+            ))}
+        </div>
+      )}
+      {files
+        .filter((file) => file.attachmentType === "VIDEO" && file.fileUrl)
+        .map((file) => (
+          <video
+            key={file.id}
+            src={file.fileUrl}
+            controls
+            className="max-h-64 max-w-full rounded-lg bg-black"
+          />
+        ))}
+      {files
+        .filter((file) => file.attachmentType === "FILE")
+        .map((file) => (
+          <a
+            key={file.id}
+            href={file.fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+          >
+            <FileText className="size-4 shrink-0 text-slate-400" />
+            <span className="min-w-0 truncate">{file.fileName}</span>
+            <span className="shrink-0 text-xs text-slate-400">
+              {formatFileSize(file.fileSize)}
+            </span>
+          </a>
+        ))}
+    </div>
+  );
+}
+
 function SideRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid grid-cols-[7.25rem_minmax(0,1fr)] items-start gap-3 border-b border-slate-100 py-3 text-sm last:border-b-0">
@@ -150,7 +223,25 @@ export default function TaskDetailView({
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [draft, setDraft] = useState("");
+  const [commentFiles, setCommentFiles] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
+  const [attachmentPane, setAttachmentPane] = useState<"images" | "files">("images");
+  const [attachmentGroups, setAttachmentGroups] =
+    useState<TaskAttachmentGroups | null>(null);
+  const [attachmentsLoading, setAttachmentsLoading] = useState(false);
+  const [attachmentTaskId, setAttachmentTaskId] = useState<number | null>(
+    task?.id ?? null,
+  );
+  const loadedAttachmentTaskId = useRef<number | null>(null);
+  if ((task?.id ?? null) !== attachmentTaskId) {
+    setAttachmentTaskId(task?.id ?? null);
+    setAttachmentGroups(null);
+    setAttachmentPane("images");
+    loadedAttachmentTaskId.current = null;
+  }
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [statusId, setStatusId] = useState<number | null>(null);
@@ -159,6 +250,7 @@ export default function TaskDetailView({
   useEffect(() => {
     setTab("comments");
     setDraft("");
+    setCommentFiles([]);
     if (!task) {
       setComments([]);
       setCommentsLoading(false);
@@ -184,6 +276,64 @@ export default function TaskDetailView({
       cancelled = true;
     };
   }, [projectId, task]);
+
+  useEffect(() => {
+    loadedAttachmentTaskId.current = null;
+    setAttachmentGroups(null);
+  }, [task?.updatedAt]);
+
+  useEffect(() => {
+    if (tab !== "attachments" || !task || attachmentTaskId !== task.id) return;
+    if (loadedAttachmentTaskId.current === task.id) return;
+    let cancelled = false;
+    const taskId = task.id;
+    setAttachmentsLoading(true);
+    void (async () => {
+      try {
+        const response = await projectApi.getTaskAttachments(projectId, taskId);
+        if (cancelled) return;
+        loadedAttachmentTaskId.current = taskId;
+        setAttachmentGroups(response.data);
+      } catch (error) {
+        if (!cancelled) {
+          loadedAttachmentTaskId.current = null;
+          setAttachmentGroups({ images: [], files: [] });
+          toastApiError(error);
+        }
+      } finally {
+        if (!cancelled) setAttachmentsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, task, attachmentTaskId, projectId]);
+
+  const commentPreviews = useMemo(
+    () =>
+      commentFiles.map((file) => ({
+        key: `${file.name}-${file.size}-${file.lastModified}`,
+        file,
+        url:
+          file.type.startsWith("image/") || file.type.startsWith("video/")
+            ? URL.createObjectURL(file)
+            : "",
+        kind: file.type.startsWith("image/")
+          ? "image"
+          : file.type.startsWith("video/")
+            ? "video"
+            : "file",
+      })),
+    [commentFiles],
+  );
+
+  useEffect(() => {
+    return () => {
+      commentPreviews.forEach((item) => {
+        if (item.url) URL.revokeObjectURL(item.url);
+      });
+    };
+  }, [commentPreviews]);
 
   const activity = useMemo(() => {
     if (!task) return [];
@@ -234,25 +384,44 @@ export default function TaskDetailView({
     }
   };
 
+  const addCommentFiles = (list: FileList | null) => {
+    const selected = Array.from(list ?? []);
+    if (selected.length === 0) return;
+    setCommentFiles((current) => {
+      if (current.length + selected.length > 10) {
+        toast.error(t("pages.projects.tasks.detail.commentFileLimit"));
+        return current;
+      }
+      return [...current, ...selected];
+    });
+  };
+
   const sendComment = async () => {
-    if (!task) return;
+    if (!task || sending) return;
     const content = draft.trim();
-    if (!content) {
-      toast.error(t("pages.projects.tasks.detail.commentRequired"));
+    if (!content && commentFiles.length === 0) {
+      toast.error(t("pages.projects.tasks.detail.commentOrFile"));
       return;
     }
     setSending(true);
     try {
-      const response = await projectApi.createTaskComment(
-        projectId,
-        task.id,
+      const uploaded = await uploadTaskFiles(commentFiles, "comment");
+      const response = await projectApi.createTaskComment(projectId, task.id, {
         content,
-      );
+        attachmentIds: uploaded.map((file) => file.id),
+      });
       setComments((current) => [...current, response.data]);
       setDraft("");
+      setCommentFiles([]);
       toast.success(t("pages.projects.tasks.detail.commentSent"));
     } catch (error) {
-      toastApiError(error);
+      if (error instanceof TaskUploadError) {
+        toast.error(
+          t(`pages.projects.tasks.upload.${error.code}`, { max: error.maxMb }),
+        );
+      } else {
+        toastApiError(error);
+      }
     } finally {
       setSending(false);
     }
@@ -415,9 +584,12 @@ export default function TaskDetailView({
                             {formatDateTime(comment.createdAt, i18n.language)}
                           </span>
                         </div>
-                        <p className="mt-1 text-sm whitespace-pre-wrap text-slate-700">
-                          {comment.content}
-                        </p>
+                        {comment.content.trim() && (
+                          <p className="mt-1 text-sm whitespace-pre-wrap text-slate-700">
+                            {comment.content}
+                          </p>
+                        )}
+                        <CommentAttachments files={comment.attachments ?? []} />
                       </div>
                     </li>
                   ))}
@@ -425,6 +597,39 @@ export default function TaskDetailView({
               )}
 
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                {commentPreviews.length > 0 && (
+                  <ul className="mb-2 flex flex-wrap gap-2">
+                    {commentPreviews.map((item, index) => (
+                      <li
+                        key={item.key}
+                        className="relative overflow-hidden rounded-lg border border-slate-200 bg-white"
+                      >
+                        {item.kind === "image" ? (
+                          <img src={item.url} alt="" className="h-16 w-16 object-cover" />
+                        ) : item.kind === "video" ? (
+                          <video src={item.url} className="h-16 w-24 object-cover" />
+                        ) : (
+                          <span className="flex h-16 max-w-40 items-center gap-1 px-2 text-xs text-slate-600">
+                            <FileText className="size-4 shrink-0" />
+                            <span className="truncate">{item.file.name}</span>
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          title={t("pages.projects.tasks.detail.removeAttachment")}
+                          onClick={() =>
+                            setCommentFiles((current) =>
+                              current.filter((_, itemIndex) => itemIndex !== index),
+                            )
+                          }
+                          className="absolute top-1 right-1 cursor-pointer rounded-full bg-white/90 p-0.5 text-slate-500 hover:text-slate-800"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 <textarea
                   value={draft}
                   disabled={!canComment || sending}
@@ -439,18 +644,85 @@ export default function TaskDetailView({
                   }}
                   className="w-full resize-none bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
                 />
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  multiple
+                  className="hidden"
+                  onChange={(event) => {
+                    addCommentFiles(event.target.files);
+                    event.target.value = "";
+                  }}
+                />
+                <input
+                  ref={videoInputRef}
+                  type="file"
+                  accept="video/mp4,video/webm"
+                  multiple
+                  className="hidden"
+                  onChange={(event) => {
+                    addCommentFiles(event.target.files);
+                    event.target.value = "";
+                  }}
+                />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={TASK_FILE_ACCEPT}
+                  multiple
+                  className="hidden"
+                  onChange={(event) => {
+                    addCommentFiles(event.target.files);
+                    event.target.value = "";
+                  }}
+                />
                 <div className="mt-2 flex items-center justify-between gap-3">
-                  <p className="text-xs text-slate-400">
-                    {canComment
-                      ? t("pages.projects.tasks.detail.commentHint")
-                      : t("pages.projects.tasks.detail.commentDenied")}
-                  </p>
+                  <div className="flex min-w-0 items-center gap-1">
+                    <button
+                      type="button"
+                      title={t("pages.projects.tasks.detail.attachImage")}
+                      disabled={!canComment || sending}
+                      onClick={() => imageInputRef.current?.click()}
+                      className="cursor-pointer rounded-md p-1.5 text-slate-500 hover:bg-white disabled:opacity-40"
+                    >
+                      <ImageIcon className="size-4" />
+                    </button>
+                    <button
+                      type="button"
+                      title={t("pages.projects.tasks.detail.attachVideo")}
+                      disabled={!canComment || sending}
+                      onClick={() => videoInputRef.current?.click()}
+                      className="cursor-pointer rounded-md p-1.5 text-slate-500 hover:bg-white disabled:opacity-40"
+                    >
+                      <Video className="size-4" />
+                    </button>
+                    <button
+                      type="button"
+                      title={t("pages.projects.tasks.detail.attachFile")}
+                      disabled={!canComment || sending}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="cursor-pointer rounded-md p-1.5 text-slate-500 hover:bg-white disabled:opacity-40"
+                    >
+                      <Paperclip className="size-4" />
+                    </button>
+                    <p className="truncate text-xs text-slate-400">
+                      {canComment
+                        ? t("pages.projects.tasks.detail.commentHint")
+                        : t("pages.projects.tasks.detail.commentDenied")}
+                    </p>
+                  </div>
                   <button
                     type="button"
-                    disabled={!canComment || sending || !draft.trim()}
+                    disabled={
+                      !canComment ||
+                      sending ||
+                      (!draft.trim() && commentFiles.length === 0)
+                    }
                     onClick={() => void sendComment()}
-                    className="h-8 cursor-pointer rounded-lg bg-primary px-3 text-sm font-semibold text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                   >
+                    {sending && <Loader2 className="size-3.5 animate-spin" />}
                     {t("pages.projects.tasks.detail.send")}
                   </button>
                 </div>
@@ -544,11 +816,89 @@ export default function TaskDetailView({
             ))}
 
           {tab === "attachments" && (
-            <div className="py-10 text-center">
-              <Paperclip className="mx-auto size-6 text-slate-300" />
-              <p className="mt-3 text-sm text-slate-500">
-                {t("pages.projects.tasks.detail.attachmentsEmpty")}
-              </p>
+            <div>
+              <div className="mb-4 flex gap-4 border-b border-slate-100">
+                {(["images", "files"] as const).map((pane) => (
+                  <button
+                    key={pane}
+                    type="button"
+                    onClick={() => setAttachmentPane(pane)}
+                    className={`cursor-pointer border-b-2 pb-2 text-sm font-medium ${
+                      attachmentPane === pane
+                        ? "border-primary text-primary"
+                        : "border-transparent text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    {t(`pages.projects.tasks.detail.attachmentTabs.${pane}`)}
+                  </button>
+                ))}
+              </div>
+              {attachmentsLoading || !attachmentGroups ? (
+                <p className="py-8 text-center text-sm text-slate-400">
+                  {t("common.processing")}
+                </p>
+              ) : attachmentPane === "images" ? (
+                attachmentGroups.images.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-slate-400">
+                    {t("pages.projects.tasks.detail.imagesEmpty")}
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {attachmentGroups.images.map((file) => (
+                      <a
+                        key={file.id}
+                        href={file.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="overflow-hidden rounded-xl border border-slate-200"
+                      >
+                        <img
+                          src={file.fileUrl}
+                          alt={file.fileName}
+                          className="aspect-video w-full object-cover"
+                        />
+                      </a>
+                    ))}
+                  </div>
+                )
+              ) : attachmentGroups.files.length === 0 ? (
+                <p className="py-8 text-center text-sm text-slate-400">
+                  {t("pages.projects.tasks.detail.filesEmpty")}
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {attachmentGroups.files.map((file) => (
+                    <li key={file.id}>
+                      <a
+                        href={file.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2 hover:bg-slate-50"
+                      >
+                        {file.attachmentType === "IMAGE" && file.fileUrl ? (
+                          <img
+                            src={file.fileUrl}
+                            alt=""
+                            className="size-10 rounded-md object-cover"
+                          />
+                        ) : file.attachmentType === "VIDEO" ? (
+                          <Video className="size-5 text-slate-400" />
+                        ) : (
+                          <FileText className="size-5 text-slate-400" />
+                        )}
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-medium text-slate-800">
+                            {file.fileName}
+                          </span>
+                          <span className="text-xs text-slate-400">
+                            {formatFileSize(file.fileSize)}
+                          </span>
+                        </span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
         </div>

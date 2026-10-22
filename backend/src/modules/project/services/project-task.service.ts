@@ -1,9 +1,19 @@
-import { Prisma, ProjectPriority, TemplateTaskRole } from "@prisma/client";
+import {
+  Prisma,
+  ProjectPriority,
+  TemplateTaskRole,
+  WorkflowStatusCategory,
+  WorkflowTransitionMode,
+} from "@prisma/client";
 import { getFileUrl } from "@/modules/file/file.service";
 import {
   mapProjectTaskDetail,
   mapProjectTaskListItem,
 } from "@/modules/project/project.mapper";
+import {
+  applyDescriptionImageUrls,
+  prepareDescriptionForStorage,
+} from "@/modules/project/task-description";
 import * as projectRepository from "@/modules/project/project.repository";
 import * as projectTaskRepository from "@/modules/project/project-task.repository";
 import type { TaskMemberWrite } from "@/modules/project/project-task.repository";
@@ -17,6 +27,15 @@ import { AppError } from "@/shared/errors/app-error";
 import prisma from "@/shared/utils/prisma";
 
 const AVATAR_URL_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+function taskTypeBelongsToWorkflow(
+  taskTypeWorkflowId: number | null,
+  workflow: { id: number; isDefault: boolean },
+) {
+  if (taskTypeWorkflowId === workflow.id) return true;
+  return taskTypeWorkflowId == null && workflow.isDefault;
+}
+
 const TASK_IN_USE_BY_PARENT = "Hãy xóa hoặc chuyển các việc con trước";
 
 async function avatarUrlMap(keys: Array<string | null | undefined>) {
@@ -51,9 +70,56 @@ function toDate(value: string | null) {
   return new Date(`${value}T00:00:00.000Z`);
 }
 
-function normalizeDescription(value: string | null) {
-  if (!value) return null;
-  return value;
+function resolveCompletedAt(
+  nextCategory: WorkflowStatusCategory,
+  currentCategory: WorkflowStatusCategory | null,
+  currentCompletedAt: Date | null,
+) {
+  if (nextCategory !== WorkflowStatusCategory.DONE) return null;
+  if (currentCategory === WorkflowStatusCategory.DONE && currentCompletedAt) {
+    return currentCompletedAt;
+  }
+  return new Date();
+}
+
+function attachmentFailure(error: unknown): never {
+  if (error instanceof AppError) throw error;
+  const message = error instanceof Error ? error.message : "";
+  if (message.includes("INVALID_DESCRIPTION_IMAGE")) {
+    throw new AppError(400, "Ảnh trong mô tả không hợp lệ hoặc chưa tải xong");
+  }
+  if (message.includes("INVALID_TASK_FILE") || message.includes("INVALID_COMMENT_FILE")) {
+    throw new AppError(400, "Tệp đính kèm không hợp lệ hoặc chưa tải xong");
+  }
+  throw error;
+}
+
+async function storedDescription(
+  tx: Prisma.TransactionClient,
+  userId: number,
+  taskId: number | null,
+  description: string | null,
+) {
+  const prepared = prepareDescriptionForStorage(description);
+  if (prepared.keys.length === 0) {
+    return { html: prepared.html, imageIds: [] as number[] };
+  }
+
+  const rows = await projectTaskRepository.findDescriptionImageIds(
+    tx,
+    userId,
+    taskId,
+    prepared.keys,
+  );
+  if (rows.length !== prepared.keys.length) {
+    throw new AppError(400, "Ảnh trong mô tả không hợp lệ hoặc chưa tải xong");
+  }
+
+  const byKey = new Map(rows.map((row) => [row.fileKey, row.id]));
+  return {
+    html: prepared.html,
+    imageIds: prepared.keys.map((key) => byKey.get(key)!),
+  };
 }
 
 function assertDates(startDate: string | null, dueDate: string | null) {
@@ -179,7 +245,7 @@ async function resolveStatusId(
     if (!initial) {
       throw new AppError(400, "Quy trình chưa có trạng thái bắt đầu");
     }
-    return initial.id;
+    return initial;
   }
 
   const status = await projectTaskRepository.findWorkflowStatus(
@@ -190,7 +256,7 @@ async function resolveStatusId(
   if (!status) {
     throw new AppError(400, "Trạng thái không hợp lệ");
   }
-  return status.id;
+  return status;
 }
 
 /**
@@ -295,15 +361,24 @@ async function resolveTaskWrite(
     projectId,
     input.taskTypeId,
   );
-  if (!taskType || taskType.workflowId !== input.workflowId) {
+  if (!taskType || !taskTypeBelongsToWorkflow(taskType.workflowId, workflow)) {
     throw new AppError(400, "Loại công việc không hợp lệ");
   }
 
-  const statusId = await resolveStatusId(tx, input.workflowId, input.statusId);
+  const status = await resolveStatusId(tx, input.workflowId, input.statusId);
   await assertAssigneesAndUsers(tx, projectId, input);
   await assertParentTask(tx, projectId, input.parentTaskId, taskId);
+  if (input.phaseId != null) {
+    const phase = await tx.projectPhase.findFirst({
+      where: { id: input.phaseId, projectId },
+      select: { id: true },
+    });
+    if (!phase) {
+      throw new AppError(400, "Giai đoạn không hợp lệ");
+    }
+  }
 
-  return { statusId };
+  return { statusId: status.id, statusCategory: status.category };
 }
 
 function listFilter(projectId: number, query: ProjectTaskListQuery) {
@@ -345,6 +420,7 @@ async function assertListFilters(
   if (statusIds.length > 0 && !query.workflowId) {
     throw new AppError(400, "Chọn quy trình trước khi lọc theo trạng thái");
   }
+  let selectedWorkflow: { id: number; isDefault: boolean } | null = null;
   if (query.workflowId) {
     const workflow = await projectTaskRepository.findWorkflowInProject(
       projectId,
@@ -353,6 +429,7 @@ async function assertListFilters(
     if (!workflow) {
       throw new AppError(400, "Quy trình không hợp lệ");
     }
+    selectedWorkflow = workflow;
   }
   if (statusIds.length > 0 && query.workflowId) {
     const statuses = await Promise.all(
@@ -372,7 +449,10 @@ async function assertListFilters(
     if (!taskType) {
       throw new AppError(400, "Loại công việc không hợp lệ");
     }
-    if (query.workflowId && taskType.workflowId !== query.workflowId) {
+    if (
+      selectedWorkflow &&
+      !taskTypeBelongsToWorkflow(taskType.workflowId, selectedWorkflow)
+    ) {
       throw new AppError(400, "Loại công việc không hợp lệ");
     }
   }
@@ -390,7 +470,18 @@ async function loadDetail(projectId: number, taskId: number, userId: number) {
     taskAccess(projectId, userId, task),
     avatarUrlMap(task.members.map((member) => member.user.profile?.avatarKey)),
   ]);
-  return mapProjectTaskDetail(task, avatarUrls, access);
+  const detail = mapProjectTaskDetail(task, avatarUrls, access);
+  detail.description = await presentDescription(detail.description);
+  return detail;
+}
+
+async function presentDescription(html: string | null) {
+  if (!html) return html;
+  const keys = [
+    ...html.matchAll(/\bdata-file-key\s*=\s*"([^"]+)"/gi),
+  ].map((match) => match[1]);
+  const urls = await avatarUrlMap(keys);
+  return applyDescriptionImageUrls(html, urls);
 }
 
 export async function getProjectTasks(
@@ -503,6 +594,7 @@ async function writeChildren(
   input: SaveProjectTaskInput,
   statusId: number,
   childCodes: string[],
+  completedAt: Date | null,
 ) {
   if (input.children.length === 0) return;
 
@@ -521,7 +613,9 @@ async function writeChildren(
       dueDate: null,
       estimatedMinutes: child.estimatedMinutes,
       parentTaskId,
+      phaseId: input.phaseId ?? null,
       createdById: userId,
+      completedAt,
     })),
   );
 
@@ -551,46 +645,80 @@ export async function createProjectTask(
   assertDates(input.startDate, input.dueDate);
   assertPeopleShape(input);
 
-  const taskId = await prisma.$transaction(
-    async (tx) => {
-      const { statusId } = await resolveTaskWrite(tx, projectId, input);
-      const codes = await projectTaskRepository.allocateTaskCodes(
-        tx,
-        projectId,
-        1 + input.children.length,
-      );
-      const task = await projectTaskRepository.createProjectTask(tx, {
-        projectId,
-        code: codes[0],
-        title: input.title,
-        description: normalizeDescription(input.description),
-        workflowId: input.workflowId,
-        taskTypeId: input.taskTypeId,
-        statusId,
-        priority: input.priority as ProjectPriority,
-        startDate: toDate(input.startDate),
-        dueDate: toDate(input.dueDate),
-        estimatedMinutes: input.estimatedMinutes,
-        parentTaskId: input.parentTaskId,
-        createdById: userId,
-      });
-      await projectTaskRepository.createTaskMembers(
-        tx,
-        memberRows(task.id, input),
-      );
-      await writeChildren(
-        tx,
-        projectId,
-        task.id,
-        userId,
-        input,
-        statusId,
-        codes.slice(1),
-      );
-      return task.id;
-    },
-    { timeout: 15000 },
-  );
+  let taskId: number;
+  try {
+    taskId = await prisma.$transaction(
+      async (tx) => {
+        const { statusId, statusCategory } = await resolveTaskWrite(
+          tx,
+          projectId,
+          input,
+        );
+        const completedAt =
+          statusCategory === WorkflowStatusCategory.DONE ? new Date() : null;
+        const description = await storedDescription(
+          tx,
+          userId,
+          null,
+          input.description,
+        );
+        const codes = await projectTaskRepository.allocateTaskCodes(
+          tx,
+          projectId,
+          1 + input.children.length,
+        );
+        const task = await projectTaskRepository.createProjectTask(tx, {
+          projectId,
+          code: codes[0],
+          title: input.title,
+          description: description.html,
+          workflowId: input.workflowId,
+          taskTypeId: input.taskTypeId,
+          statusId,
+          priority: input.priority as ProjectPriority,
+          startDate: toDate(input.startDate),
+          dueDate: toDate(input.dueDate),
+          estimatedMinutes: input.estimatedMinutes,
+          parentTaskId: input.parentTaskId,
+          phaseId: input.phaseId ?? null,
+          createdById: userId,
+          completedAt,
+        });
+        await projectTaskRepository.claimTaskAttachments(
+          tx,
+          task.id,
+          userId,
+          "DESCRIPTION",
+          description.imageIds,
+        );
+        await projectTaskRepository.claimTaskAttachments(
+          tx,
+          task.id,
+          userId,
+          "FILE",
+          [...new Set(input.attachmentIds ?? [])],
+        );
+        await projectTaskRepository.createTaskMembers(
+          tx,
+          memberRows(task.id, input),
+        );
+        await writeChildren(
+          tx,
+          projectId,
+          task.id,
+          userId,
+          input,
+          statusId,
+          codes.slice(1),
+          completedAt,
+        );
+        return task.id;
+      },
+      { timeout: 15000 },
+    );
+  } catch (error) {
+    attachmentFailure(error);
+  }
 
   return loadDetail(projectId, taskId, userId);
 }
@@ -625,27 +753,65 @@ export async function updateProjectTask(
   assertDates(input.startDate, input.dueDate);
   assertPeopleShape(input);
 
-  await prisma.$transaction(
-    async (tx) => {
-      const { statusId } = await resolveTaskWrite(tx, projectId, input, taskId);
-      await projectTaskRepository.updateProjectTask(tx, taskId, {
-        title: input.title,
-        description: normalizeDescription(input.description),
-        workflowId: input.workflowId,
-        taskTypeId: input.taskTypeId,
-        statusId,
-        priority: input.priority as ProjectPriority,
-        startDate: toDate(input.startDate),
-        dueDate: toDate(input.dueDate),
-        estimatedMinutes: input.estimatedMinutes,
-        parentTaskId: input.parentTaskId,
-        updatedById: userId,
-      });
-      await projectTaskRepository.replaceTaskMembers(
-        tx,
-        taskId,
-        memberRows(taskId, input),
-      );
+  try {
+    await prisma.$transaction(
+      async (tx) => {
+        const { statusId, statusCategory } = await resolveTaskWrite(
+          tx,
+          projectId,
+          input,
+          taskId,
+        );
+        if (input.workflowId === current.workflowId) {
+          assertStatusMove(current.workflow, current.statusId, statusId);
+        }
+        const completedAt = resolveCompletedAt(
+          statusCategory,
+          current.status.category,
+          current.completedAt,
+        );
+        const description = await storedDescription(
+          tx,
+          userId,
+          taskId,
+          input.description,
+        );
+        await projectTaskRepository.updateProjectTask(tx, taskId, {
+          title: input.title,
+          description: description.html,
+          workflowId: input.workflowId,
+          taskTypeId: input.taskTypeId,
+          statusId,
+          priority: input.priority as ProjectPriority,
+          startDate: toDate(input.startDate),
+          dueDate: toDate(input.dueDate),
+          estimatedMinutes: input.estimatedMinutes,
+          parentTaskId: input.parentTaskId,
+          ...(input.phaseId !== undefined ? { phaseId: input.phaseId } : {}),
+          updatedById: userId,
+          completedAt,
+        });
+        await projectTaskRepository.claimTaskAttachments(
+          tx,
+          taskId,
+          userId,
+          "DESCRIPTION",
+          description.imageIds,
+        );
+        if (input.attachmentIds) {
+          await projectTaskRepository.claimTaskAttachments(
+            tx,
+            taskId,
+            userId,
+            "FILE",
+            [...new Set(input.attachmentIds)],
+          );
+        }
+        await projectTaskRepository.replaceTaskMembers(
+          tx,
+          taskId,
+          memberRows(taskId, input),
+        );
       if (input.children.length > 0) {
         const codes = await projectTaskRepository.allocateTaskCodes(
           tx,
@@ -660,13 +826,42 @@ export async function updateProjectTask(
           input,
           statusId,
           codes,
+          statusCategory === WorkflowStatusCategory.DONE ? new Date() : null,
         );
       }
     },
     { timeout: 15000 },
   );
+  } catch (error) {
+    attachmentFailure(error);
+  }
 
   return loadDetail(projectId, taskId, userId);
+}
+
+function assertStatusMove(
+  workflow: {
+    transitionMode: WorkflowTransitionMode;
+    transitions: { fromStatusId: number; toStatusId: number }[];
+  },
+  fromStatusId: number,
+  toStatusId: number,
+) {
+  if (
+    fromStatusId === toStatusId ||
+    workflow.transitionMode === WorkflowTransitionMode.FREE
+  ) {
+    return;
+  }
+
+  const allowed = workflow.transitions.some(
+    (transition) =>
+      transition.fromStatusId === fromStatusId &&
+      transition.toStatusId === toStatusId,
+  );
+  if (!allowed) {
+    throw new AppError(400, "Không có chuyển trạng thái cho bước này");
+  }
 }
 
 export async function updateProjectTaskStatus(
@@ -698,22 +893,17 @@ export async function updateProjectTaskStatus(
     throw new AppError(400, "Trạng thái không hợp lệ");
   }
 
-  const transitions = await projectTaskRepository.listActiveTransitions(
-    current.workflowId,
-  );
-  const allowed = transitions.some(
-    (transition) =>
-      transition.fromStatusId === current.statusId &&
-      transition.toStatusId === input.statusId,
-  );
-  if (!allowed) {
-    throw new AppError(400, "Không có chuyển trạng thái cho bước này");
-  }
+  assertStatusMove(current.workflow, current.statusId, input.statusId);
 
   await projectTaskRepository.updateProjectTaskStatus(
     taskId,
     input.statusId,
     userId,
+    resolveCompletedAt(
+      status.category,
+      current.status.category,
+      current.completedAt,
+    ),
   );
   return loadDetail(projectId, taskId, userId);
 }
@@ -758,6 +948,26 @@ export async function deleteProjectTask(
   return { id: taskId };
 }
 
+type StoredFile = {
+  id: number;
+  fileName: string;
+  fileKey: string;
+  mimeType: string;
+  fileSize: number;
+  attachmentType: "IMAGE" | "VIDEO" | "FILE";
+};
+
+function mapStoredFile(file: StoredFile, urls: Map<string, string>) {
+  return {
+    id: file.id,
+    fileName: file.fileName,
+    mimeType: file.mimeType,
+    fileSize: file.fileSize,
+    attachmentType: file.attachmentType,
+    fileUrl: urls.get(file.fileKey) ?? "",
+  };
+}
+
 function mapTaskComment(
   comment: {
     id: number;
@@ -768,8 +978,10 @@ function mapTaskComment(
       fullName: string;
       profile: { avatarKey: string | null } | null;
     };
+    attachments: StoredFile[];
   },
   avatarUrls: Map<string, string>,
+  fileUrls: Map<string, string>,
 ) {
   const avatarKey = comment.user.profile?.avatarKey;
   return {
@@ -781,6 +993,7 @@ function mapTaskComment(
       fullName: comment.user.fullName,
       avatarUrl: avatarKey ? (avatarUrls.get(avatarKey) ?? null) : null,
     },
+    attachments: comment.attachments.map((file) => mapStoredFile(file, fileUrls)),
   };
 }
 
@@ -802,10 +1015,34 @@ export async function listTaskComments(
   await assertCanView(projectId, userId);
   await assertTaskInProject(projectId, taskId);
   const comments = await projectTaskRepository.listTaskComments(taskId);
-  const avatarUrls = await avatarUrlMap(
-    comments.map((comment) => comment.user.profile?.avatarKey),
-  );
-  return comments.map((comment) => mapTaskComment(comment, avatarUrls));
+  const [avatarUrls, fileUrls] = await Promise.all([
+    avatarUrlMap(comments.map((comment) => comment.user.profile?.avatarKey)),
+    avatarUrlMap(
+      comments.flatMap((comment) =>
+        comment.attachments.map((file) => file.fileKey),
+      ),
+    ),
+  ]);
+  return comments.map((comment) => mapTaskComment(comment, avatarUrls, fileUrls));
+}
+
+export async function listTaskAttachments(
+  projectId: number,
+  taskId: number,
+  userId: number,
+) {
+  await assertCanView(projectId, userId);
+  await assertTaskInProject(projectId, taskId);
+  const rows = await projectTaskRepository.listTaskAttachments(taskId);
+  const urls = await avatarUrlMap(rows.map((row) => row.fileKey));
+  const images = [];
+  const files = [];
+  for (const row of rows) {
+    const item = mapStoredFile(row, urls);
+    if (row.source === "DESCRIPTION") images.push(item);
+    else files.push(item);
+  }
+  return { images, files };
 }
 
 export async function createTaskComment(
@@ -817,11 +1054,20 @@ export async function createTaskComment(
   await assertCanView(projectId, userId);
   await assertMember(projectId, userId);
   await assertTaskInProject(projectId, taskId);
-  const comment = await projectTaskRepository.createTaskComment(
-    taskId,
-    userId,
-    input.content,
-  );
-  const avatarUrls = await avatarUrlMap([comment.user.profile?.avatarKey]);
-  return mapTaskComment(comment, avatarUrls);
+  let comment;
+  try {
+    comment = await projectTaskRepository.createTaskComment(
+      taskId,
+      userId,
+      input.content,
+      [...new Set(input.attachmentIds)],
+    );
+  } catch (error) {
+    attachmentFailure(error);
+  }
+  const [avatarUrls, fileUrls] = await Promise.all([
+    avatarUrlMap([comment.user.profile?.avatarKey]),
+    avatarUrlMap(comment.attachments.map((file) => file.fileKey)),
+  ]);
+  return mapTaskComment(comment, avatarUrls, fileUrls);
 }

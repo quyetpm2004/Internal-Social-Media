@@ -158,6 +158,7 @@ export const projectTemplateApi = {
       description?: string;
       isDefault?: boolean;
       isActive?: boolean;
+      transitionMode?: "FREE" | "STRICT";
     },
   ) {
     return axiosClient.post<ApiResponse<Workflow>>(
@@ -174,6 +175,7 @@ export const projectTemplateApi = {
       description?: string;
       isDefault?: boolean;
       isActive?: boolean;
+      transitionMode?: "FREE" | "STRICT";
     },
   ) {
     return axiosClient.patch<ApiResponse<Workflow>>(

@@ -35,10 +35,8 @@ export interface UseChatSocketReturn {
 }
 
 /**
- * Quản lý kết nối socket cho chat:
- *  - Kết nối lại khi accessToken thay đổi (login / refresh)
- *  - Tự động join các conversation rooms phía server (xem socket/index.ts)
- *  - Gắn/gỡ listeners theo lifecycle component
+ * Gắn listener chat vào socket dùng chung.
+ * Rời trang chat chỉ gỡ listener, không ngắt socket của notification.
  */
 export const useChatSocket = (
   handlers: UseChatSocketHandlers,
@@ -107,7 +105,6 @@ export const useChatSocket = (
       socket.off("presence:snapshot", handlePresenceSnapshot);
       socket.off("poll:vote", handlePollVote);
       socket.off("members:updated", handleMembersUpdated);
-      disconnectSocket();
     };
   }, [accessToken]);
 

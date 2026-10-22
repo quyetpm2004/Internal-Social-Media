@@ -102,6 +102,76 @@ export function getPendingPostAttachment(attachmentId: number) {
   });
 }
 
+export function createPendingTaskAttachment(data: {
+  fileName: string;
+  fileKey: string;
+  attachmentType: AttachmentKind;
+  mimeType: string;
+  uploadedById: number;
+  fileSize: number;
+  source: "DESCRIPTION" | "FILE";
+}) {
+  return prisma.projectTaskAttachment.create({
+    data: {
+      ...data,
+      status: "PENDING",
+    },
+  });
+}
+
+export function createPendingTaskCommentAttachment(data: {
+  fileName: string;
+  fileKey: string;
+  attachmentType: AttachmentKind;
+  mimeType: string;
+  uploadedById: number;
+  fileSize: number;
+}) {
+  return prisma.projectTaskCommentAttachment.create({
+    data: {
+      ...data,
+      status: "PENDING",
+    },
+  });
+}
+
+export function getPendingTaskAttachment(attachmentId: number, userId: number) {
+  return prisma.projectTaskAttachment.findFirst({
+    where: { id: attachmentId, status: "PENDING", uploadedById: userId },
+  });
+}
+
+export function markTaskAttachmentReady(
+  attachmentId: number,
+  mimeType: string,
+  fileSize: number,
+) {
+  return prisma.projectTaskAttachment.update({
+    where: { id: attachmentId },
+    data: { mimeType, fileSize, status: "READY" },
+  });
+}
+
+export function getPendingTaskCommentAttachment(
+  attachmentId: number,
+  userId: number,
+) {
+  return prisma.projectTaskCommentAttachment.findFirst({
+    where: { id: attachmentId, status: "PENDING", uploadedById: userId },
+  });
+}
+
+export function markTaskCommentAttachmentReady(
+  attachmentId: number,
+  mimeType: string,
+  fileSize: number,
+) {
+  return prisma.projectTaskCommentAttachment.update({
+    where: { id: attachmentId },
+    data: { mimeType, fileSize, status: "READY" },
+  });
+}
+
 export function markPostAttachmentReady(
   attachmentId: number,
   mimeType: string,

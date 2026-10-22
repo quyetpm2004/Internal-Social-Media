@@ -180,6 +180,7 @@ type WorkflowRow = {
   description: string | null;
   isDefault: boolean;
   isActive: boolean;
+  transitionMode: "FREE" | "STRICT";
   statuses?: WorkflowStatusRow[];
   transitions?: WorkflowTransitionRow[];
 };
@@ -227,6 +228,7 @@ export function mapProjectWorkflowSummary(workflow: WorkflowRow) {
     description: workflow.description,
     isDefault: workflow.isDefault,
     isActive: workflow.isActive,
+    transitionMode: workflow.transitionMode,
   };
 }
 
@@ -394,6 +396,26 @@ export function mapProjectTaskListItem(
   };
 }
 
+function selectableTaskStatuses(task: {
+  statusId: number;
+  workflow: {
+    transitionMode: "FREE" | "STRICT";
+    statuses: TaskStatusRow[];
+    transitions: { fromStatusId: number; toStatusId: number }[];
+  };
+}) {
+  const statuses = task.workflow.statuses.map(mapTaskStatus);
+  if (task.workflow.transitionMode === "FREE") return statuses;
+
+  const allowed = new Set<number>([task.statusId]);
+  for (const transition of task.workflow.transitions) {
+    if (transition.fromStatusId === task.statusId) {
+      allowed.add(transition.toStatusId);
+    }
+  }
+  return statuses.filter((status) => allowed.has(status.id));
+}
+
 export function mapProjectTaskDetail(
   task: {
     id: number;
@@ -407,13 +429,16 @@ export function mapProjectTaskDetail(
     workflow: {
       id: number;
       name: string;
+      transitionMode: "FREE" | "STRICT";
       statuses: TaskStatusRow[];
+      transitions: { fromStatusId: number; toStatusId: number }[];
     };
     status: TaskStatusRow;
     priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
     startDate: Date | null;
     dueDate: Date | null;
     estimatedMinutes: number | null;
+    phaseId: number | null;
     parent: { id: number; code: string; title: string } | null;
     children: Array<{
       id: number;
@@ -450,11 +475,12 @@ export function mapProjectTaskDetail(
     taskType: task.taskType,
     workflow: { id: task.workflow.id, name: task.workflow.name },
     status: mapTaskStatus(task.status),
-    statusOptions: task.workflow.statuses.map(mapTaskStatus),
+    statusOptions: selectableTaskStatuses(task),
     priority: task.priority,
     startDate: formatDateOnly(task.startDate),
     dueDate: formatDateOnly(task.dueDate),
     estimatedMinutes: task.estimatedMinutes,
+    phaseId: task.phaseId,
     parent: task.parent,
     children: task.children.map((child) => ({
       id: child.id,

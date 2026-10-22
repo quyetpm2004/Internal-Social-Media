@@ -9,6 +9,8 @@ export type ProjectStatus =
   | "COMPLETED"
   | "CANCELLED";
 
+export type ProjectMembershipFilter = "all" | "joined" | "view";
+
 export type ProjectListItem = {
   id: number;
   name: string;
@@ -163,6 +165,8 @@ export type ProjectWorkflowApprovalRule = {
   onRejectStatusId: number;
 };
 
+export type WorkflowTransitionMode = "FREE" | "STRICT";
+
 export type ProjectWorkflowTransition = {
   id: number;
   fromStatusId: number;
@@ -190,6 +194,7 @@ export type ProjectWorkflow = {
   description: string | null;
   isDefault: boolean;
   isActive: boolean;
+  transitionMode: WorkflowTransitionMode;
   statuses: ProjectWorkflowStatusDetail[];
   transitions: ProjectWorkflowTransition[];
 };
@@ -206,6 +211,7 @@ export type SaveProjectWorkflowPayload = {
   description: string | null;
   isDefault: boolean;
   isActive: boolean;
+  transitionMode?: WorkflowTransitionMode;
 };
 
 export type SaveProjectWorkflowStatusPayload = {

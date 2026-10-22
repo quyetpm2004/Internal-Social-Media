@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FolderKanban, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { FilterPills } from "@/components/shared/SearchFilter";
 import Input from "@/components/shared/Input";
 import Pagination from "@/components/shared/Pagination";
 import { projectApi } from "@/features/project/api/project.api";
@@ -11,6 +12,7 @@ import ProjectCard from "@/features/project/components/ProjectCard";
 import type {
   CreateProjectPayload,
   ProjectListItem,
+  ProjectMembershipFilter,
 } from "@/features/project/types/project.type";
 import type { Pagination as PaginationData } from "@/features/admin/types/admin.type";
 import { toastApiError } from "@/features/project-template/utils/api-error";
@@ -23,18 +25,24 @@ export default function ProjectListPage() {
   const [page, setPage] = useState(1);
   const [keywordInput, setKeywordInput] = useState("");
   const [keyword, setKeyword] = useState("");
+  const [membership, setMembership] = useState<ProjectMembershipFilter>("all");
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
 
-  const fetchProjects = async (targetPage = page, targetKeyword = keyword) => {
+  const fetchProjects = async (
+    targetPage = page,
+    targetKeyword = keyword,
+    targetMembership = membership,
+  ) => {
     setLoading(true);
     setLoadFailed(false);
     try {
       const response = await projectApi.getProjects({
         page: targetPage,
         keyword: targetKeyword || undefined,
+        membership: targetMembership,
       });
       setProjects(response.data.projects);
       setPagination(response.data.pagination);
@@ -49,8 +57,19 @@ export default function ProjectListPage() {
   };
 
   useEffect(() => {
-    fetchProjects(page, keyword);
-  }, [page, keyword]);
+    fetchProjects(page, keyword, membership);
+  }, [page, keyword, membership]);
+
+  const membershipOptions = [
+    { value: "all", label: t("pages.projects.membershipAll") },
+    { value: "joined", label: t("pages.projects.membershipJoined") },
+    { value: "view", label: t("pages.projects.membershipView") },
+  ];
+
+  const handleMembership = (value: string) => {
+    setPage(1);
+    setMembership(value as ProjectMembershipFilter);
+  };
 
   const handleSearch = (event: React.FormEvent) => {
     event.preventDefault();
@@ -94,24 +113,31 @@ export default function ProjectListPage() {
           </button>
         </div>
 
-        <form
-          onSubmit={handleSearch}
-          className="mb-6 flex flex-col gap-2 sm:flex-row"
-        >
-          <Input
-            value={keywordInput}
-            onChange={(event) => setKeywordInput(event.target.value)}
-            placeholder={t("pages.projects.searchPlaceholder")}
-            aria-label={t("pages.projects.searchPlaceholder")}
-          />
-          <button
-            type="submit"
-            className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-medium text-white hover:bg-slate-800"
+        <div className="mb-6 flex flex-col gap-3">
+          <form
+            onSubmit={handleSearch}
+            className="flex flex-col gap-2 sm:flex-row"
           >
-            <Search className="size-4" />
-            {t("pages.projects.search")}
-          </button>
-        </form>
+            <Input
+              value={keywordInput}
+              onChange={(event) => setKeywordInput(event.target.value)}
+              placeholder={t("pages.projects.searchPlaceholder")}
+              aria-label={t("pages.projects.searchPlaceholder")}
+            />
+            <button
+              type="submit"
+              className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-medium text-white hover:bg-slate-800"
+            >
+              <Search className="size-4" />
+              {t("pages.projects.search")}
+            </button>
+          </form>
+          <FilterPills
+            options={membershipOptions}
+            value={membership}
+            onChange={handleMembership}
+          />
+        </div>
 
         {loading ? (
           <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,320px),1fr))] gap-4">
@@ -145,11 +171,15 @@ export default function ProjectListPage() {
               <FolderKanban size={22} />
             </div>
             <h2 className="text-base font-semibold text-slate-800">
-              {t("pages.projects.empty")}
+              {keyword || membership !== "all"
+                ? t("pages.projects.emptyFiltered")
+                : t("pages.projects.empty")}
             </h2>
-            <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500">
-              {t("pages.projects.emptyDescription")}
-            </p>
+            {membership === "all" && !keyword && (
+              <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500">
+                {t("pages.projects.emptyDescription")}
+              </p>
+            )}
           </div>
         )}
       </main>

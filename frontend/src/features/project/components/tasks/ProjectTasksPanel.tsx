@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import Pagination from "@/components/shared/Pagination";
@@ -26,6 +27,7 @@ import {
   getApiErrorMessages,
   toastApiError,
 } from "@/features/project-template/utils/api-error";
+import { taskTypeMatchesWorkflow } from "@/features/project/utils/task-type-workflow";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 
 type ProjectTasksPanelProps = {
@@ -58,6 +60,10 @@ export default function ProjectTasksPanel({
   createSignal,
 }: ProjectTasksPanelProps) {
   const { t, i18n } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const taskParam = Number(searchParams.get("task"));
+  const taskFromUrl =
+    Number.isInteger(taskParam) && taskParam > 0 ? taskParam : null;
   const currentUser = useAuthStore((state) => state.user);
   const currentUserId = currentUser?.id;
   const [keywordInput, setKeywordInput] = useState("");
@@ -105,7 +111,7 @@ export default function ProjectTasksPanel({
       try {
         const [workflowResponse, memberResponse] = await Promise.all([
           projectApi.getWorkflows(projectId),
-          projectApi.getMembers(projectId),
+          projectApi.getMembers(projectId, { limit: 50 }),
         ]);
         if (cancelled) return;
         setWorkflows(workflowResponse.data.workflows);
@@ -177,6 +183,17 @@ export default function ProjectTasksPanel({
   ]);
 
   useEffect(() => {
+    if (taskFromUrl != null) setViewingId(taskFromUrl);
+  }, [taskFromUrl]);
+
+  const clearTaskQuery = () => {
+    if (!searchParams.get("task")) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete("task");
+    setSearchParams(next, { replace: true });
+  };
+
+  useEffect(() => {
     if (viewingId == null) {
       if (editor == null || editor === "create") {
         setDetail(null);
@@ -194,6 +211,7 @@ export default function ProjectTasksPanel({
         if (!cancelled) {
           toastApiError(error);
           setViewingId(null);
+          clearTaskQuery();
         }
       } finally {
         if (!cancelled) setDetailLoading(false);
@@ -244,8 +262,10 @@ export default function ProjectTasksPanel({
   const handleWorkflowChange = (workflowId: number | null) => {
     setFilters((current) => {
       const type = taskTypes.find((item) => item.id === current.taskTypeId);
+      const workflow = workflows.find((item) => item.id === workflowId);
       const typeStillValid =
-        workflowId == null || (type != null && type.workflowId === workflowId);
+        workflowId == null ||
+        (type != null && taskTypeMatchesWorkflow(type, workflow));
       return {
         ...current,
         workflowId,
@@ -276,6 +296,7 @@ export default function ProjectTasksPanel({
             setViewingId(null);
             setEditor(null);
             setDetail(null);
+            clearTaskQuery();
           }}
           onEdit={() => {
             if (viewingId != null) setEditor(viewingId);

@@ -5,6 +5,7 @@ import axios, {
 } from "axios";
 import { APP_CONFIG } from "@/constants/app";
 import { useAuthStore } from "@/features/auth/store/auth.store";
+import { refreshAccessToken } from "@/lib/refresh-access-token";
 import type { CustomAxiosInstance } from "@/types/axios.type";
 
 type FailedQueueItem = {
@@ -36,19 +37,24 @@ export const axiosClient = axios.create({
 }) as CustomAxiosInstance;
 
 // request interceptor to add access token to headers
+const readPersistedAccessToken = (): string | null => {
+  const persistedData = localStorage.getItem("auth-storage");
+  if (!persistedData) return null;
+
+  try {
+    const parsed = JSON.parse(persistedData);
+    const token = parsed?.state?.accessToken;
+    return typeof token === "string" && token.length > 0 ? token : null;
+  } catch (e) {
+    console.error("Lỗi parse auth_storage:", e);
+    return null;
+  }
+};
+
 axiosClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const persistedData = localStorage.getItem("auth-storage");
-
-    let token = null;
-    if (persistedData) {
-      try {
-        const parsed = JSON.parse(persistedData);
-        token = parsed?.state?.accessToken || null; // 👈 lấy đúng token
-      } catch (e) {
-        console.error("❌ Lỗi parse auth_storage:", e);
-      }
-    }
+    const token =
+      useAuthStore.getState().accessToken || readPersistedAccessToken();
 
     // Thêm header Authorization nếu có token
     if (token) {
@@ -68,7 +74,7 @@ axiosClient.interceptors.request.use(
 axiosClient.interceptors.response.use(
   (response) => response.data,
   async (error: AxiosError) => {
-    const { setAccessToken, clearAuth } = useAuthStore.getState();
+    const { clearAuth } = useAuthStore.getState();
 
     const originalRequest = error.config as AxiosRequestConfig | undefined;
 
@@ -98,7 +104,9 @@ axiosClient.interceptors.response.use(
     // Nếu request đã retry rồi mà vẫn lỗi, xóa token và chuyển về trang login
     if (originalRequest._retry) {
       clearAuth();
-      window.location.href = "/login";
+      if (!window.location.pathname.startsWith("/login")) {
+        window.location.assign("/login");
+      }
       return Promise.reject(error);
     }
 
@@ -124,46 +132,26 @@ axiosClient.interceptors.response.use(
     originalRequest._retry = true;
     isRefreshing = true;
 
-    // Thử gọi API refresh token
     try {
-      const response = await axiosClient.post(
-        "/auth/refresh-token",
-        {},
-        {
-          skipAuthRefresh: true,
-          withCredentials: true,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      );
+      const newAccessToken = await refreshAccessToken();
 
-      // Lấy access token mới từ response
-      const newAccessToken = response.data.data.accessToken;
-
-      // Lưu lại access token mới vào storage
-      setAccessToken(newAccessToken);
-
-      // Xử lý lại các request đang chờ refresh token
+      isRefreshing = false;
       processQueue(null, newAccessToken);
 
-      // Gắn access token mới vào header của request gốc
       if (!originalRequest.headers) {
         originalRequest.headers = {};
       }
       originalRequest.headers["Authorization"] = `Bearer ${newAccessToken}`;
 
-      // Gửi lại request gốc với token mới
       return axiosClient(originalRequest);
     } catch (refreshError) {
-      // Nếu refresh token thất bại, clear token và chuyển về trang login
+      isRefreshing = false;
       processQueue(refreshError, null);
       clearAuth();
-      window.location.href = "/login";
+      if (!window.location.pathname.startsWith("/login")) {
+        window.location.assign("/login");
+      }
       return Promise.reject(refreshError);
-    } finally {
-      // Đánh dấu đã xong quá trình refresh
-      isRefreshing = false;
     }
   },
 );

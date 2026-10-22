@@ -75,11 +75,14 @@ export const projectTaskDetailSelect = {
   createdById: true,
   createdAt: true,
   updatedAt: true,
+  completedAt: true,
+  phaseId: true,
   taskType: { select: { id: true, name: true, key: true } },
   workflow: {
     select: {
       id: true,
       name: true,
+      transitionMode: true,
       statuses: {
         orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
         select: {
@@ -89,6 +92,10 @@ export const projectTaskDetailSelect = {
           color: true,
           category: true,
         },
+      },
+      transitions: {
+        where: { isActive: true },
+        select: { fromStatusId: true, toStatusId: true },
       },
     },
   },
@@ -227,7 +234,7 @@ export function isProjectMember(projectId: number, userId: number) {
 export function findWorkflowInProject(projectId: number, workflowId: number) {
   return prisma.projectWorkflow.findFirst({
     where: { id: workflowId, projectId },
-    select: { id: true, isActive: true },
+    select: { id: true, isActive: true, isDefault: true },
   });
 }
 
@@ -241,14 +248,7 @@ export function findTaskTypeInProject(projectId: number, taskTypeId: number) {
 export function findStatusInWorkflow(workflowId: number, statusId: number) {
   return prisma.projectWorkflowStatus.findFirst({
     where: { id: statusId, workflowId },
-    select: { id: true },
-  });
-}
-
-export function listActiveTransitions(workflowId: number) {
-  return prisma.projectWorkflowTransition.findMany({
-    where: { workflowId, isActive: true },
-    select: { fromStatusId: true, toStatusId: true },
+    select: { id: true, category: true },
   });
 }
 
@@ -256,10 +256,11 @@ export function updateProjectTaskStatus(
   taskId: number,
   statusId: number,
   updatedById: number,
+  completedAt: Date | null,
 ) {
   return prisma.projectTask.update({
     where: { id: taskId },
-    data: { statusId, updatedById },
+    data: { statusId, updatedById, completedAt },
     select: { id: true },
   });
 }
@@ -368,7 +369,7 @@ export function findActiveWorkflow(
 ) {
   return tx.projectWorkflow.findFirst({
     where: { id: workflowId, projectId, isActive: true },
-    select: { id: true },
+    select: { id: true, isDefault: true },
   });
 }
 
@@ -390,7 +391,7 @@ export function findWorkflowStatus(
 ) {
   return tx.projectWorkflowStatus.findFirst({
     where: { id: statusId, workflowId },
-    select: { id: true },
+    select: { id: true, category: true },
   });
 }
 
@@ -401,7 +402,7 @@ export function findInitialStatus(
   return tx.projectWorkflowStatus.findFirst({
     where: { workflowId, isInitial: true },
     orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
-    select: { id: true },
+    select: { id: true, category: true },
   });
 }
 
@@ -454,7 +455,9 @@ type TaskWriteData = {
   dueDate: Date | null;
   estimatedMinutes: number | null;
   parentTaskId: number | null;
+  phaseId: number | null;
   createdById: number;
+  completedAt: Date | null;
 };
 
 export function createProjectTask(
@@ -523,7 +526,9 @@ export function updateProjectTask(
     dueDate: Date | null;
     estimatedMinutes: number | null;
     parentTaskId: number | null;
+    phaseId?: number | null;
     updatedById: number;
+    completedAt: Date | null;
   },
 ) {
   return tx.projectTask.update({
@@ -550,6 +555,25 @@ export function deleteProjectTask(
   return tx.projectTask.delete({ where: { id: taskId } });
 }
 
+const taskFileSelect = {
+  id: true,
+  fileName: true,
+  fileKey: true,
+  mimeType: true,
+  fileSize: true,
+  attachmentType: true,
+  source: true,
+} satisfies Prisma.ProjectTaskAttachmentSelect;
+
+const commentFileSelect = {
+  id: true,
+  fileName: true,
+  fileKey: true,
+  mimeType: true,
+  fileSize: true,
+  attachmentType: true,
+} satisfies Prisma.ProjectTaskCommentAttachmentSelect;
+
 const taskCommentSelect = {
   id: true,
   content: true,
@@ -561,9 +585,13 @@ const taskCommentSelect = {
       profile: { select: { avatarKey: true } },
     },
   },
+  attachments: {
+    where: { status: "READY" },
+    orderBy: { id: "asc" },
+    select: commentFileSelect,
+  },
 } satisfies Prisma.ProjectTaskCommentSelect;
 
-/** Bình luận của một công việc, cũ nhất trước. */
 export function listTaskComments(taskId: number) {
   return prisma.projectTaskComment.findMany({
     where: { taskId },
@@ -572,13 +600,103 @@ export function listTaskComments(taskId: number) {
   });
 }
 
-export function createTaskComment(
+export function listTaskAttachments(taskId: number) {
+  return prisma.projectTaskAttachment.findMany({
+    where: { taskId, status: "READY" },
+    orderBy: { id: "asc" },
+    select: taskFileSelect,
+  });
+}
+
+export function findDescriptionImageIds(
+  tx: Prisma.TransactionClient,
+  userId: number,
+  taskId: number | null,
+  keys: string[],
+) {
+  return tx.projectTaskAttachment.findMany({
+    where: {
+      fileKey: { in: keys },
+      source: "DESCRIPTION",
+      attachmentType: "IMAGE",
+      status: "READY",
+      OR: [
+        { taskId: null, uploadedById: userId },
+        ...(taskId ? [{ taskId }] : []),
+      ],
+    },
+    select: { id: true, fileKey: true },
+  });
+}
+
+export async function claimTaskAttachments(
+  tx: Prisma.TransactionClient,
+  taskId: number,
+  userId: number,
+  source: "DESCRIPTION" | "FILE",
+  ids: number[],
+) {
+  await tx.projectTaskAttachment.updateMany({
+    where: {
+      taskId,
+      source,
+      ...(ids.length > 0 ? { id: { notIn: ids } } : {}),
+    },
+    data: { taskId: null },
+  });
+
+  if (ids.length === 0) return;
+
+  const updated = await tx.projectTaskAttachment.updateMany({
+    where: {
+      id: { in: ids },
+      source,
+      status: "READY",
+      OR: [
+        { taskId: null, uploadedById: userId },
+        { taskId },
+      ],
+    },
+    data: { taskId },
+  });
+
+  if (updated.count !== ids.length) {
+    throw new Error(
+      source === "DESCRIPTION" ? "INVALID_DESCRIPTION_IMAGE" : "INVALID_TASK_FILE",
+    );
+  }
+}
+
+export async function createTaskComment(
   taskId: number,
   userId: number,
   content: string,
+  attachmentIds: number[],
 ) {
-  return prisma.projectTaskComment.create({
-    data: { taskId, userId, content },
-    select: taskCommentSelect,
+  return prisma.$transaction(async (tx) => {
+    const comment = await tx.projectTaskComment.create({
+      data: { taskId, userId, content },
+      select: { id: true },
+    });
+
+    if (attachmentIds.length > 0) {
+      const updated = await tx.projectTaskCommentAttachment.updateMany({
+        where: {
+          id: { in: attachmentIds },
+          commentId: null,
+          uploadedById: userId,
+          status: "READY",
+        },
+        data: { commentId: comment.id },
+      });
+      if (updated.count !== attachmentIds.length) {
+        throw new Error("INVALID_COMMENT_FILE");
+      }
+    }
+
+    return tx.projectTaskComment.findUniqueOrThrow({
+      where: { id: comment.id },
+      select: taskCommentSelect,
+    });
   });
 }

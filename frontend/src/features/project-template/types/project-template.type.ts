@@ -62,12 +62,15 @@ export type WorkflowTransition = {
   approvalRules: ApprovalRule[];
 };
 
+export type WorkflowTransitionMode = "FREE" | "STRICT";
+
 export type Workflow = {
   id: number;
   name: string;
   description: string | null;
   isDefault: boolean;
   isActive: boolean;
+  transitionMode: WorkflowTransitionMode;
   statuses: WorkflowStatus[];
   transitions: WorkflowTransition[];
 };

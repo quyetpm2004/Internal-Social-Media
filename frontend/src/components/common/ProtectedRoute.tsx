@@ -1,33 +1,61 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/features/auth/store/auth.store";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { authApi } from "@/features/auth/api/auth.api";
 
+function useAuthHydrated() {
+  const [hydrated, setHydrated] = useState(() =>
+    useAuthStore.persist.hasHydrated(),
+  );
+
+  useEffect(() => {
+    if (useAuthStore.persist.hasHydrated()) {
+      setHydrated(true);
+    }
+
+    return useAuthStore.persist.onFinishHydration(() => {
+      setHydrated(true);
+    });
+  }, []);
+
+  return hydrated;
+}
+
 export default function ProtectedRoute() {
-  const { isAuthenticated } = useAuthStore();
+  const hydrated = useAuthHydrated();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const location = useLocation();
-
-  const accessToken = localStorage.getItem("auth-storage")
-    ? JSON.parse(localStorage.getItem("auth-storage")!).state.accessToken
-    : null;
-
   const setUser = useAuthStore((state) => state.setUser);
 
   useEffect(() => {
-    const initAuth = async () => {
-      if (accessToken) {
-        try {
-          const res = await authApi.getMe();
-          const user = res.data;
-          setUser(user);
-        } catch (error) {
-          console.error("Error fetching user data:", error);
+    if (!hydrated) return;
+
+    const accessToken = useAuthStore.getState().accessToken;
+    if (!accessToken) return;
+
+    let cancelled = false;
+
+    const loadUser = async () => {
+      try {
+        const res = await authApi.getMe();
+        if (!cancelled) {
+          setUser(res.data);
         }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
       }
     };
 
-    initAuth();
-  }, []);
+    void loadUser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated, setUser]);
+
+  if (!hydrated) {
+    return null;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location }} />;

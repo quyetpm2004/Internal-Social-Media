@@ -27,6 +27,30 @@ export function pickWorkflowId(
   );
 }
 
+export function statusesForTaskMove(
+  workflow: ProjectWorkflow,
+  current: { workflowId: number; statusId: number } | null,
+) {
+  const statuses = [...workflow.statuses].sort(
+    (left, right) => left.sortOrder - right.sortOrder,
+  );
+  if (
+    current == null ||
+    current.workflowId !== workflow.id ||
+    workflow.transitionMode !== "STRICT"
+  ) {
+    return statuses;
+  }
+
+  const allowed = new Set<number>([current.statusId]);
+  for (const transition of workflow.transitions) {
+    if (transition.isActive && transition.fromStatusId === current.statusId) {
+      allowed.add(transition.toStatusId);
+    }
+  }
+  return statuses.filter((status) => allowed.has(status.id));
+}
+
 export function statusLabel(
   statuses: Array<{ id: number; name: string }>,
   statusId: number,

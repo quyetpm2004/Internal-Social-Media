@@ -20,6 +20,7 @@ import eventRoutes from "@/modules/event/event.routes";
 import projectTemplateRoutes from "@/modules/project-template/project-template.routes";
 import { errorMiddleware } from "@/shared/middlewares/error.middleware";
 import projectRoutes from "@/modules/project/project.routes";
+import workRoutes from "@/modules/work/work.routes";
 dotenv.config();
 
 const app = express();
@@ -56,6 +57,7 @@ app.use("/api/polls", pollRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/project-templates", projectTemplateRoutes);
 app.use("/api/projects", projectRoutes);
+app.use("/api/work", workRoutes);
 
 app.use(errorMiddleware);
 

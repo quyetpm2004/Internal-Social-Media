@@ -6,7 +6,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   CalendarRange,
@@ -38,6 +38,8 @@ import Select from "@/components/shared/Select";
 import Textarea from "@/components/shared/Textarea";
 import { projectApi } from "@/features/project/api/project.api";
 import ProjectMembersPanel from "@/features/project/components/members/ProjectMembersPanel";
+import ProjectMilestonesPanel from "@/features/project/components/planning/ProjectMilestonesPanel";
+import ProjectPhasesPanel from "@/features/project/components/planning/ProjectPhasesPanel";
 import ProjectTasksPanel from "@/features/project/components/tasks/ProjectTasksPanel";
 import ProjectOverview from "@/features/project/components/overview/ProjectOverview";
 import WorkflowTab from "@/features/project/components/workflow/WorkflowTab";
@@ -200,10 +202,12 @@ function toEditState(project: ProjectDetail): EditState {
 export default function ProjectDetailPage() {
   const { t, i18n } = useTranslation();
   const { projectId } = useParams();
+  const [searchParams] = useSearchParams();
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<ProjectTab>("chat");
+  const requestedTab = searchParams.get("tab");
   const [taskCreateSignal, setTaskCreateSignal] = useState(0);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -212,6 +216,12 @@ export default function ProjectDetailPage() {
   const tabRefs = useRef<Partial<Record<ProjectTab, HTMLButtonElement | null>>>(
     {},
   );
+
+  useEffect(() => {
+    if (requestedTab && (TABS as string[]).includes(requestedTab)) {
+      setTab(requestedTab as ProjectTab);
+    }
+  }, [projectId, requestedTab]);
 
   useEffect(() => {
     tabRefs.current[tab]?.scrollIntoView({
@@ -590,7 +600,7 @@ export default function ProjectDetailPage() {
             )}
           </section>
         ) : tab === "overview" ? (
-          <ProjectOverview />
+          <ProjectOverview projectId={project.id} />
         ) : tab === "members" ? (
           <ProjectMembersPanel
             projectId={project.id}
@@ -606,6 +616,10 @@ export default function ProjectDetailPage() {
             projectId={project.id}
             createSignal={taskCreateSignal}
           />
+        ) : tab === "phases" ? (
+          <ProjectPhasesPanel projectId={project.id} />
+        ) : tab === "milestones" ? (
+          <ProjectMilestonesPanel projectId={project.id} />
         ) : (
           <div className="flex flex-col items-center rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-16 text-center">
             <p className="text-base font-semibold text-slate-800">

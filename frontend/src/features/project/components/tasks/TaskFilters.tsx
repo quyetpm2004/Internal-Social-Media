@@ -10,6 +10,7 @@ import type {
   ProjectWorkflowTaskType,
 } from "@/features/project/types/project.type";
 import type { TaskView } from "@/features/project/types/task.type";
+import { taskTypeMatchesWorkflow } from "@/features/project/utils/task-type-workflow";
 import { cn } from "@/lib/utils";
 
 type TaskFiltersProps = {
@@ -76,20 +77,31 @@ export default function TaskFilters({
   const filterRef = useRef<HTMLDivElement>(null);
   const activeWorkflows = workflows.filter((workflow) => workflow.isActive);
   const activeTypes = taskTypes.filter((taskType) => taskType.isActive);
-  const visibleTypes = workflowId
-    ? activeTypes.filter((taskType) => taskType.workflowId === workflowId)
+  const selectedWorkflow = activeWorkflows.find(
+    (workflow) => workflow.id === workflowId,
+  );
+  const visibleTypes = selectedWorkflow
+    ? activeTypes.filter((taskType) =>
+        taskTypeMatchesWorkflow(taskType, selectedWorkflow),
+      )
     : activeTypes;
 
   const typeGroups = activeWorkflows
     .map((workflow) => ({
       id: workflow.id,
       name: workflow.name,
-      types: activeTypes.filter((taskType) => taskType.workflowId === workflow.id),
+      types: activeTypes.filter((taskType) =>
+        taskTypeMatchesWorkflow(taskType, workflow),
+      ),
     }))
     .filter((group) => group.types.length > 0);
-  const ungroupedTypes = activeTypes.filter((taskType) => taskType.workflowId == null);
+  const groupedTypeIds = new Set(
+    typeGroups.flatMap((group) => group.types.map((taskType) => taskType.id)),
+  );
+  const ungroupedTypes = activeTypes.filter(
+    (taskType) => !groupedTypeIds.has(taskType.id),
+  );
 
-  const selectedWorkflow = activeWorkflows.find((workflow) => workflow.id === workflowId);
   const statusNames = (selectedWorkflow?.statuses ?? [])
     .filter((status) => statusIds.includes(status.id))
     .sort((left, right) => left.sortOrder - right.sortOrder)

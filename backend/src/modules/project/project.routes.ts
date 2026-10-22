@@ -18,6 +18,7 @@ import {
   createProjectWorkflowStatusSchema,
   createProjectWorkflowTransitionSchema,
   getProjectListSchema,
+  projectOverviewQuerySchema,
   memberCandidateQuerySchema,
   projectIdParamsSchema,
   projectMemberListQuerySchema,
@@ -28,6 +29,10 @@ import {
   projectTaskTypeParamsSchema,
   reorderProjectWorkflowStatusesSchema,
   createProjectTaskCommentSchema,
+  projectMilestoneParamsSchema,
+  projectPhaseParamsSchema,
+  saveProjectMilestoneSchema,
+  saveProjectPhaseSchema,
   saveProjectTaskSchema,
   updateProjectTaskStatusSchema,
   statusIdParamsSchema,
@@ -68,6 +73,13 @@ router.get(
   "/:id",
   validateParams(projectIdParamsSchema),
   asyncHandler(projectController.getProject),
+);
+
+router.get(
+  "/:id/overview",
+  validateParams(projectIdParamsSchema),
+  validateQuery(projectOverviewQuerySchema),
+  asyncHandler(projectController.getProjectOverview),
 );
 
 router.patch(
@@ -245,6 +257,64 @@ router.delete(
 );
 
 router.get(
+  "/:id/phases",
+  validateParams(projectIdParamsSchema),
+  asyncHandler(projectController.getProjectPhases),
+);
+
+router.get(
+  "/:id/planning-tasks",
+  validateParams(projectIdParamsSchema),
+  asyncHandler(projectController.getPlanningTasks),
+);
+
+router.post(
+  "/:id/phases",
+  validateParams(projectIdParamsSchema),
+  validateBody(saveProjectPhaseSchema),
+  asyncHandler(projectController.createProjectPhase),
+);
+
+router.patch(
+  "/:id/phases/:phaseId",
+  validateParams(projectPhaseParamsSchema),
+  validateBody(saveProjectPhaseSchema),
+  asyncHandler(projectController.updateProjectPhase),
+);
+
+router.delete(
+  "/:id/phases/:phaseId",
+  validateParams(projectPhaseParamsSchema),
+  asyncHandler(projectController.deleteProjectPhase),
+);
+
+router.get(
+  "/:id/milestones",
+  validateParams(projectIdParamsSchema),
+  asyncHandler(projectController.getProjectMilestones),
+);
+
+router.post(
+  "/:id/milestones",
+  validateParams(projectIdParamsSchema),
+  validateBody(saveProjectMilestoneSchema),
+  asyncHandler(projectController.createProjectMilestone),
+);
+
+router.patch(
+  "/:id/milestones/:milestoneId",
+  validateParams(projectMilestoneParamsSchema),
+  validateBody(saveProjectMilestoneSchema),
+  asyncHandler(projectController.updateProjectMilestone),
+);
+
+router.delete(
+  "/:id/milestones/:milestoneId",
+  validateParams(projectMilestoneParamsSchema),
+  asyncHandler(projectController.deleteProjectMilestone),
+);
+
+router.get(
   "/:id/tasks",
   validateParams(projectIdParamsSchema),
   validateQuery(projectTaskListQuerySchema),
@@ -262,6 +332,12 @@ router.get(
   "/:id/tasks/:taskId",
   validateParams(projectTaskParamsSchema),
   asyncHandler(projectController.getProjectTask),
+);
+
+router.get(
+  "/:id/tasks/:taskId/attachments",
+  validateParams(projectTaskParamsSchema),
+  asyncHandler(projectController.getProjectTaskAttachments),
 );
 
 router.get(

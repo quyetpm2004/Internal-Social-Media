@@ -47,6 +47,7 @@ export function mapTemplateDetail(
       description: workflow.description,
       isDefault: workflow.isDefault,
       isActive: workflow.isActive,
+      transitionMode: workflow.transitionMode,
       statuses: workflow.statuses.map((status) => ({
         id: status.id,
         name: status.name,

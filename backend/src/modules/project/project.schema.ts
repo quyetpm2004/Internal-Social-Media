@@ -24,6 +24,7 @@ export const getProjectListSchema = z.object({
   page: z.coerce.number().int().min(1).optional().default(1),
   limit: z.coerce.number().int().min(1).max(50).optional().default(10),
   keyword: z.string().optional(),
+  membership: z.enum(["all", "joined", "view"]).optional().default("all"),
 });
 
 export type GetProjectListSchema = z.infer<typeof getProjectListSchema>;
@@ -69,6 +70,13 @@ export const projectIdParamsSchema = z.object({
 });
 
 export type ProjectIdParams = z.infer<typeof projectIdParamsSchema>;
+
+export const projectOverviewQuerySchema = z.object({
+  workflowId: z.coerce.number().int().positive().optional(),
+  weeks: z.coerce.number().int().min(1).max(12).optional().default(4),
+});
+
+export type ProjectOverviewQuery = z.infer<typeof projectOverviewQuerySchema>;
 
 export const projectMemberUserParamsSchema = z.object({
   id: z.coerce.number().int().positive("ID dự án không hợp lệ"),
@@ -137,6 +145,8 @@ const workflowCategorySchema = z.enum([
   "CANCELLED",
 ]);
 
+const workflowTransitionModeSchema = z.enum(["FREE", "STRICT"]);
+
 const hexColorSchema = z
   .string()
   .regex(/^#[0-9A-Fa-f]{6}$/, "Màu phải là mã hex gồm # và 6 ký tự");
@@ -173,6 +183,7 @@ export const createProjectWorkflowSchema = z.object({
   description: workflowDescriptionSchema,
   isDefault: z.boolean(),
   isActive: z.boolean(),
+  transitionMode: workflowTransitionModeSchema.optional().default("FREE"),
 });
 
 export const updateProjectWorkflowSchema = z
@@ -181,6 +192,7 @@ export const updateProjectWorkflowSchema = z
     description: workflowDescriptionSchema.optional(),
     isDefault: z.boolean().optional(),
     isActive: z.boolean().optional(),
+    transitionMode: workflowTransitionModeSchema.optional(),
   })
   .refine(hasAnyField, { message: "Cần ít nhất một trường để cập nhật" });
 
@@ -438,19 +450,34 @@ export const saveProjectTaskSchema = z.object({
     .array(taskChildSchema)
     .max(20, "Tối đa 20 việc con mỗi lần")
     .default([]),
+  attachmentIds: z
+    .array(z.number().int().positive())
+    .max(20, "Tối đa 20 tệp đính kèm")
+    .optional(),
+  phaseId: z.number().int().positive().nullable().optional(),
 });
 
 export const updateProjectTaskStatusSchema = z.object({
   statusId: z.number().int().positive("Trạng thái không hợp lệ"),
 });
 
-export const createProjectTaskCommentSchema = z.object({
-  content: z
-    .string()
-    .trim()
-    .min(1, "Nội dung không được để trống")
-    .max(5000, "Bình luận tối đa 5000 ký tự"),
-});
+export const createProjectTaskCommentSchema = z
+  .object({
+    content: z
+      .string()
+      .trim()
+      .max(5000, "Bình luận tối đa 5000 ký tự")
+      .optional()
+      .default(""),
+    attachmentIds: z
+      .array(z.number().int().positive())
+      .max(10, "Tối đa 10 tệp mỗi bình luận")
+      .optional()
+      .default([]),
+  })
+  .refine((data) => data.content.length > 0 || data.attachmentIds.length > 0, {
+    message: "Bình luận cần nội dung hoặc tệp đính kèm",
+  });
 
 export type ProjectTaskParams = z.infer<typeof projectTaskParamsSchema>;
 export type ProjectTaskListQuery = z.infer<typeof projectTaskListQuerySchema>;
@@ -460,4 +487,67 @@ export type UpdateProjectTaskStatusInput = z.infer<
 >;
 export type CreateProjectTaskCommentInput = z.infer<
   typeof createProjectTaskCommentSchema
+>;
+
+const planningDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Ngày không hợp lệ");
+
+const planningTaskIdsSchema = z
+  .array(z.number().int().positive())
+  .max(200, "Tối đa 200 công việc")
+  .default([]);
+
+export const saveProjectPhaseSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(1, "Tên giai đoạn không được để trống")
+      .max(150, "Tên tối đa 150 ký tự"),
+    goal: z.string().trim().max(2000, "Mục tiêu tối đa 2000 ký tự").nullable(),
+    startDate: planningDateSchema.nullable(),
+    endDate: planningDateSchema.nullable(),
+    status: z.enum(["PLANNED", "ACTIVE", "COMPLETED"]).optional(),
+    taskIds: planningTaskIdsSchema,
+  })
+  .refine(
+    (data) =>
+      !data.startDate || !data.endDate || data.endDate >= data.startDate,
+    {
+      message: "Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu",
+      path: ["endDate"],
+    },
+  );
+
+export const saveProjectMilestoneSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Tên cột mốc không được để trống")
+    .max(150, "Tên tối đa 150 ký tự"),
+  description: z
+    .string()
+    .trim()
+    .max(2000, "Mô tả tối đa 2000 ký tự")
+    .nullable(),
+  dueDate: planningDateSchema,
+  phaseId: z.number().int().positive().nullable(),
+  status: z.enum(["OPEN", "REACHED"]).optional(),
+  taskIds: planningTaskIdsSchema,
+});
+
+export const projectPhaseParamsSchema = z.object({
+  id: z.coerce.number().int().positive("ID dự án không hợp lệ"),
+  phaseId: z.coerce.number().int().positive("ID giai đoạn không hợp lệ"),
+});
+
+export const projectMilestoneParamsSchema = z.object({
+  id: z.coerce.number().int().positive("ID dự án không hợp lệ"),
+  milestoneId: z.coerce.number().int().positive("ID cột mốc không hợp lệ"),
+});
+
+export type SaveProjectPhaseInput = z.infer<typeof saveProjectPhaseSchema>;
+export type SaveProjectMilestoneInput = z.infer<
+  typeof saveProjectMilestoneSchema
 >;

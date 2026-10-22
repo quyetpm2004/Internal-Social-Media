@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { Plus, Search, X } from "lucide-react";
+import { Loader2, Paperclip, Plus, Search, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import Field from "@/components/shared/Field";
@@ -15,13 +15,26 @@ import type {
   ProjectWorkflowRole,
   ProjectWorkflowTaskType,
 } from "@/features/project/types/project.type";
+import type { PhaseItem } from "@/features/project/types/planning.type";
 import type {
   SaveTaskPayload,
+  TaskAttachment,
   TaskDetail,
   TaskListItem,
 } from "@/features/project/types/task.type";
 import { toDateInputValue } from "@/features/project/utils/project-date";
-import { toastApiError } from "@/features/project-template/utils/api-error";
+import { statusesForTaskMove } from "@/features/project/components/workflow/workflow-flow";
+import { taskTypeMatchesWorkflow } from "@/features/project/utils/task-type-workflow";
+import {
+  getApiErrorMessages,
+  toastApiError,
+} from "@/features/project-template/utils/api-error";
+import {
+  TASK_FILE_ACCEPT,
+  TaskUploadError,
+  formatFileSize,
+  uploadTaskFiles,
+} from "@/features/project/utils/upload-task-file";
 import RichTextContent from "@/features/new-feed/components/RichTextContent";
 import RichTextEditor from "@/features/new-feed/components/RichTextEditor";
 import {
@@ -59,12 +72,14 @@ type TaskDraft = {
   priority: ProjectPriority;
   startDate: string;
   dueDate: string;
+  phaseId: string;
   estimatedMinutes: string;
   parent: ParentDraft | null;
   assignees: AssigneeDraft[];
   reporterId: string;
   reviewerIds: number[];
   newChildren: ChildDraft[];
+  files: TaskAttachment[];
 };
 
 type FieldErrors = Partial<Record<string, string>>;
@@ -102,12 +117,14 @@ function emptyDraft(
     priority: "MEDIUM",
     startDate: "",
     dueDate: "",
+    phaseId: "",
     estimatedMinutes: "",
     parent: null,
     assignees: [],
     reporterId: reporter,
     reviewerIds: [],
     newChildren: [],
+    files: [],
   };
 }
 
@@ -121,6 +138,7 @@ function draftFromDetail(detail: TaskDetail): TaskDraft {
     priority: detail.priority,
     startDate: detail.startDate ? toDateInputValue(detail.startDate) : "",
     dueDate: detail.dueDate ? toDateInputValue(detail.dueDate) : "",
+    phaseId: detail.phaseId ? String(detail.phaseId) : "",
     estimatedMinutes:
       detail.estimatedMinutes == null ? "" : String(detail.estimatedMinutes),
     parent: detail.parent,
@@ -131,6 +149,60 @@ function draftFromDetail(detail: TaskDetail): TaskDraft {
     reporterId: detail.reporter ? String(detail.reporter.userId) : "",
     reviewerIds: detail.reviewers.map((reviewer) => reviewer.userId),
     newChildren: [],
+    files: [],
+  };
+}
+
+function compactDescriptionImages(html: string) {
+  return html.replace(/<img\b([^>]*?)\/?>/gi, (tag, attrs: string) => {
+    const key = /\bdata-file-key\s*=\s*"([^"]*)"/i.exec(attrs)?.[1];
+    if (!key) return tag;
+    const nextAttrs = /\bsrc\s*=\s*"[^"]*"/i.test(attrs)
+      ? attrs.replace(/\bsrc\s*=\s*"[^"]*"/i, `src="${key}"`)
+      : ` src="${key}"${attrs}`;
+    return `<img${nextAttrs}>`;
+  });
+}
+
+function sprintDay(value: string, language: string) {
+  const [, month, day] = value.slice(0, 10).split("-");
+  if (!month || !day) return "";
+  return language.startsWith("vi") ? `${day}/${month}` : `${month}-${day}`;
+}
+
+function sprintRange(phase: PhaseItem, language: string) {
+  const start = phase.startDate ? sprintDay(phase.startDate, language) : "";
+  const end = phase.endDate ? sprintDay(phase.endDate, language) : "";
+  if (start && end) return `${start} → ${end}`;
+  return start || end;
+}
+
+function sprintTone(phase: PhaseItem) {
+  if (phase.isOverdue) {
+    return {
+      dot: "bg-rose-500",
+      text: "text-rose-600",
+      label: "pages.projects.phases.overdue",
+    };
+  }
+  if (phase.status === "ACTIVE") {
+    return {
+      dot: "bg-emerald-500",
+      text: "text-emerald-600",
+      label: "pages.projects.phases.status.ACTIVE",
+    };
+  }
+  if (phase.status === "COMPLETED") {
+    return {
+      dot: "bg-slate-400",
+      text: "text-slate-500",
+      label: "pages.projects.phases.status.COMPLETED",
+    };
+  }
+  return {
+    dot: "bg-blue-500",
+    text: "text-blue-600",
+    label: "pages.projects.phases.status.PLANNED",
   };
 }
 
@@ -168,18 +240,30 @@ export default function TaskFormModal({
     | { kind: "task" | "child"; id: number; label: string }
   >(null);
   const [deleting, setDeleting] = useState(false);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [descriptionUploading, setDescriptionUploading] = useState(false);
+  const [attachmentError, setAttachmentError] = useState(false);
+  const [phases, setPhases] = useState<PhaseItem[]>([]);
+  const [phasesLoaded, setPhasesLoaded] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const busy = saving || uploadingFiles || descriptionUploading;
 
   const readOnly = mode === "detail" && !!detail && !detail.canEdit;
   const activeWorkflows = workflows.filter((workflow) => workflow.isActive);
   const selectedWorkflow = activeWorkflows.find(
     (workflow) => workflow.id === Number(draft.workflowId),
   );
-  const statuses = [...(selectedWorkflow?.statuses ?? [])].sort(
-    (left, right) => left.sortOrder - right.sortOrder,
-  );
+  const statuses = selectedWorkflow
+    ? statusesForTaskMove(
+        selectedWorkflow,
+        mode === "detail" && detail
+          ? { workflowId: detail.workflowId, statusId: detail.statusId }
+          : null,
+      )
+    : [];
   const typeOptions = taskTypes.filter(
     (taskType) =>
-      taskType.isActive && taskType.workflowId === selectedWorkflow?.id,
+      taskType.isActive && taskTypeMatchesWorkflow(taskType, selectedWorkflow),
   );
   const memberIds = useMemo(
     () => members.map((member) => member.userId),
@@ -199,20 +283,74 @@ export default function TaskFormModal({
   useEffect(() => {
     if (!open) {
       setDraftKey(null);
+      setAttachmentError(false);
       return;
     }
     if (formKey === "loading") return;
+    let cancelled = false;
     setErrors({});
     setPendingDelete(null);
+    setAttachmentError(false);
     if (mode === "create") {
       setDraft(emptyDraft(currentUserIdRef.current, memberIdsRef.current));
-    } else if (detailRef.current) {
-      setDraft(draftFromDetail(detailRef.current));
+      setDraftKey(formKey);
+      return;
     }
-    setDraftKey(formKey);
-  }, [open, formKey, mode]);
+    const current = detailRef.current;
+    if (!current) return;
+    setDraftKey(null);
+    void (async () => {
+      const base = draftFromDetail(current);
+      try {
+        const response = await projectApi.getTaskAttachments(
+          projectId,
+          current.id,
+        );
+        if (cancelled) return;
+        setDraft({ ...base, files: response.data.files });
+        setDraftKey(formKey);
+      } catch (error) {
+        if (cancelled) return;
+        setDraft(base);
+        setAttachmentError(true);
+        setDraftKey(formKey);
+        toastApiError(error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, formKey, mode, projectId]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setPhasesLoaded(false);
+    void projectApi
+      .getPhases(projectId)
+      .then((response) => {
+        if (cancelled) return;
+        setPhases(response.data.phases);
+        setPhasesLoaded(true);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setPhases([]);
+        setPhasesLoaded(true);
+        toastApiError(error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, projectId]);
 
   const formReady = open && draftKey === formKey && (mode === "create" || detail != null);
+  const selectedPhase =
+    phases.find((phase) => String(phase.id) === draft.phaseId) ?? null;
+  const selectedPhaseTone = selectedPhase ? sprintTone(selectedPhase) : null;
+  const selectedPhaseRange = selectedPhase
+    ? sprintRange(selectedPhase, i18n.language)
+    : "";
 
   const people = useMemo(() => {
     const map = new Map<number, string>();
@@ -233,6 +371,20 @@ export default function TaskFormModal({
       ?.projectRole.name ??
     String(roleId);
 
+  const peopleInRole = (roleId: number, selectedUserId: string) => {
+    const inRole = members.filter((member) =>
+      member.roles.some((role) => role.id === roleId),
+    );
+    const selectedId = Number(selectedUserId);
+    if (selectedId && !inRole.some((member) => member.userId === selectedId)) {
+      const known = people.find((person) => person.userId === selectedId);
+      if (known) {
+        return [...inRole, { userId: known.userId, fullName: known.fullName }];
+      }
+    }
+    return inRole;
+  };
+
   const availableRoles = [...roles].sort(
     (left, right) => left.sortOrder - right.sortOrder,
   ).filter(
@@ -245,11 +397,19 @@ export default function TaskFormModal({
 
   const handleWorkflowChange = (value: string) => {
     const workflow = activeWorkflows.find((item) => item.id === Number(value));
+    const sameWorkflow =
+      mode === "detail" &&
+      detail != null &&
+      detail.workflowId === Number(value);
     const initial = workflow?.statuses.find((status) => status.isInitial);
     patch({
       workflowId: value,
       taskTypeId: "",
-      statusId: initial ? String(initial.id) : "",
+      statusId: sameWorkflow
+        ? String(detail.statusId)
+        : initial
+          ? String(initial.id)
+          : "",
     });
     setErrors((current) => ({
       ...current,
@@ -304,7 +464,7 @@ export default function TaskFormModal({
 
     const description = isRichTextEmpty(draft.description)
       ? null
-      : sanitizePostHtml(draft.description);
+      : compactDescriptionImages(sanitizePostHtml(draft.description));
 
     return {
       title,
@@ -315,6 +475,7 @@ export default function TaskFormModal({
       priority: draft.priority,
       startDate: draft.startDate || null,
       dueDate: draft.dueDate || null,
+      phaseId: draft.phaseId ? Number(draft.phaseId) : null,
       estimatedMinutes: estimate,
       parentTaskId: draft.parent?.id ?? null,
       assignees: draft.assignees.map((row) => ({
@@ -323,6 +484,7 @@ export default function TaskFormModal({
       })),
       reporterId: Number(draft.reporterId),
       reviewerIds: draft.reviewerIds,
+      attachmentIds: draft.files.map((file) => file.id),
       children: draft.newChildren.map((child) => ({
         title: child.title.trim(),
         estimatedMinutes: parseEstimate(child.estimatedMinutes) as number | null,
@@ -332,7 +494,7 @@ export default function TaskFormModal({
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (readOnly || saving) return;
+    if (readOnly || busy || attachmentError) return;
     const payload = validate();
     if (!payload) return;
     setSaving(true);
@@ -350,6 +512,73 @@ export default function TaskFormModal({
       toastApiError(error);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const uploadErrorMessage = (error: unknown) => {
+    if (error instanceof TaskUploadError) {
+      return t(`pages.projects.tasks.upload.${error.code}`, {
+        max: error.maxMb,
+      });
+    }
+    return getApiErrorMessages(error)[0] || t("pages.projects.tasks.upload.failed");
+  };
+
+  const uploadDescriptionImage = async (file: File) => {
+    try {
+      const [uploaded] = await uploadTaskFiles([file], "description");
+      if (!uploaded?.fileUrl || !uploaded.fileKey) {
+        throw new TaskUploadError("failed");
+      }
+      return {
+        src: uploaded.fileUrl,
+        fileKey: uploaded.fileKey,
+        alt: uploaded.fileName,
+      };
+    } catch (error) {
+      throw new Error(uploadErrorMessage(error));
+    }
+  };
+
+  const addTaskFiles = async (list: FileList | null) => {
+    const selected = Array.from(list ?? []);
+    if (selected.length === 0) return;
+    if (draft.files.length + selected.length > 20) {
+      toast.error(t("pages.projects.tasks.form.attachmentLimit"));
+      return;
+    }
+    setUploadingFiles(true);
+    try {
+      const uploaded = await uploadTaskFiles(selected, "task");
+      setDraft((current) => ({
+        ...current,
+        files: [
+          ...current.files,
+          ...uploaded.map((file) => ({
+            id: file.id,
+            fileName: file.fileName,
+            mimeType: file.mimeType,
+            fileSize: file.fileSize,
+            attachmentType: file.attachmentType,
+            fileUrl: file.fileUrl,
+          })),
+        ],
+      }));
+    } catch (error) {
+      toast.error(uploadErrorMessage(error));
+    } finally {
+      setUploadingFiles(false);
+    }
+  };
+
+  const retryAttachments = async () => {
+    if (!detail) return;
+    try {
+      const response = await projectApi.getTaskAttachments(projectId, detail.id);
+      setDraft((current) => ({ ...current, files: response.data.files }));
+      setAttachmentError(false);
+    } catch (error) {
+      toastApiError(error);
     }
   };
 
@@ -404,7 +633,7 @@ export default function TaskFormModal({
               {detail?.canEdit ? (
                 <button
                   type="button"
-                  disabled={saving}
+                  disabled={busy}
                   onClick={() =>
                     setPendingDelete({
                       kind: "task",
@@ -431,10 +660,10 @@ export default function TaskFormModal({
                 <button
                   type="submit"
                   form={FORM_ID}
-                  disabled={saving}
+                  disabled={busy || attachmentError}
                   className="h-10 cursor-pointer rounded-lg bg-primary px-4 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-60"
                 >
-                  {saving
+                  {saving || uploadingFiles || descriptionUploading
                     ? t("common.processing")
                     : t("pages.projects.tasks.form.save")}
                 </button>
@@ -642,35 +871,43 @@ export default function TaskFormModal({
                     ))}
                   </Select>
                 )}
-                {draft.assignees.map((row) => (
-                  <label key={row.projectRoleId} className="block space-y-1">
-                    <span className="text-xs font-semibold text-slate-500">
-                      {roleName(row.projectRoleId)}
-                    </span>
-                    <Select
-                      value={row.userId}
-                      disabled={readOnly}
-                      onChange={(event) =>
-                        patch({
-                          assignees: draft.assignees.map((item) =>
-                            item.projectRoleId === row.projectRoleId
-                              ? { ...item, userId: event.target.value }
-                              : item,
-                          ),
-                        })
-                      }
-                    >
-                      <option value="">
-                        {t("pages.projects.tasks.form.pickPerson")}
-                      </option>
-                      {people.map((person) => (
-                        <option key={person.userId} value={person.userId}>
-                          {person.fullName}
+                {draft.assignees.map((row) => {
+                  const rolePeople = peopleInRole(row.projectRoleId, row.userId);
+                  return (
+                    <label key={row.projectRoleId} className="block space-y-1">
+                      <span className="text-xs font-semibold text-slate-500">
+                        {roleName(row.projectRoleId)}
+                      </span>
+                      <Select
+                        value={row.userId}
+                        disabled={readOnly || rolePeople.length === 0}
+                        onChange={(event) =>
+                          patch({
+                            assignees: draft.assignees.map((item) =>
+                              item.projectRoleId === row.projectRoleId
+                                ? { ...item, userId: event.target.value }
+                                : item,
+                            ),
+                          })
+                        }
+                      >
+                        <option value="">
+                          {t("pages.projects.tasks.form.pickPerson")}
                         </option>
-                      ))}
-                    </Select>
-                  </label>
-                ))}
+                        {rolePeople.map((person) => (
+                          <option key={person.userId} value={person.userId}>
+                            {person.fullName}
+                          </option>
+                        ))}
+                      </Select>
+                      {rolePeople.length === 0 && (
+                        <p className="text-xs text-slate-500">
+                          {t("pages.projects.tasks.form.noPeopleInRole")}
+                        </p>
+                      )}
+                    </label>
+                  );
+                })}
                 {errors.assignees && (
                   <p className="text-xs text-red-600">{errors.assignees}</p>
                 )}
@@ -692,7 +929,80 @@ export default function TaskFormModal({
                     placeholder={t("pages.projects.tasks.form.description")}
                     minRows={4}
                     extended
+                    uploadImage={uploadDescriptionImage}
+                    onUploadingChange={setDescriptionUploading}
                   />
+                )}
+              </Field>
+
+              <Field label={t("pages.projects.tasks.form.attachments")}>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept={TASK_FILE_ACCEPT}
+                  className="hidden"
+                  onChange={(event) => {
+                    void addTaskFiles(event.target.files);
+                    event.target.value = "";
+                  }}
+                />
+                {!readOnly && (
+                  <button
+                    type="button"
+                    disabled={uploadingFiles}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                  >
+                    {uploadingFiles ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Paperclip className="size-4" />
+                    )}
+                    {t("pages.projects.tasks.form.addAttachment")}
+                  </button>
+                )}
+                {attachmentError && (
+                  <button
+                    type="button"
+                    onClick={() => void retryAttachments()}
+                    className="mt-2 block cursor-pointer text-sm text-rose-600 hover:underline"
+                  >
+                    {t("pages.projects.tasks.form.attachmentsLoadFailed")}
+                  </button>
+                )}
+                {draft.files.length > 0 && (
+                  <ul className="mt-2 space-y-2">
+                    {draft.files.map((file) => (
+                      <li
+                        key={file.id}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate font-medium text-slate-800">
+                            {file.fileName}
+                          </span>
+                          <span className="text-xs text-slate-400">
+                            {formatFileSize(file.fileSize)}
+                          </span>
+                        </span>
+                        {!readOnly && (
+                          <button
+                            type="button"
+                            title={t("pages.projects.tasks.form.removeAttachment")}
+                            onClick={() =>
+                              patch({
+                                files: draft.files.filter((item) => item.id !== file.id),
+                              })
+                            }
+                            className="cursor-pointer rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                          >
+                            <X className="size-4" />
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </Field>
             </div>
@@ -784,6 +1094,50 @@ export default function TaskFormModal({
                     </option>
                   ))}
                 </Select>
+              </Field>
+
+              <Field
+                label={t("pages.projects.tasks.form.sprint")}
+                htmlFor="task-sprint"
+              >
+                <Select
+                  id="task-sprint"
+                  value={draft.phaseId}
+                  disabled={readOnly}
+                  onChange={(event) => patch({ phaseId: event.target.value })}
+                >
+                  <option value="">{t("pages.projects.tasks.form.noSprint")}</option>
+                  {phases.map((phase) => (
+                    <option key={phase.id} value={phase.id}>
+                      {phase.name}
+                    </option>
+                  ))}
+                </Select>
+                {selectedPhase && selectedPhaseTone ? (
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1.5 font-medium",
+                        selectedPhaseTone.text,
+                      )}
+                    >
+                      <span
+                        className={cn("size-1.5 rounded-full", selectedPhaseTone.dot)}
+                      />
+                      {t(selectedPhaseTone.label)}
+                    </span>
+                    {selectedPhaseRange && (
+                      <span className="text-slate-500">{selectedPhaseRange}</span>
+                    )}
+                  </div>
+                ) : (
+                  phasesLoaded &&
+                  phases.length === 0 && (
+                    <p className="text-xs text-slate-400">
+                      {t("pages.projects.tasks.form.noSprintYet")}
+                    </p>
+                  )
+                )}
               </Field>
 
               <Field

@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import * as projectService from "@/modules/project/services/project.service";
 import * as projectMemberService from "@/modules/project/services/project-member.service";
+import * as projectOverviewService from "@/modules/project/services/project-overview.service";
+import * as projectPlanningService from "@/modules/project/services/project-planning.service";
 import * as projectTaskService from "@/modules/project/services/project-task.service";
 import * as projectWorkflowService from "@/modules/project/services/project-workflow.service";
 import { AppError } from "@/shared/errors/app-error";
@@ -53,6 +55,18 @@ export async function getProject(req: Request, res: Response) {
   const data = await projectService.getProject(req.validated.id, userId);
   res.status(200).json({
     message: "Lấy chi tiết dự án thành công",
+    data,
+  });
+}
+
+export async function getProjectOverview(req: Request, res: Response) {
+  const data = await projectOverviewService.getProjectOverview(
+    Number(req.params.id),
+    requireUserId(req),
+    req.validated,
+  );
+  res.status(200).json({
+    message: "Lấy tổng quan dự án thành công",
     data,
   });
 }
@@ -472,6 +486,18 @@ export async function updateProjectTaskStatus(req: Request, res: Response) {
   });
 }
 
+export async function getProjectTaskAttachments(req: Request, res: Response) {
+  const data = await projectTaskService.listTaskAttachments(
+    Number(req.params.id),
+    Number(req.params.taskId),
+    requireUserId(req),
+  );
+  res.status(200).json({
+    message: "Lấy tệp đính kèm công việc thành công",
+    data,
+  });
+}
+
 export async function getProjectTaskComments(req: Request, res: Response) {
   const data = await projectTaskService.listTaskComments(
     Number(req.params.id),
@@ -505,6 +531,113 @@ export async function deleteProjectTask(req: Request, res: Response) {
   );
   res.status(200).json({
     message: "Xóa công việc thành công",
+    data,
+  });
+}
+
+export async function getProjectPhases(req: Request, res: Response) {
+  const data = await projectPlanningService.getPhases(
+    Number(req.params.id),
+    requireUserId(req),
+  );
+  res.status(200).json({
+    message: "Lấy danh sách giai đoạn thành công",
+    data,
+  });
+}
+
+export async function getPlanningTasks(req: Request, res: Response) {
+  const data = await projectPlanningService.getPlanningTasks(
+    Number(req.params.id),
+    requireUserId(req),
+  );
+  res.status(200).json({
+    message: "Lấy công việc để gắn kế hoạch thành công",
+    data,
+  });
+}
+
+export async function createProjectPhase(req: Request, res: Response) {
+  const data = await projectPlanningService.createPhase(
+    Number(req.params.id),
+    requireUserId(req),
+    req.validated,
+  );
+  res.status(200).json({
+    message: "Tạo giai đoạn thành công",
+    data,
+  });
+}
+
+export async function updateProjectPhase(req: Request, res: Response) {
+  const data = await projectPlanningService.updatePhase(
+    Number(req.params.id),
+    Number(req.params.phaseId),
+    requireUserId(req),
+    req.validated,
+  );
+  res.status(200).json({
+    message: "Cập nhật giai đoạn thành công",
+    data,
+  });
+}
+
+export async function deleteProjectPhase(req: Request, res: Response) {
+  const data = await projectPlanningService.removePhase(
+    Number(req.params.id),
+    Number(req.params.phaseId),
+    requireUserId(req),
+  );
+  res.status(200).json({
+    message: "Xóa giai đoạn thành công",
+    data,
+  });
+}
+
+export async function getProjectMilestones(req: Request, res: Response) {
+  const data = await projectPlanningService.getMilestones(
+    Number(req.params.id),
+    requireUserId(req),
+  );
+  res.status(200).json({
+    message: "Lấy danh sách cột mốc thành công",
+    data,
+  });
+}
+
+export async function createProjectMilestone(req: Request, res: Response) {
+  const data = await projectPlanningService.createMilestone(
+    Number(req.params.id),
+    requireUserId(req),
+    req.validated,
+  );
+  res.status(200).json({
+    message: "Tạo cột mốc thành công",
+    data,
+  });
+}
+
+export async function updateProjectMilestone(req: Request, res: Response) {
+  const data = await projectPlanningService.updateMilestone(
+    Number(req.params.id),
+    Number(req.params.milestoneId),
+    requireUserId(req),
+    req.validated,
+  );
+  res.status(200).json({
+    message: "Cập nhật cột mốc thành công",
+    data,
+  });
+}
+
+export async function deleteProjectMilestone(req: Request, res: Response) {
+  const data = await projectPlanningService.removeMilestone(
+    Number(req.params.id),
+    Number(req.params.milestoneId),
+    requireUserId(req),
+  );
+  res.status(200).json({
+    message: "Xóa cột mốc thành công",
     data,
   });
 }

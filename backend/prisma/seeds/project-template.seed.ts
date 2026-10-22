@@ -5,6 +5,7 @@ import {
   TemplateTaskRole,
   WorkflowStatusCategory,
 } from "@prisma/client";
+import { clearProjects } from "./project-reset";
 
 type StatusSeed = {
   key: string;
@@ -520,6 +521,7 @@ async function createTemplate(
           description: workflowSeed.description,
           isDefault: workflowSeed.isDefault,
           isActive: true,
+          transitionMode: "STRICT",
           statuses: {
             create: workflowSeed.statuses.map((status) => ({
               key: status.key,
@@ -628,6 +630,7 @@ export async function seedProjectTemplates(prisma: PrismaClient) {
     );
   }
 
+  await clearProjects(prisma);
   await clearProjectTemplates(prisma);
 
   for (const template of templates) {

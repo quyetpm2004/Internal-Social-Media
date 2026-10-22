@@ -5,7 +5,7 @@ import { seedGroups } from "./seeds/group.seed";
 import { seedPosts } from "./seeds/post.seed";
 import { seedChat } from "./seeds/chat.seed";
 import { seedProjectTemplates } from "./seeds/project-template.seed";
-import { seedProjectTasks } from "./seeds/project-task.seed";
+import { seedProjects } from "./seeds/project.seed";
 
 import prisma from "../src/shared/utils/prisma";
 
@@ -21,7 +21,7 @@ async function main() {
     await seedPosts(prisma);
     await seedChat(prisma);
     await seedProjectTemplates(prisma);
-    await seedProjectTasks(prisma);
+    await seedProjects(prisma);
 
     console.log("✨ Seeding finished successfully.");
   } catch (error) {

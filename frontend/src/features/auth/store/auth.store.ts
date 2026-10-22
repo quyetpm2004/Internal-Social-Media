@@ -6,7 +6,7 @@ import type {
   UserPublicInfo,
 } from "@/features/auth/types/auth.type";
 import { toast } from "sonner";
-import { disconnectSocket } from "@/lib/socket";
+import { disconnectSocket, syncSocketAuth } from "@/lib/socket";
 
 type AuthState = {
   user: UserPublicInfo | null;
@@ -36,12 +36,14 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: Boolean(state.accessToken && user),
         })),
 
-      setAccessToken: (token: string) =>
+      setAccessToken: (token: string) => {
         set((state) => ({
           ...state,
           accessToken: token,
           isAuthenticated: true,
-        })),
+        }));
+        syncSocketAuth(token);
+      },
 
       login: async (payload) => {
         set({ isLoading: true });

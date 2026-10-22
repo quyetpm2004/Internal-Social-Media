@@ -25,17 +25,32 @@ function getMappedId(
 }
 
 // Get visible where clause
-function visibleWhere(userId: number, keyword?: string) {
+type ProjectMembershipFilter = "all" | "joined" | "view";
+
+function visibleWhere(
+  userId: number,
+  keyword?: string,
+  membership: ProjectMembershipFilter = "all",
+) {
+  const access =
+    membership === "joined"
+      ? { members: { some: { userId } } }
+      : membership === "view"
+        ? {
+            AND: [
+              { visibility: "PUBLIC" as const },
+              { members: { none: { userId } } },
+            ],
+          }
+        : {
+            OR: [
+              { visibility: "PUBLIC" as const },
+              { members: { some: { userId } } },
+            ],
+          };
+
   return {
-    AND: [
-      keyword ? { name: { contains: keyword } } : {},
-      {
-        OR: [
-          { visibility: "PUBLIC" as const },
-          { members: { some: { userId } } },
-        ],
-      },
-    ],
+    AND: [keyword ? { name: { contains: keyword } } : {}, access],
   };
 }
 
@@ -99,6 +114,7 @@ export async function findTemplateForClone(templateId: number) {
           name: true,
           description: true,
           isDefault: true,
+          transitionMode: true,
           statuses: {
             select: {
               id: true,
@@ -190,6 +206,7 @@ export async function createProjectFromTemplate(
         name: templateWorkflow.name,
         description: templateWorkflow.description,
         isDefault: templateWorkflow.isDefault,
+        transitionMode: templateWorkflow.transitionMode,
         projectId: project.id,
       },
     });
@@ -312,11 +329,12 @@ export async function createProjectFromTemplate(
 export function getProjectList(params: {
   userId: number;
   keyword?: string;
+  membership?: "all" | "joined" | "view";
   skip: number;
   take: number;
 }) {
   return prisma.project.findMany({
-    where: visibleWhere(params.userId, params.keyword),
+    where: visibleWhere(params.userId, params.keyword, params.membership),
     orderBy: { createdAt: "desc" },
     skip: params.skip,
     take: params.take,
@@ -341,9 +359,13 @@ export function getProjectList(params: {
   });
 }
 
-export function countVisibleProjects(userId: number, keyword?: string) {
+export function countVisibleProjects(
+  userId: number,
+  keyword?: string,
+  membership?: "all" | "joined" | "view",
+) {
   return prisma.project.count({
-    where: visibleWhere(userId, keyword),
+    where: visibleWhere(userId, keyword, membership),
   });
 }
 
@@ -730,6 +752,7 @@ const projectWorkflowSummarySelect = {
   description: true,
   isDefault: true,
   isActive: true,
+  transitionMode: true,
 } satisfies Prisma.ProjectWorkflowSelect;
 
 export function listProjectWorkflows(projectId: number) {
@@ -790,6 +813,7 @@ export function createProjectWorkflow(
     description: string | null;
     isDefault: boolean;
     isActive: boolean;
+    transitionMode: "FREE" | "STRICT";
   },
 ) {
   return prisma.$transaction(async (tx) => {
@@ -808,6 +832,7 @@ export function createProjectWorkflow(
         description: data.description,
         isDefault: data.isDefault,
         isActive: data.isActive,
+        transitionMode: data.transitionMode,
       },
       select: projectWorkflowSummarySelect,
     });
@@ -822,6 +847,7 @@ export function updateProjectWorkflow(
     description?: string | null;
     isDefault?: boolean;
     isActive?: boolean;
+    transitionMode?: "FREE" | "STRICT";
   },
 ) {
   return prisma.$transaction(async (tx) => {
@@ -841,6 +867,9 @@ export function updateProjectWorkflow(
           : {}),
         ...(data.isDefault !== undefined ? { isDefault: data.isDefault } : {}),
         ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+        ...(data.transitionMode !== undefined
+          ? { transitionMode: data.transitionMode }
+          : {}),
       },
       select: projectWorkflowSummarySelect,
     });

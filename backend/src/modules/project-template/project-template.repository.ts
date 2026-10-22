@@ -277,6 +277,7 @@ export function createWorkflowInTransaction(
     description?: string | null;
     isDefault?: boolean;
     isActive?: boolean;
+    transitionMode?: "FREE" | "STRICT";
   },
 ) {
   return prisma.$transaction(async (tx) => {
@@ -294,6 +295,7 @@ export function createWorkflowInTransaction(
         description: data.description ?? null,
         isDefault: data.isDefault ?? false,
         isActive: data.isActive ?? true,
+        transitionMode: data.transitionMode ?? "FREE",
       },
     });
   });
@@ -307,6 +309,7 @@ export function updateWorkflowInTransaction(
     description?: string | null;
     isDefault?: boolean;
     isActive?: boolean;
+    transitionMode?: "FREE" | "STRICT";
   },
 ) {
   return prisma.$transaction(async (tx) => {
@@ -326,6 +329,9 @@ export function updateWorkflowInTransaction(
           : {}),
         ...(data.isDefault !== undefined ? { isDefault: data.isDefault } : {}),
         ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+        ...(data.transitionMode !== undefined
+          ? { transitionMode: data.transitionMode }
+          : {}),
       },
     });
   });
@@ -598,6 +604,7 @@ export function duplicateTemplateInTransaction(
           description: workflow.description,
           isDefault: workflow.isDefault,
           isActive: workflow.isActive,
+          transitionMode: workflow.transitionMode,
         },
       });
       workflowIdMap.set(workflow.id, created.id);

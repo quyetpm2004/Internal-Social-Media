@@ -28,6 +28,8 @@ const workflowCategorySchema = z.enum([
   "CANCELLED",
 ]);
 
+const workflowTransitionModeSchema = z.enum(["FREE", "STRICT"]);
+
 const approverTypeSchema = z.enum(["PROJECT_ROLE", "TASK_ROLE"]);
 
 const taskRoleSchema = z.enum(["ASSIGNEE", "REVIEWER", "REPORTER"]);
@@ -147,6 +149,7 @@ export const createWorkflowSchema = z.object({
   description: descriptionSchema,
   isDefault: z.boolean().optional(),
   isActive: z.boolean().optional(),
+  transitionMode: workflowTransitionModeSchema.optional().default("FREE"),
 });
 
 export const updateWorkflowSchema = z
@@ -155,6 +158,7 @@ export const updateWorkflowSchema = z
     description: descriptionSchema,
     isDefault: z.boolean().optional(),
     isActive: z.boolean().optional(),
+    transitionMode: workflowTransitionModeSchema.optional(),
   })
   .refine((data) => Object.values(data).some((v) => v !== undefined), {
     message: "Cần ít nhất một trường để cập nhật",

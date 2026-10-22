@@ -1,164 +1,60 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import { ChevronDown, ClipboardList, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { workApi } from "@/features/work/api/work.api";
+import type {
+  MyTask,
+  WorkCategory,
+  WorkDue,
+  WorkRole,
+  WorkScope,
+} from "@/features/work/types/work.type";
+import { toastApiError } from "@/features/project-template/utils/api-error";
 
-type WorkStatus = "notStarted" | "doing" | "paused" | "done" | "na";
-type WorkRole = "assignee" | "watcher" | "approver";
 type DueBucket = "overdue" | "today" | "thisWeek" | "later" | "none";
-type DueFilter = "all" | "overdue" | "today" | "week" | "none";
-type TaskTab = "mine" | "assigned";
+type DueFilter = "all" | WorkDue;
 type GroupBy = "due" | "project";
 
-type WorkTask = {
-  id: string;
-  title: { vi: string; en: string };
-  project: string;
-  role: WorkRole;
-  status: WorkStatus;
-  due: string | null;
-};
-
-const TODAY = "2026-10-08";
-const WEEK_END = "2026-10-15";
-
-const STATUSES: WorkStatus[] = ["notStarted", "doing", "paused", "done", "na"];
-const OPEN_STATUSES: WorkStatus[] = ["notStarted", "doing", "paused"];
+const CATEGORIES: WorkCategory[] = [
+  "TODO",
+  "IN_PROGRESS",
+  "DONE",
+  "CANCELLED",
+];
+const OPEN_CATEGORIES: WorkCategory[] = ["TODO", "IN_PROGRESS"];
 const DUE_ORDER: DueBucket[] = ["overdue", "today", "thisWeek", "later", "none"];
+const MINE_ROLES: WorkRole[] = ["ASSIGNEE", "REVIEWER"];
+const ASSIGNED_ROLES: WorkRole[] = ["REPORTER"];
 
-const statusTone: Record<WorkStatus, { dot: string; active: string }> = {
-  notStarted: { dot: "bg-blue-500", active: "border-blue-500 text-blue-600" },
-  doing: { dot: "bg-sky-500", active: "border-sky-500 text-sky-600" },
-  paused: { dot: "bg-amber-500", active: "border-amber-500 text-amber-600" },
-  done: { dot: "bg-emerald-500", active: "border-emerald-500 text-emerald-600" },
-  na: { dot: "bg-slate-400", active: "border-slate-400 text-slate-600" },
+const categoryTone: Record<WorkCategory, { dot: string; active: string }> = {
+  TODO: { dot: "bg-blue-500", active: "border-blue-500 text-blue-600" },
+  IN_PROGRESS: { dot: "bg-sky-500", active: "border-sky-500 text-sky-600" },
+  DONE: { dot: "bg-emerald-500", active: "border-emerald-500 text-emerald-600" },
+  CANCELLED: { dot: "bg-slate-400", active: "border-slate-400 text-slate-600" },
 };
 
-const mineTasks: WorkTask[] = [
-  {
-    id: "m1",
-    title: {
-      vi: "Sửa form thêm thành viên dự án",
-      en: "Fix the add-member form",
-    },
-    project: "Cổng thông tin nội bộ",
-    role: "assignee",
-    status: "doing",
-    due: "2026-10-02",
-  },
-  {
-    id: "m2",
-    title: {
-      vi: "Rà task chưa có người nhận",
-      en: "Review tasks with no assignee",
-    },
-    project: "Kho tài liệu phòng ban",
-    role: "watcher",
-    status: "paused",
-    due: "2026-10-06",
-  },
-  {
-    id: "m3",
-    title: {
-      vi: "Chốt bộ lọc kỳ trên tổng quan",
-      en: "Finalize the overview period filters",
-    },
-    project: "Báo cáo tuần tự động",
-    role: "assignee",
-    status: "notStarted",
-    due: "2026-10-08",
-  },
-  {
-    id: "m4",
-    title: {
-      vi: "Viết mô tả sprint CollabNet Mobile",
-      en: "Write the CollabNet Mobile sprint note",
-    },
-    project: "CollabNet Mobile",
-    role: "assignee",
-    status: "doing",
-    due: "2026-10-12",
-  },
-  {
-    id: "m5",
-    title: {
-      vi: "Cập nhật tiến độ luồng duyệt bài",
-      en: "Update the review-flow progress",
-    },
-    project: "Luồng duyệt bài viết",
-    role: "assignee",
-    status: "notStarted",
-    due: "2026-10-20",
-  },
-  {
-    id: "m6",
-    title: {
-      vi: "Kiểm tra file import Excel",
-      en: "Check the Excel import file",
-    },
-    project: "Kho tài liệu phòng ban",
-    role: "approver",
-    status: "na",
-    due: null,
-  },
-  {
-    id: "m7",
-    title: {
-      vi: "Gửi banner chiến dịch nội bộ",
-      en: "Send the internal campaign banner",
-    },
-    project: "Onboarding nhân sự mới",
-    role: "assignee",
-    status: "done",
-    due: "2026-10-01",
-  },
-];
-
-const assignedTasks: WorkTask[] = [
-  {
-    id: "a1",
-    title: {
-      vi: "Làm tài liệu chỉ tiêu kỹ thuật",
-      en: "Write the technical spec",
-    },
-    project: "CollabNet Mobile",
-    role: "assignee",
-    status: "doing",
-    due: "2026-08-13",
-  },
-  {
-    id: "a2",
-    title: {
-      vi: "Bổ sung lọc theo kỳ",
-      en: "Add the period filter",
-    },
-    project: "Báo cáo tuần tự động",
-    role: "assignee",
-    status: "notStarted",
-    due: "2026-10-10",
-  },
-  {
-    id: "a3",
-    title: {
-      vi: "Nhắc việc quá hạn đầu giờ sáng",
-      en: "Send the morning overdue reminder",
-    },
-    project: "Cổng thông tin nội bộ",
-    role: "watcher",
-    status: "paused",
-    due: "2026-10-09",
-  },
-];
-
-function textOf(language: string, value: { vi: string; en: string }) {
-  return language.startsWith("en") ? value.en : value.vi;
+function vietnamTodayIso() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }
 
-function dueBucket(due: string | null): DueBucket {
+function addIsoDays(iso: string, days: number) {
+  const date = new Date(`${iso}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function dueBucket(due: string | null, today: string, weekEnd: string): DueBucket {
   if (!due) return "none";
-  if (due < TODAY) return "overdue";
-  if (due === TODAY) return "today";
-  if (due <= WEEK_END) return "thisWeek";
+  if (due < today) return "overdue";
+  if (due === today) return "today";
+  if (due <= weekEnd) return "thisWeek";
   return "later";
 }
 
@@ -167,7 +63,7 @@ function formatDue(due: string) {
   return `${day}/${month}/${year.slice(2)}`;
 }
 
-function sameStatuses(left: WorkStatus[], right: WorkStatus[]) {
+function sameCategories(left: WorkCategory[], right: WorkCategory[]) {
   return left.length === right.length && right.every((status) => left.includes(status));
 }
 
@@ -199,49 +95,90 @@ function SelectField({
 }
 
 export default function MyWorkPage() {
-  const { t, i18n } = useTranslation();
-  const [tab, setTab] = useState<TaskTab>("mine");
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [tab, setTab] = useState<WorkScope>("mine");
   const [query, setQuery] = useState("");
-  const [project, setProject] = useState("all");
+  const [keyword, setKeyword] = useState("");
+  const [projectId, setProjectId] = useState<number | "all">("all");
   const [role, setRole] = useState<"all" | WorkRole>("all");
   const [due, setDue] = useState<DueFilter>("all");
-  const [statuses, setStatuses] = useState<WorkStatus[]>(OPEN_STATUSES);
+  const [categories, setCategories] = useState<WorkCategory[]>(OPEN_CATEGORIES);
   const [groupBy, setGroupBy] = useState<GroupBy>("due");
+  const [tasks, setTasks] = useState<MyTask[]>([]);
+  const [counts, setCounts] = useState({ mine: 0, assigned: 0 });
+  const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const requestRef = useRef(0);
 
-  const source = tab === "mine" ? mineTasks : assignedTasks;
-  const openPreset = sameStatuses(statuses, OPEN_STATUSES);
-  const allPreset = sameStatuses(statuses, STATUSES);
+  const today = vietnamTodayIso();
+  const weekEnd = addIsoDays(today, 7);
+  const roleOptions = tab === "mine" ? MINE_ROLES : ASSIGNED_ROLES;
+  const openPreset = sameCategories(categories, OPEN_CATEGORIES);
+  const allPreset = sameCategories(categories, CATEGORIES);
 
-  const projects = useMemo(
-    () => [...new Set(source.map((task) => task.project))],
-    [source],
-  );
+  useEffect(() => {
+    const timer = window.setTimeout(() => setKeyword(query.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [query]);
 
-  const matchesBase = (task: WorkTask) => {
-    const title = textOf(i18n.language, task.title).toLowerCase();
-    if (query.trim() && !title.includes(query.trim().toLowerCase())) return false;
-    if (role !== "all" && task.role !== role) return false;
-    const bucket = dueBucket(task.due);
-    if (due === "overdue" && bucket !== "overdue") return false;
-    if (due === "today" && bucket !== "today") return false;
-    if (due === "week" && bucket !== "today" && bucket !== "thisWeek") return false;
-    if (due === "none" && bucket !== "none") return false;
-    return true;
-  };
+  useEffect(() => {
+    const requestId = ++requestRef.current;
+    setLoading(true);
+    setLoadFailed(false);
+    setTasks([]);
 
-  const statsTasks = source.filter(matchesBase);
-  const visible = statsTasks.filter(
+    workApi
+      .getMyTasks({
+        scope: tab,
+        q: keyword || undefined,
+        role: role === "all" ? undefined : role,
+        due: due === "all" ? undefined : due,
+      })
+      .then((response) => {
+        if (requestId !== requestRef.current) return;
+        setTasks(response.data.items);
+        setCounts(response.data.counts);
+        setProjectId((current) => {
+          if (current === "all") return current;
+          const stillThere = response.data.items.some(
+            (task) => task.project.id === current,
+          );
+          return stillThere ? current : "all";
+        });
+      })
+      .catch((error: unknown) => {
+        if (requestId !== requestRef.current) return;
+        setTasks([]);
+        setLoadFailed(true);
+        toastApiError(error);
+      })
+      .finally(() => {
+        if (requestId === requestRef.current) setLoading(false);
+      });
+  }, [tab, keyword, role, due]);
+
+  const projects = useMemo(() => {
+    const names = new Map<number, string>();
+    for (const task of tasks) names.set(task.project.id, task.project.name);
+    return [...names.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((left, right) => left.name.localeCompare(right.name, "vi"));
+  }, [tasks]);
+
+  const visible = tasks.filter(
     (task) =>
-      statuses.includes(task.status) && (project === "all" || task.project === project),
+      categories.includes(task.status.category) &&
+      (projectId === "all" || task.project.id === projectId),
   );
 
   const groups = useMemo(() => {
     if (groupBy === "project") {
       return projects
-        .map((name) => ({
-          key: name,
-          label: name,
-          tasks: visible.filter((task) => task.project === name),
+        .map((project) => ({
+          key: String(project.id),
+          label: project.name,
+          tasks: visible.filter((task) => task.project.id === project.id),
         }))
         .filter((group) => group.tasks.length > 0);
     }
@@ -249,27 +186,32 @@ export default function MyWorkPage() {
     return DUE_ORDER.map((bucket) => ({
       key: bucket,
       label: t(`pages.myWork.bucket.${bucket}`),
-      tasks: visible.filter((task) => dueBucket(task.due) === bucket),
+      tasks: visible.filter(
+        (task) => dueBucket(task.dueDate, today, weekEnd) === bucket,
+      ),
     })).filter((group) => group.tasks.length > 0);
-  }, [groupBy, projects, t, visible]);
+  }, [groupBy, projects, t, today, visible, weekEnd]);
 
   const projectStats = projects
-    .map((name) => {
-      const rows = statsTasks.filter((task) => task.project === name);
-      const counts = Object.fromEntries(
-        STATUSES.map((status) => [status, rows.filter((task) => task.status === status).length]),
-      ) as Record<WorkStatus, number>;
-      return { name, total: rows.length, counts };
+    .map((project) => {
+      const rows = tasks.filter((task) => task.project.id === project.id);
+      const statusCounts = Object.fromEntries(
+        CATEGORIES.map((category) => [
+          category,
+          rows.filter((task) => task.status.category === category).length,
+        ]),
+      ) as Record<WorkCategory, number>;
+      return { ...project, total: rows.length, statusCounts };
     })
     .filter((item) => item.total > 0);
 
-  const selectStatuses = (next: WorkStatus[]) => setStatuses(next);
+  const selectCategories = (next: WorkCategory[]) => setCategories(next);
 
-  const toggleStatus = (status: WorkStatus) => {
-    setStatuses((current) =>
-      current.includes(status)
-        ? current.filter((item) => item !== status)
-        : [...current, status],
+  const toggleCategory = (category: WorkCategory) => {
+    setCategories((current) =>
+      current.includes(category)
+        ? current.filter((item) => item !== category)
+        : [...current, category],
     );
   };
 
@@ -288,16 +230,18 @@ export default function MyWorkPage() {
       </header>
 
       <div className="flex gap-6 border-b border-slate-200 px-5 sm:px-6">
-        {(["mine", "assigned"] as TaskTab[]).map((key) => {
-          const count = key === "mine" ? mineTasks.length : assignedTasks.length;
+        {(["mine", "assigned"] as WorkScope[]).map((key) => {
           const active = tab === key;
           return (
             <button
               key={key}
               type="button"
               onClick={() => {
+                if (key === tab) return;
+                setTasks([]);
                 setTab(key);
-                setProject("all");
+                setProjectId("all");
+                setRole("all");
               }}
               className={cn(
                 "inline-flex cursor-pointer items-center gap-2 border-b-2 pb-2.5 text-sm font-medium",
@@ -313,7 +257,7 @@ export default function MyWorkPage() {
                   active ? "bg-primary/10 text-primary" : "bg-slate-100 text-slate-500",
                 )}
               >
-                {count}
+                {counts[key]}
               </span>
             </button>
           );
@@ -331,14 +275,14 @@ export default function MyWorkPage() {
           />
         </label>
         <SelectField
-          value={project}
+          value={projectId === "all" ? "all" : String(projectId)}
           label={t("pages.myWork.allProjects")}
-          onChange={setProject}
+          onChange={(value) => setProjectId(value === "all" ? "all" : Number(value))}
         >
           <option value="all">{t("pages.myWork.allProjects")}</option>
-          {projects.map((name) => (
-            <option key={name} value={name}>
-              {name}
+          {projects.map((project) => (
+            <option key={project.id} value={project.id}>
+              {project.name}
             </option>
           ))}
         </SelectField>
@@ -348,7 +292,7 @@ export default function MyWorkPage() {
           onChange={(value) => setRole(value as "all" | WorkRole)}
         >
           <option value="all">{t("pages.myWork.allRoles")}</option>
-          {(["assignee", "watcher", "approver"] as WorkRole[]).map((item) => (
+          {roleOptions.map((item) => (
             <option key={item} value={item}>
               {t(`pages.myWork.role.${item}`)}
             </option>
@@ -372,19 +316,17 @@ export default function MyWorkPage() {
         <span className="text-sm text-slate-500">{t("pages.myWork.statusLabel")}</span>
         <button
           type="button"
-          onClick={() => selectStatuses(OPEN_STATUSES)}
+          onClick={() => selectCategories(OPEN_CATEGORIES)}
           className={cn(
             "cursor-pointer rounded-full px-3 py-1 text-sm font-medium",
-            openPreset
-              ? "bg-primary text-white"
-              : "text-slate-600 hover:bg-slate-100",
+            openPreset ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-100",
           )}
         >
           {t("pages.myWork.openOnly")}
         </button>
         <button
           type="button"
-          onClick={() => selectStatuses(STATUSES)}
+          onClick={() => selectCategories(CATEGORIES)}
           className={cn(
             "cursor-pointer rounded-full px-3 py-1 text-sm font-medium",
             allPreset ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-100",
@@ -392,26 +334,23 @@ export default function MyWorkPage() {
         >
           {t("pages.myWork.all")}
         </button>
-        {STATUSES.map((status) => {
-          const selected = statuses.includes(status);
-          const tone = statusTone[status];
+        {CATEGORIES.map((category) => {
+          const selected = categories.includes(category);
+          const tone = categoryTone[category];
           return (
             <button
-              key={status}
+              key={category}
               type="button"
-              onClick={() => toggleStatus(status)}
+              onClick={() => toggleCategory(category)}
               className={cn(
                 "inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm",
                 selected ? tone.active : "border-slate-200 text-slate-400",
               )}
             >
               <span
-                className={cn(
-                  "size-2 rounded-full",
-                  selected ? tone.dot : "bg-slate-300",
-                )}
+                className={cn("size-2 rounded-full", selected ? tone.dot : "bg-slate-300")}
               />
-              {t(`pages.myWork.status.${status}`)}
+              {t(`pages.myWork.status.${category}`)}
             </button>
           );
         })}
@@ -437,7 +376,15 @@ export default function MyWorkPage() {
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <section className="min-h-0 flex-1 overflow-y-auto">
-          {groups.length === 0 ? (
+          {loading ? (
+            <p className="px-6 py-24 text-center text-sm text-slate-400">
+              {t("pages.myWork.loading")}
+            </p>
+          ) : loadFailed ? (
+            <p className="px-6 py-24 text-center text-sm text-slate-400">
+              {t("pages.myWork.loadFailed")}
+            </p>
+          ) : groups.length === 0 ? (
             <p className="px-6 py-24 text-center text-sm text-slate-400">
               {t("pages.myWork.empty")}
             </p>
@@ -452,37 +399,50 @@ export default function MyWorkPage() {
                 </div>
                 <ul>
                   {group.tasks.map((task) => {
-                    const bucket = dueBucket(task.due);
+                    const bucket = dueBucket(task.dueDate, today, weekEnd);
+                    const tone = categoryTone[task.status.category];
                     return (
-                      <li
-                        key={task.id}
-                        className="flex items-center gap-3 border-b border-slate-100 px-5 py-3 sm:px-6"
-                      >
+                      <li key={task.id} className="border-b border-slate-100">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            navigate(
+                              `/projects/${task.project.id}?tab=tasks&task=${task.id}`,
+                            )
+                          }
+                          className="flex w-full cursor-pointer items-center gap-3 px-5 py-3 text-left hover:bg-slate-50 sm:px-6"
+                        >
                         <span
                           className={cn(
                             "size-2.5 shrink-0 rounded-full",
-                            statusTone[task.status].dot,
+                            task.status.color ? undefined : tone.dot,
                           )}
+                          style={
+                            task.status.color
+                              ? { backgroundColor: task.status.color }
+                              : undefined
+                          }
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm text-slate-800">
-                            {textOf(i18n.language, task.title)}
-                          </p>
+                          <p className="truncate text-sm text-slate-800">{task.title}</p>
                           <p className="mt-0.5 truncate text-xs text-slate-400">
-                            {task.project} · {t(`pages.myWork.role.${task.role}`)}
+                            {task.project.name} · {t(`pages.myWork.role.${task.myRole}`)}
                           </p>
                         </div>
                         <span className="hidden text-xs text-slate-500 sm:inline">
-                          {t(`pages.myWork.status.${task.status}`)}
+                          {task.status.name}
                         </span>
                         <span
                           className={cn(
                             "w-16 shrink-0 text-right text-xs",
-                            bucket === "overdue" ? "font-medium text-rose-500" : "text-slate-400",
+                            bucket === "overdue"
+                              ? "font-medium text-rose-500"
+                              : "text-slate-400",
                           )}
                         >
-                          {task.due ? formatDue(task.due) : "—"}
+                          {task.dueDate ? formatDue(task.dueDate) : "—"}
                         </span>
+                        </button>
                       </li>
                     );
                   })}
@@ -503,20 +463,20 @@ export default function MyWorkPage() {
           </div>
           {projectStats.length === 0 ? (
             <p className="px-5 py-10 text-center text-sm text-slate-400">
-              {t("pages.myWork.statsEmpty")}
+              {loading ? t("pages.myWork.loading") : t("pages.myWork.statsEmpty")}
             </p>
           ) : (
             <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-4">
               {projectStats.map((item) => (
-                <li key={item.name}>
+                <li key={item.id}>
                   <button
                     type="button"
                     onClick={() =>
-                      setProject((current) => (current === item.name ? "all" : item.name))
+                      setProjectId((current) => (current === item.id ? "all" : item.id))
                     }
                     className={cn(
                       "w-full cursor-pointer rounded-xl px-3 py-2.5 text-left",
-                      project === item.name ? "bg-primary/10" : "hover:bg-slate-50",
+                      projectId === item.id ? "bg-primary/10" : "hover:bg-slate-50",
                     )}
                   >
                     <span className="flex items-center justify-between gap-3">
@@ -526,13 +486,13 @@ export default function MyWorkPage() {
                       <span className="text-xs text-slate-400">{item.total}</span>
                     </span>
                     <span className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-slate-100">
-                      {STATUSES.map((status) =>
-                        item.counts[status] > 0 ? (
+                      {CATEGORIES.map((category) =>
+                        item.statusCounts[category] > 0 ? (
                           <span
-                            key={status}
-                            className={statusTone[status].dot}
+                            key={category}
+                            className={categoryTone[category].dot}
                             style={{
-                              width: `${(item.counts[status] / item.total) * 100}%`,
+                              width: `${(item.statusCounts[category] / item.total) * 100}%`,
                             }}
                           />
                         ) : null,
@@ -547,13 +507,13 @@ export default function MyWorkPage() {
       </div>
 
       <footer className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 border-t border-slate-100 px-5 py-2.5 sm:px-6">
-        {STATUSES.map((status) => (
+        {CATEGORIES.map((category) => (
           <span
-            key={status}
+            key={category}
             className="inline-flex items-center gap-1.5 text-[11px] text-slate-500"
           >
-            <span className={cn("size-2 rounded-full", statusTone[status].dot)} />
-            {t(`pages.myWork.status.${status}`)}
+            <span className={cn("size-2 rounded-full", categoryTone[category].dot)} />
+            {t(`pages.myWork.status.${category}`)}
           </span>
         ))}
       </footer>

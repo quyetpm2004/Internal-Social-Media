@@ -95,6 +95,11 @@ enum MediaStatus {
   DELETED
 }
 
+enum ProjectTaskAttachmentSource {
+  DESCRIPTION
+  FILE
+}
+
 enum ConversationType {
   DIRECT
   GROUP
@@ -170,6 +175,17 @@ enum ProjectStatus {
   CANCELLED
 }
 
+enum ProjectPhaseStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+}
+
+enum ProjectMilestoneStatus {
+  OPEN
+  REACHED
+}
+
 model User {
   id       Int    @id @default(autoincrement())
   fullName String
@@ -223,8 +239,12 @@ model User {
 
   createdProjectTasks ProjectTask[]       @relation("ProjectTaskCreator")
   updatedProjectTasks ProjectTask[]       @relation("ProjectTaskUpdater")
+  createdProjectPhases ProjectPhase[]     @relation("ProjectPhaseCreator")
+  createdProjectMilestones ProjectMilestone[] @relation("ProjectMilestoneCreator")
   projectTaskMembers  ProjectTaskMember[]
   projectTaskComments ProjectTaskComment[]
+  uploadedProjectTaskAttachments ProjectTaskAttachment[] @relation("ProjectTaskAttachmentUploader")
+  uploadedProjectTaskCommentAttachments ProjectTaskCommentAttachment[] @relation("ProjectTaskCommentAttachmentUploader")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -738,6 +758,11 @@ enum WorkflowStatusCategory {
   CANCELLED
 }
 
+enum WorkflowTransitionMode {
+  FREE
+  STRICT
+}
+
 enum ApprovalApproverType {
   PROJECT_ROLE
   TASK_ROLE
@@ -804,8 +829,9 @@ model TemplateWorkflow {
   templateId  Int     @map("template_id")
   name        String  @db.VarChar(150)
   description String? @db.Text
-  isDefault   Boolean @default(false) @map("is_default")
-  isActive    Boolean @default(true) @map("is_active")
+  isDefault      Boolean                @default(false) @map("is_default")
+  isActive       Boolean                @default(true) @map("is_active")
+  transitionMode WorkflowTransitionMode @default(FREE) @map("transition_mode")
 
   template    ProjectTemplate           @relation(fields: [templateId], references: [id], onDelete: Restrict)
   statuses    TemplateWorkflowStatus[]
@@ -936,8 +962,10 @@ model Project {
   roles     ProjectRole[]
   workflows ProjectWorkflow[]
   taskTypes ProjectTaskType[]
-  members   ProjectMember[]
-  tasks     ProjectTask[]
+  members    ProjectMember[]
+  tasks      ProjectTask[]
+  phases     ProjectPhase[]
+  milestones ProjectMilestone[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -993,8 +1021,9 @@ model ProjectWorkflow {
   projectId   Int     @map("project_id")
   name        String  @db.VarChar(150)
   description String? @db.Text
-  isDefault   Boolean @default(false) @map("is_default")
-  isActive    Boolean @default(true) @map("is_active")
+  isDefault      Boolean                @default(false) @map("is_default")
+  isActive       Boolean                @default(true) @map("is_active")
+  transitionMode WorkflowTransitionMode @default(FREE) @map("transition_mode")
 
   project     Project                     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   statuses    ProjectWorkflowStatus[]
@@ -1119,8 +1148,10 @@ model ProjectTask {
   dueDate          DateTime?       @map("due_date") @db.Date
   estimatedMinutes Int?            @map("estimated_minutes")
   parentTaskId     Int?            @map("parent_task_id")
+  phaseId          Int?            @map("phase_id")
   createdById      Int             @map("created_by_id")
   updatedById      Int?            @map("updated_by_id")
+  completedAt      DateTime?       @map("completed_at")
 
   project   Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
   workflow  ProjectWorkflow       @relation(fields: [workflowId], references: [id], onDelete: Restrict)
@@ -1128,8 +1159,11 @@ model ProjectTask {
   status    ProjectWorkflowStatus @relation(fields: [statusId], references: [id], onDelete: Restrict)
   parent    ProjectTask?          @relation("TaskTree", fields: [parentTaskId], references: [id], onDelete: Restrict)
   children  ProjectTask[]         @relation("TaskTree")
-  members   ProjectTaskMember[]
-  comments  ProjectTaskComment[]
+  phase     ProjectPhase?         @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+  members     ProjectTaskMember[]
+  milestoneTasks ProjectMilestoneTask[]
+  comments    ProjectTaskComment[]
+  attachments ProjectTaskAttachment[]
   createdBy User                  @relation("ProjectTaskCreator", fields: [createdById], references: [id], onDelete: Restrict)
   updatedBy User?                 @relation("ProjectTaskUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
 
@@ -1142,8 +1176,71 @@ model ProjectTask {
   @@index([taskTypeId])
   @@index([statusId])
   @@index([parentTaskId])
+  @@index([phaseId])
   @@index([createdById])
+  @@index([projectId, completedAt])
   @@map("project_tasks")
+}
+
+model ProjectPhase {
+  id          Int                @id @default(autoincrement())
+  projectId   Int                @map("project_id")
+  name        String             @db.VarChar(150)
+  goal        String?            @db.Text
+  startDate   DateTime?          @map("start_date") @db.Date
+  endDate     DateTime?          @map("end_date") @db.Date
+  status      ProjectPhaseStatus @default(PLANNED)
+  sortOrder   Int                @default(0) @map("sort_order")
+  createdById Int                @map("created_by_id")
+
+  project    Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy  User               @relation("ProjectPhaseCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  tasks      ProjectTask[]
+  milestones ProjectMilestone[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([projectId, status])
+  @@index([createdById])
+  @@map("project_phases")
+}
+
+model ProjectMilestone {
+  id          Int                    @id @default(autoincrement())
+  projectId   Int                    @map("project_id")
+  phaseId     Int?                   @map("phase_id")
+  name        String                 @db.VarChar(150)
+  description String?                @db.Text
+  dueDate     DateTime               @map("due_date") @db.Date
+  status      ProjectMilestoneStatus @default(OPEN)
+  reachedAt   DateTime?              @map("reached_at")
+  createdById Int                    @map("created_by_id")
+
+  project   Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phase     ProjectPhase?          @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+  createdBy User                   @relation("ProjectMilestoneCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  tasks     ProjectMilestoneTask[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([projectId, dueDate])
+  @@index([phaseId])
+  @@index([createdById])
+  @@map("project_milestones")
+}
+
+model ProjectMilestoneTask {
+  milestoneId Int @map("milestone_id")
+  taskId      Int @map("task_id")
+
+  milestone ProjectMilestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  task      ProjectTask      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@id([milestoneId, taskId])
+  @@index([taskId])
+  @@map("project_milestone_tasks")
 }
 
 model ProjectTaskMember {
@@ -1169,8 +1266,9 @@ model ProjectTaskComment {
   userId  Int    @map("user_id")
   content String @db.Text
 
-  task ProjectTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  task        ProjectTask                   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user        User                          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  attachments ProjectTaskCommentAttachment[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1178,4 +1276,45 @@ model ProjectTaskComment {
   @@index([taskId, createdAt])
   @@index([userId])
   @@map("project_task_comments")
+}
+
+model ProjectTaskAttachment {
+  id             Int                         @id @default(autoincrement())
+  taskId         Int?                        @map("task_id")
+  fileName       String                      @map("file_name") @db.VarChar(255)
+  fileKey        String                      @unique @map("file_key") @db.VarChar(500)
+  mimeType       String                      @map("mime_type") @db.VarChar(150)
+  fileSize       Int                         @map("file_size")
+  attachmentType AttachmentType              @map("attachment_type")
+  source         ProjectTaskAttachmentSource @default(FILE)
+  status         MediaStatus                 @default(PENDING)
+  uploadedById   Int                         @map("uploaded_by_id")
+  createdAt      DateTime                    @default(now()) @map("created_at")
+
+  task       ProjectTask? @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploadedBy User         @relation("ProjectTaskAttachmentUploader", fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@index([taskId, source])
+  @@index([uploadedById, status])
+  @@map("project_task_attachments")
+}
+
+model ProjectTaskCommentAttachment {
+  id             Int            @id @default(autoincrement())
+  commentId      Int?           @map("comment_id")
+  fileName       String         @map("file_name") @db.VarChar(255)
+  fileKey        String         @unique @map("file_key") @db.VarChar(500)
+  mimeType       String         @map("mime_type") @db.VarChar(150)
+  fileSize       Int            @map("file_size")
+  attachmentType AttachmentType @map("attachment_type")
+  status         MediaStatus    @default(PENDING)
+  uploadedById   Int            @map("uploaded_by_id")
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  comment    ProjectTaskComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  uploadedBy User                @relation("ProjectTaskCommentAttachmentUploader", fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@index([commentId])
+  @@index([uploadedById, status])
+  @@map("project_task_comment_attachments")
 }

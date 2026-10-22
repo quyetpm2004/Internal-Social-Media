@@ -10,6 +10,13 @@ export const uploadPurposeEnum = z.enum([
   "message-image",
   "message-video",
   "message-file",
+  "task-image",
+  "task-file-image",
+  "task-file-video",
+  "task-file",
+  "task-comment-image",
+  "task-comment-video",
+  "task-comment-file",
 ]);
 
 export const createUploadUrlSchema = z.object({

@@ -9,7 +9,14 @@ export type UploadPurpose =
   | "post-file"
   | "message-image"
   | "message-video"
-  | "message-file";
+  | "message-file"
+  | "task-image"
+  | "task-file-image"
+  | "task-file-video"
+  | "task-file"
+  | "task-comment-image"
+  | "task-comment-video"
+  | "task-comment-file";
 
 export interface PresignedItem {
   attachmentId: number | null;

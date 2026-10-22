@@ -74,6 +74,7 @@ export async function createWorkflow(
       description: input.description ?? null,
       isDefault: input.isDefault,
       isActive: input.isActive,
+      transitionMode: input.transitionMode,
     });
 
     await touchTemplate(templateId, userId);
@@ -101,6 +102,7 @@ export async function updateWorkflow(
         description: input.description,
         isDefault: input.isDefault,
         isActive: input.isActive,
+        transitionMode: input.transitionMode,
       },
     );
 

@@ -198,6 +198,7 @@ export async function createWorkflow(
     description: input.description,
     isDefault: input.isDefault,
     isActive: input.isActive,
+    transitionMode: input.transitionMode,
   });
 
   return mapProjectWorkflowSummary(workflow);
