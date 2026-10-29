@@ -3,12 +3,17 @@ import {
   Briefcase,
   Building2,
   ChevronDown,
+  ClipboardList,
   Code2,
   FolderKanban,
+  Gauge,
   Layers,
+  LayoutDashboard,
   Search,
   Store,
+  Target,
   UserRound,
+  Users,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -18,6 +23,7 @@ import { APP_CONFIG } from "@/constants/app";
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
 import WorkspaceSwitcher from "@/components/layout/work/WorkspaceSwitcher";
 import WorkUserMenu from "@/components/layout/work/WorkUserMenu";
+import { useAuthStore } from "@/features/auth/store/auth.store";
 import NotificationBell from "@/features/notification/components/NotificationBell";
 import { cn } from "@/lib/utils";
 
@@ -38,9 +44,26 @@ const mainLinks: NavItem[] = [
   { to: "/work/mine", labelKey: "nav.myWork", icon: Briefcase },
 ];
 
+const departmentLinks: NavItem[] = [
+  {
+    to: "/work/department",
+    labelKey: "nav.departmentOverview",
+    icon: LayoutDashboard,
+    end: true,
+  },
+  { to: "/work/department/members", labelKey: "nav.departmentMembers", icon: Users },
+  {
+    to: "/work/department/tasks",
+    labelKey: "nav.departmentTasks",
+    icon: ClipboardList,
+  },
+  { to: "/work/department/kpi", labelKey: "nav.departmentKpi", icon: Target },
+];
+
 const spaceLinks: NavItem[] = [
   { to: "/work/spaces/personal", labelKey: "nav.personal", icon: UserRound },
   { to: "/projects", labelKey: "nav.projects", icon: FolderKanban },
+  { to: "/work/kpi", labelKey: "nav.kpi", icon: Gauge },
 ];
 
 const moreLinks: NavItem[] = [
@@ -85,6 +108,7 @@ function SidebarLink({
 function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   const { t } = useTranslation();
   const { pathname } = useLocation();
+  const isLeader = useAuthStore((state) => state.user?.role === "MANAGER");
   const [query, setQuery] = useState("");
   const [moreOpen, setMoreOpen] = useState(
     pathname.startsWith("/work/spaces/sales") ||
@@ -96,6 +120,11 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
     !normalized || t(labelKey).toLowerCase().includes(normalized);
 
   const visibleMain = mainLinks.filter((item) => matches(item.labelKey));
+  const visibleDepartment = isLeader
+    ? departmentLinks.filter(
+        (item) => matches(item.labelKey) || matches("nav.department"),
+      )
+    : [];
   const visibleSpaces = spaceLinks.filter((item) => matches(item.labelKey));
   const visibleMore = moreLinks.filter((item) => matches(item.labelKey));
   const moreRouteActive =
@@ -106,6 +135,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
     : moreOpen || moreRouteActive;
   const nothing =
     visibleMain.length === 0 &&
+    visibleDepartment.length === 0 &&
     visibleSpaces.length === 0 &&
     visibleMore.length === 0 &&
     !matches("nav.spaces") &&
@@ -149,6 +179,23 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
             onNavigate={onNavigate}
           />
         ))}
+
+        {visibleDepartment.length > 0 && (
+          <>
+            <p className="px-3 pt-4 pb-1 text-xs font-medium text-slate-400">
+              {t("nav.department")}
+            </p>
+            {visibleDepartment.map((item) => (
+              <SidebarLink
+                key={item.to}
+                item={item}
+                label={t(item.labelKey)}
+                nested
+                onNavigate={onNavigate}
+              />
+            ))}
+          </>
+        )}
 
         {spaceHeadingVisible && (
           <p className="px-3 pt-4 pb-1 text-xs font-medium text-slate-400">

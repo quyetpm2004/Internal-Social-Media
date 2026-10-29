@@ -24,6 +24,7 @@ import SearchPage from "@/features/search/pages/SearchPage";
 import ChatLayout from "@/features/chat/pages/ChatLayout";
 import ChatEmptyPage from "@/features/chat/pages/ChatEmptyPage";
 import ChatConversationPage from "@/features/chat/pages/ChatConversationPage";
+import DepartmentRoute from "@/components/common/DepartmentRoute";
 import AdminRoute from "@/components/common/AdminRoute";
 import AdminLayout from "@/components/layout/admin/AdminLayout";
 import AdminDashboardPage from "@/features/admin/pages/AdminDashboardPage";
@@ -42,6 +43,11 @@ import WorkLayout from "@/components/layout/work/WorkLayout";
 import OrgOverviewPage from "@/features/work/pages/OrgOverviewPage";
 import MyWorkPage from "@/features/work/pages/MyWorkPage";
 import WorkSpacePage from "@/features/work/pages/WorkSpacePage";
+import KpiPage from "@/features/work/pages/KpiPage";
+import DepartmentDashboardPage from "@/features/department/pages/DepartmentDashboardPage";
+import DepartmentMembersPage from "@/features/department/pages/DepartmentMembersPage";
+import DepartmentTasksPage from "@/features/department/pages/DepartmentTasksPage";
+import DepartmentKpiPage from "@/features/department/pages/DepartmentKpiPage";
 import ResetPasswordPage from "@/features/auth/pages/ResetPasswordPage";
 import ForgotPasswordPage from "@/features/auth/pages/ForgotPasswordPage";
 import RegisterPage from "@/features/auth/pages/RegisterPage";
@@ -178,6 +184,31 @@ export const router = createBrowserRouter([
           {
             path: "/work/mine",
             element: <MyWorkPage />,
+          },
+          {
+            path: "/work/kpi",
+            element: <KpiPage />,
+          },
+          {
+            element: <DepartmentRoute />,
+            children: [
+              {
+                path: "/work/department",
+                element: <DepartmentDashboardPage />,
+              },
+              {
+                path: "/work/department/members",
+                element: <DepartmentMembersPage />,
+              },
+              {
+                path: "/work/department/tasks",
+                element: <DepartmentTasksPage />,
+              },
+              {
+                path: "/work/department/kpi",
+                element: <DepartmentKpiPage />,
+              },
+            ],
           },
           {
             path: "/work/spaces/:spaceId",

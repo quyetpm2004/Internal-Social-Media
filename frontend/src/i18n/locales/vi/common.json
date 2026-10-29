@@ -175,6 +175,12 @@
     "myWork": "Nhiệm vụ của tôi",
     "spaces": "Không gian",
     "personal": "Cá nhân",
+    "kpi": "KPI nhân viên",
+    "department": "Phòng ban",
+    "departmentOverview": "Tổng quan phòng ban",
+    "departmentMembers": "Nhân sự",
+    "departmentTasks": "Công việc phòng ban",
+    "departmentKpi": "KPI phòng ban",
     "seeMore": "Xem thêm",
     "salesSpace": "Kinh doanh",
     "engineeringSpace": "Kỹ thuật",
@@ -188,6 +194,238 @@
     "forgotPassword": "Quên mật khẩu",
     "changePassword": "Thay đổi mật khẩu",
     "languageToggle": "Đổi ngôn ngữ"
+  },
+  "department": {
+    "recurrence": {
+      "NONE": "Không lặp lại",
+      "WEEKLY": "Hằng tuần",
+      "MONTHLY": "Hằng tháng"
+    },
+    "memberStatus": {
+      "ACTIVE": "Đang làm việc",
+      "REMOTE": "Làm từ xa",
+      "LEAVE": "Nghỉ phép"
+    },
+    "role": {
+      "LEADER": "Trưởng phòng"
+    },
+    "fields": {
+      "priority": "Mức ưu tiên",
+      "dueDate": "Hạn hoàn thành",
+      "assignees": "Người thực hiện",
+      "reviewer": "Người kiểm duyệt",
+      "estimate": "Effort dự kiến (giờ)",
+      "recurrence": "Lặp lại",
+      "status": "Trạng thái"
+    },
+    "createTask": {
+      "button": "Tạo công việc",
+      "addAssignee": "Thêm người thực hiện",
+      "assigneeRequired": "Chọn ít nhất một người thực hiện"
+    },
+    "taskConfig": {
+      "button": "Cấu hình công việc",
+      "title": "Cấu hình công việc",
+      "subtitle": "Quy trình và trạng thái dùng chung cho công việc phòng ban",
+      "tabs": {
+        "workflow": "Workflow",
+        "statuses": "Trạng thái"
+      },
+      "workflowName": "Tên quy trình",
+      "freeOnly": "Phòng ban chỉ dùng một bộ quy trình và luồng chuyển tự do: công việc được chuyển sang bất kỳ trạng thái nào.",
+      "unsaved": "Có thay đổi chưa lưu",
+      "upToDate": "Đã lưu",
+      "discard": "Hủy",
+      "save": "Lưu thay đổi",
+      "saved": "Đã lưu cấu hình công việc",
+      "newStatus": "Tên trạng thái mới...",
+      "inUse": "Đang có {{count}} công việc dùng trạng thái này",
+      "statusHint": "Ngôi sao đánh dấu trạng thái bắt đầu. Trạng thái đang được dùng hoặc đang là bắt đầu không thể xóa.",
+      "errors": {
+        "workflowName": "Nhập tên quy trình",
+        "statusName": "Trạng thái không được để trống tên",
+        "needDone": "Cần ít nhất một trạng thái thuộc nhóm Hoàn thành"
+      }
+    },
+    "memberForm": {
+      "addTitle": "Thêm thành viên",
+      "editTitle": "Sửa thành viên",
+      "name": "Họ và tên",
+      "email": "Email",
+      "position": "Chức vụ",
+      "noPosition": "Chưa có chức vụ",
+      "status": "Trạng thái làm việc",
+      "capacity": "Năng lực (giờ/tuần)",
+      "nameRequired": "Nhập họ và tên",
+      "emailInvalid": "Email không hợp lệ",
+      "emailTaken": "Email đã tồn tại trong phòng",
+      "positionRequired": "Nhập chức vụ",
+      "capacityInvalid": "Năng lực phải từ 1 đến {{max}} giờ",
+      "added": "Đã thêm thành viên",
+      "updated": "Đã cập nhật thành viên",
+      "removed": "Đã xóa thành viên"
+    },
+    "dashboard": {
+      "title": "Tổng quan {{name}}",
+      "subtitle": "Tình hình công việc, khối lượng và KPI của phòng ban.",
+      "running": "Đang thực hiện",
+      "runningHint": "{{count}} thành viên trong phòng ban",
+      "done": "Đã hoàn thành",
+      "doneHint": "{{percent}}% việc được giao trong kỳ",
+      "overdue": "Quá hạn",
+      "overdueHint": "Việc đã quá hạn, chưa hoàn thành",
+      "onTime": "Đúng hạn",
+      "onTimeHint": "Tỷ lệ hoàn thành đúng hạn",
+      "workload": "Phân bố khối lượng công việc",
+      "workloadHint": "Số việc đang mở trên toàn hệ thống và giờ ước tính còn lại của từng thành viên. Màu đỏ: có việc quá hạn.",
+      "dueToday": "Hạn hôm nay",
+      "dueTodayHint": "Chưa hoàn thành trong hôm nay",
+      "overdueDays": "Quá hạn {{count}} ngày",
+      "workloadDetail": "{{count}} việc · {{hours}}h",
+      "openCount": "{{count}} việc",
+      "viewAll": "Xem tất cả",
+      "progress": "Tình hình hoàn thành",
+      "assigned": "Được giao",
+      "doneShort": "Hoàn thành",
+      "lateShort": "Trễ hạn",
+      "reopened": "Bị mở lại",
+      "priorityTasks": "Công việc cần ưu tiên xử lý",
+      "noPriority": "Không có công việc cần ưu tiên.",
+      "kpiOverview": "Tổng quan KPI",
+      "averageScore": "Điểm KPI trung bình của phòng ban",
+      "topPerformers": "Nổi bật",
+      "needSupport": "Cần hỗ trợ",
+      "noSupport": "Chưa có nhân viên nào cần hỗ trợ.",
+      "trend": "Xu hướng hiệu suất phòng ban"
+    },
+    "members": {
+      "title": "Nhân sự phòng ban",
+      "subtitle": "{{name}} · {{count}} thành viên",
+      "add": "Thêm thành viên",
+      "edit": "Sửa",
+      "remove": "Xóa",
+      "leaderLocked": "Không thể xóa trưởng phòng",
+      "removeTitle": "Xóa thành viên",
+      "removeDescription": "Xóa {{name}} khỏi phòng ban? Người này sẽ không còn thuộc phòng ban nhưng các công việc đang tham gia vẫn được giữ nguyên.",
+      "search": "Tìm theo tên hoặc chức vụ...",
+      "sortBy": "Sắp xếp theo",
+      "sort": {
+        "default": "Mặc định",
+        "kpi": "KPI",
+        "load": "Khối lượng",
+        "overdue": "Quá hạn"
+      },
+      "direction": {
+        "desc": "Cao → thấp",
+        "asc": "Thấp → cao"
+      },
+      "empty": "Không có nhân viên phù hợp.",
+      "view": {
+        "table": "Dạng bảng",
+        "cards": "Dạng thẻ"
+      },
+      "columns": {
+        "member": "Nhân viên",
+        "role": "Chức vụ",
+        "actions": "Hành động",
+        "open": "Đang làm",
+        "overdue": "Quá hạn",
+        "load": "Khối lượng",
+        "kpi": "KPI"
+      },
+      "currentTasks": "Đang phụ trách ({{count}})",
+      "noTasks": "Chưa có công việc đang thực hiện.",
+      "projectFilter": "Lọc theo dự án",
+      "allProjects": "Tất cả dự án",
+      "loadFailed": "Không tải được dữ liệu nhân sự",
+      "actionFailed": "Thao tác thất bại, vui lòng thử lại"
+    },
+    "tasks": {
+      "title": "Công việc phòng ban",
+      "subtitle": "Công việc không thuộc dự án, bao gồm cả công việc định kỳ.",
+      "search": "Tìm theo tên hoặc mã...",
+      "allAssignees": "Mọi người thực hiện",
+      "allPriorities": "Mọi mức ưu tiên",
+      "empty": "Không có công việc phù hợp.",
+      "unassigned": "Chưa giao",
+      "overdue": "Quá hạn",
+      "atRisk": "Nguy cơ chậm",
+      "quick": {
+        "all": "Tất cả",
+        "overdue": "Quá hạn",
+        "atRisk": "Nguy cơ chậm",
+        "recurring": "Định kỳ",
+        "unassigned": "Chưa giao"
+      },
+      "view": {
+        "list": "Dạng danh sách",
+        "board": "Dạng bảng Kanban"
+      },
+      "columns": {
+        "task": "Công việc",
+        "progress": "Tiến độ"
+      }
+    },
+    "memberKpi": {
+      "back": "KPI phòng ban",
+      "rank": "Hạng {{rank}}/{{total}} phòng"
+    },
+    "kpi": {
+      "title": "KPI nhân viên phòng ban",
+      "subtitle": "Theo dõi hiệu suất, effort và những người cần hỗ trợ.",
+      "ranges": {
+        "week": "Tuần",
+        "month": "Tháng",
+        "custom": "Tùy chọn"
+      },
+      "from": "Từ ngày",
+      "to": "Đến ngày",
+      "averageScore": "Điểm KPI trung bình",
+      "vsPrevious": "{{delta}} so với kỳ trước",
+      "doneTasks": "Việc hoàn thành",
+      "completionHint": "{{percent}}% so với kế hoạch",
+      "lateTasks": "Việc quá hạn",
+      "reopenedHint": "{{count}} việc bị mở lại",
+      "effort": "Effort thực tế",
+      "effortHint": "Dự kiến {{planned}}h · đạt {{percent}}%",
+      "memberTable": "KPI từng nhân viên",
+      "sortBy": "Sắp xếp theo",
+      "sort": {
+        "score": "Điểm KPI",
+        "late": "Số việc trễ",
+        "reopened": "Số việc bị mở lại",
+        "effort": "Lệch effort"
+      },
+      "columns": {
+        "member": "Nhân viên",
+        "done": "Hoàn thành",
+        "late": "Quá hạn",
+        "reopened": "Mở lại",
+        "effort": "Effort (thực tế/dự kiến)",
+        "score": "Điểm",
+        "change": "Thay đổi"
+      },
+      "tableHint": "Bấm vào tên nhân viên để xem KPI chi tiết.",
+      "trend": "Xu hướng hiệu suất",
+      "trendOf": "Xu hướng của {{name}}",
+      "teamAverage": "Trung bình phòng ban",
+      "trendFilter": "Lọc theo nhân viên",
+      "allMembers": "Tất cả nhân viên",
+      "clearSelection": "Bỏ chọn",
+      "completionRate": "Hoàn thành",
+      "onTimeRate": "Đúng hạn",
+      "reopenRate": "Mở lại",
+      "needSupport": "Nhân viên cần hỗ trợ",
+      "noSupport": "Tất cả nhân viên đang đạt kỳ vọng.",
+      "reason": {
+        "late": "{{count}} việc trễ",
+        "reopened": "{{count}} việc bị mở lại",
+        "effort": "Vượt effort {{percent}}%"
+      },
+      "effortCompare": "Effort dự kiến so với thực tế",
+      "estimated": "Dự kiến",
+      "actual": "Thực tế"
+    }
   },
   "admin": {
     "panel": "Bảng quản trị",
@@ -1469,6 +1707,101 @@
       "searchActivity": "Tìm hoạt động...",
       "projectTag": "Dự án",
       "noMatch": "Không có dữ liệu phù hợp"
+    },
+    "kpi": {
+      "title": "KPI nhân viên",
+      "subtitle": "Đánh giá hiệu suất làm việc dựa trên nhiệm vụ được giao",
+      "periods": {
+        "week": "Tuần",
+        "month": "Tháng",
+        "quarter": "Quý"
+      },
+      "overall": "Điểm KPI tổng hợp",
+      "rank": "Hạng {{rank}}/{{total}}",
+      "scoreDelta": "{{delta}} điểm so với kỳ trước",
+      "counts": {
+        "assigned": "Được giao",
+        "done": "Hoàn thành",
+        "onTime": "Đúng hạn",
+        "late": "Trễ hạn",
+        "reopened": "Bị mở lại"
+      },
+      "vsTarget": "Tiến độ so với mục tiêu",
+      "targetMet": "Đạt mục tiêu",
+      "targetMissed": "Chưa đạt mục tiêu",
+      "targetOf": {
+        "completionRate": "mục tiêu ≥ {{target}}%",
+        "onTimeRate": "mục tiêu ≥ {{target}}%",
+        "avgDelayDays": "mục tiêu ≤ {{target}} ngày",
+        "effortVariance": "mục tiêu ≤ {{target}}%",
+        "reopenRate": "mục tiêu ≤ {{target}}%"
+      },
+      "metrics": {
+        "completionRate": {
+          "label": "Task hoàn thành",
+          "short": "Hoàn thành"
+        },
+        "onTimeRate": {
+          "label": "Hoàn thành đúng hạn",
+          "short": "Đúng hạn"
+        },
+        "avgDelayDays": {
+          "label": "Số ngày trễ TB",
+          "short": "Trễ TB"
+        },
+        "effortVariance": {
+          "label": "Chênh lệch effort",
+          "short": "Chênh lệch effort"
+        },
+        "reopenRate": {
+          "label": "Task làm lại / mở lại",
+          "short": "Làm lại"
+        }
+      },
+      "trend": "Xu hướng các chỉ số (%)",
+      "statusShare": "Trạng thái nhiệm vụ",
+      "status": {
+        "todo": "Chưa làm",
+        "inProgress": "Đang làm",
+        "done": "Hoàn thành",
+        "cancelled": "Đã huỷ"
+      },
+      "delayDistribution": "Phân bố số ngày trễ",
+      "delayRange": "Trễ {{range}} ngày",
+      "effortCompare": "Effort dự kiến và thực tế (giờ)",
+      "effortTotal": "{{actual}}h / {{estimated}}h dự kiến",
+      "estimated": "Dự kiến",
+      "actual": "Thực tế",
+      "reopenByType": "Tỷ lệ mở lại theo loại task",
+      "byPriority": "Hoàn thành theo độ ưu tiên",
+      "priority": {
+        "URGENT": "Khẩn cấp",
+        "HIGH": "Cao",
+        "MEDIUM": "Trung bình",
+        "LOW": "Thấp"
+      },
+      "byProject": "KPI theo dự án",
+      "table": {
+        "project": "Dự án",
+        "done": "Hoàn thành",
+        "onTime": "Đúng hạn",
+        "delay": "Trễ TB (ngày)",
+        "effort": "Effort",
+        "reopen": "Mở lại",
+        "score": "Điểm"
+      },
+      "attentionTitle": "Nhiệm vụ cần chú ý",
+      "attention": {
+        "overdue": "Trễ {{count}} ngày",
+        "reopened": "Mở lại {{count}} lần",
+        "overEffort": "Vượt {{count}}% effort"
+      },
+      "loadFailed": "Không tải được dữ liệu KPI",
+      "noData": "Chưa có dữ liệu",
+      "noProjects": "Chưa có nhiệm vụ nào trong kỳ này",
+      "noAttention": "Không có nhiệm vụ nào cần chú ý",
+      "pendingEffort": "Chưa có dữ liệu effort thực tế. Sẽ hiển thị khi hệ thống ghi nhận log thời gian.",
+      "pendingReopen": "Chưa có dữ liệu mở lại task. Sẽ hiển thị khi hệ thống ghi nhận lịch sử chuyển trạng thái."
     },
     "myWork": {
       "title": "Nhiệm vụ của tôi",

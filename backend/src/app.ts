@@ -21,6 +21,7 @@ import projectTemplateRoutes from "@/modules/project-template/project-template.r
 import { errorMiddleware } from "@/shared/middlewares/error.middleware";
 import projectRoutes from "@/modules/project/project.routes";
 import workRoutes from "@/modules/work/work.routes";
+import kpiRoutes from "@/modules/kpi/kpi.routes";
 dotenv.config();
 
 const app = express();
@@ -58,6 +59,7 @@ app.use("/api/events", eventRoutes);
 app.use("/api/project-templates", projectTemplateRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/work", workRoutes);
+app.use("/api/kpi", kpiRoutes);
 
 app.use(errorMiddleware);
 

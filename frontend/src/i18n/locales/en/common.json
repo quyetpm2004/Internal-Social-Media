@@ -177,6 +177,12 @@
     "myWork": "My tasks",
     "spaces": "Spaces",
     "personal": "Personal",
+    "kpi": "Employee KPI",
+    "department": "Department",
+    "departmentOverview": "Department overview",
+    "departmentMembers": "Team members",
+    "departmentTasks": "Department tasks",
+    "departmentKpi": "Department KPI",
     "seeMore": "See more",
     "salesSpace": "Sales",
     "engineeringSpace": "Engineering",
@@ -190,6 +196,238 @@
     "forgotPassword": "Forgot password",
     "changePassword": "Change password",
     "languageToggle": "Change language"
+  },
+  "department": {
+    "recurrence": {
+      "NONE": "Does not repeat",
+      "WEEKLY": "Weekly",
+      "MONTHLY": "Monthly"
+    },
+    "memberStatus": {
+      "ACTIVE": "Working",
+      "REMOTE": "Remote",
+      "LEAVE": "On leave"
+    },
+    "role": {
+      "LEADER": "Leader"
+    },
+    "fields": {
+      "priority": "Priority",
+      "dueDate": "Due date",
+      "assignees": "Assignees",
+      "reviewer": "Reviewer",
+      "estimate": "Estimated effort (hours)",
+      "recurrence": "Repeat",
+      "status": "Status"
+    },
+    "createTask": {
+      "button": "Create task",
+      "addAssignee": "Add assignee",
+      "assigneeRequired": "Select at least one assignee"
+    },
+    "taskConfig": {
+      "button": "Task settings",
+      "title": "Task settings",
+      "subtitle": "Workflow and statuses shared by all department tasks",
+      "tabs": {
+        "workflow": "Workflow",
+        "statuses": "Statuses"
+      },
+      "workflowName": "Workflow name",
+      "freeOnly": "The department uses a single workflow with free transitions: a task can move to any status.",
+      "unsaved": "Unsaved changes",
+      "upToDate": "Saved",
+      "discard": "Cancel",
+      "save": "Save changes",
+      "saved": "Task settings saved",
+      "newStatus": "New status name...",
+      "inUse": "{{count}} task(s) use this status",
+      "statusHint": "The star marks the initial status. A status that is in use or initial cannot be deleted.",
+      "errors": {
+        "workflowName": "Enter a workflow name",
+        "statusName": "Status names cannot be empty",
+        "needDone": "Add at least one status in the Done category"
+      }
+    },
+    "memberForm": {
+      "addTitle": "Add member",
+      "editTitle": "Edit member",
+      "name": "Full name",
+      "email": "Email",
+      "position": "Position",
+      "noPosition": "No position",
+      "status": "Work status",
+      "capacity": "Capacity (hours/week)",
+      "nameRequired": "Enter a full name",
+      "emailInvalid": "Invalid email",
+      "emailTaken": "This email is already in the department",
+      "positionRequired": "Enter a position",
+      "capacityInvalid": "Capacity must be between 1 and {{max}} hours",
+      "added": "Member added",
+      "updated": "Member updated",
+      "removed": "Member removed"
+    },
+    "dashboard": {
+      "title": "{{name}} overview",
+      "subtitle": "Work status, workload and KPI of the department.",
+      "running": "In progress",
+      "runningHint": "{{count}} department members",
+      "done": "Completed",
+      "doneHint": "{{percent}}% of tasks assigned in the period",
+      "overdue": "Overdue",
+      "overdueHint": "Past due and not completed",
+      "onTime": "On time",
+      "onTimeHint": "On-time completion rate",
+      "workload": "Workload distribution",
+      "workloadHint": "Open tasks across the whole system and remaining estimated hours per member. Red: has overdue tasks.",
+      "dueToday": "Due today",
+      "dueTodayHint": "Not completed today",
+      "overdueDays": "{{count}} days overdue",
+      "workloadDetail": "{{count}} tasks · {{hours}}h",
+      "openCount": "{{count}} tasks",
+      "viewAll": "View all",
+      "progress": "Completion status",
+      "assigned": "Assigned",
+      "doneShort": "Done",
+      "lateShort": "Late",
+      "reopened": "Reopened",
+      "priorityTasks": "Tasks that need attention",
+      "noPriority": "No tasks need attention.",
+      "kpiOverview": "KPI overview",
+      "averageScore": "Average department KPI score",
+      "topPerformers": "Top performers",
+      "needSupport": "Needs support",
+      "noSupport": "Nobody needs support right now.",
+      "trend": "Department performance trend"
+    },
+    "members": {
+      "title": "Department members",
+      "subtitle": "{{name}} · {{count}} members",
+      "add": "Add member",
+      "edit": "Edit",
+      "remove": "Remove",
+      "leaderLocked": "The department leader cannot be removed",
+      "removeTitle": "Remove member",
+      "removeDescription": "Remove {{name}} from the department? They will leave the department, but their current tasks stay unchanged.",
+      "search": "Search by name or position...",
+      "sortBy": "Sort by",
+      "sort": {
+        "default": "Default order",
+        "kpi": "KPI",
+        "load": "Workload",
+        "overdue": "Overdue"
+      },
+      "direction": {
+        "desc": "High → low",
+        "asc": "Low → high"
+      },
+      "empty": "No matching members.",
+      "view": {
+        "table": "Table view",
+        "cards": "Card view"
+      },
+      "columns": {
+        "member": "Member",
+        "role": "Position",
+        "actions": "Actions",
+        "open": "Open",
+        "overdue": "Overdue",
+        "load": "Workload",
+        "kpi": "KPI"
+      },
+      "currentTasks": "Currently handling ({{count}})",
+      "noTasks": "No open tasks.",
+      "projectFilter": "Filter by project",
+      "allProjects": "All projects",
+      "loadFailed": "Could not load members",
+      "actionFailed": "Action failed, please try again"
+    },
+    "tasks": {
+      "title": "Department tasks",
+      "subtitle": "Tasks outside projects, including recurring work.",
+      "search": "Search by name or code...",
+      "allAssignees": "All assignees",
+      "allPriorities": "All priorities",
+      "empty": "No matching tasks.",
+      "unassigned": "Unassigned",
+      "overdue": "Overdue",
+      "atRisk": "At risk",
+      "quick": {
+        "all": "All",
+        "overdue": "Overdue",
+        "atRisk": "At risk",
+        "recurring": "Recurring",
+        "unassigned": "Unassigned"
+      },
+      "view": {
+        "list": "List view",
+        "board": "Kanban view"
+      },
+      "columns": {
+        "task": "Task",
+        "progress": "Progress"
+      }
+    },
+    "memberKpi": {
+      "back": "Department KPI",
+      "rank": "Rank {{rank}}/{{total}}"
+    },
+    "kpi": {
+      "title": "Department employee KPI",
+      "subtitle": "Track performance, effort and who needs support.",
+      "ranges": {
+        "week": "Week",
+        "month": "Month",
+        "custom": "Custom"
+      },
+      "from": "From",
+      "to": "To",
+      "averageScore": "Average KPI score",
+      "vsPrevious": "{{delta}} vs previous period",
+      "doneTasks": "Tasks completed",
+      "completionHint": "{{percent}}% of plan",
+      "lateTasks": "Overdue tasks",
+      "reopenedHint": "{{count}} reopened",
+      "effort": "Actual effort",
+      "effortHint": "Planned {{planned}}h · {{percent}}%",
+      "memberTable": "KPI by employee",
+      "sortBy": "Sort by",
+      "sort": {
+        "score": "KPI score",
+        "late": "Late tasks",
+        "reopened": "Reopened tasks",
+        "effort": "Effort variance"
+      },
+      "columns": {
+        "member": "Employee",
+        "done": "Done",
+        "late": "Overdue",
+        "reopened": "Reopened",
+        "effort": "Effort (actual/planned)",
+        "score": "Score",
+        "change": "Change"
+      },
+      "tableHint": "Click an employee name to see their detailed KPI.",
+      "trend": "Performance trend",
+      "trendOf": "Trend for {{name}}",
+      "teamAverage": "Department average",
+      "trendFilter": "Filter by employee",
+      "allMembers": "All employees",
+      "clearSelection": "Clear",
+      "completionRate": "Completion",
+      "onTimeRate": "On time",
+      "reopenRate": "Reopened",
+      "needSupport": "Employees who need support",
+      "noSupport": "Everyone is meeting expectations.",
+      "reason": {
+        "late": "{{count}} late",
+        "reopened": "{{count}} reopened",
+        "effort": "Effort over by {{percent}}%"
+      },
+      "effortCompare": "Estimated vs actual effort",
+      "estimated": "Estimated",
+      "actual": "Actual"
+    }
   },
   "admin": {
     "panel": "Admin Panel",
@@ -1471,6 +1709,101 @@
       "searchActivity": "Search activity...",
       "projectTag": "Project",
       "noMatch": "Nothing matches"
+    },
+    "kpi": {
+      "title": "Employee KPI",
+      "subtitle": "Performance based on assigned tasks",
+      "periods": {
+        "week": "Week",
+        "month": "Month",
+        "quarter": "Quarter"
+      },
+      "overall": "Overall KPI score",
+      "rank": "Rank {{rank}}/{{total}}",
+      "scoreDelta": "{{delta}} points vs previous period",
+      "counts": {
+        "assigned": "Assigned",
+        "done": "Completed",
+        "onTime": "On time",
+        "late": "Late",
+        "reopened": "Reopened"
+      },
+      "vsTarget": "Progress against targets",
+      "targetMet": "Target met",
+      "targetMissed": "Target not met",
+      "targetOf": {
+        "completionRate": "target ≥ {{target}}%",
+        "onTimeRate": "target ≥ {{target}}%",
+        "avgDelayDays": "target ≤ {{target}} days",
+        "effortVariance": "target ≤ {{target}}%",
+        "reopenRate": "target ≤ {{target}}%"
+      },
+      "metrics": {
+        "completionRate": {
+          "label": "Tasks completed",
+          "short": "Completed"
+        },
+        "onTimeRate": {
+          "label": "Completed on time",
+          "short": "On time"
+        },
+        "avgDelayDays": {
+          "label": "Avg. days late",
+          "short": "Avg. delay"
+        },
+        "effortVariance": {
+          "label": "Effort variance",
+          "short": "Effort variance"
+        },
+        "reopenRate": {
+          "label": "Reworked / reopened",
+          "short": "Reopened"
+        }
+      },
+      "trend": "Metric trends (%)",
+      "statusShare": "Task status",
+      "status": {
+        "todo": "To do",
+        "inProgress": "In progress",
+        "done": "Done",
+        "cancelled": "Cancelled"
+      },
+      "delayDistribution": "Delay distribution",
+      "delayRange": "{{range}} days late",
+      "effortCompare": "Estimated vs actual effort (hours)",
+      "effortTotal": "{{actual}}h / {{estimated}}h estimated",
+      "estimated": "Estimated",
+      "actual": "Actual",
+      "reopenByType": "Reopen rate by task type",
+      "byPriority": "Completion by priority",
+      "priority": {
+        "URGENT": "Urgent",
+        "HIGH": "High",
+        "MEDIUM": "Medium",
+        "LOW": "Low"
+      },
+      "byProject": "KPI by project",
+      "table": {
+        "project": "Project",
+        "done": "Completed",
+        "onTime": "On time",
+        "delay": "Avg. delay (days)",
+        "effort": "Effort",
+        "reopen": "Reopened",
+        "score": "Score"
+      },
+      "attentionTitle": "Tasks needing attention",
+      "attention": {
+        "overdue": "{{count}} days late",
+        "reopened": "Reopened {{count}}x",
+        "overEffort": "{{count}}% over effort"
+      },
+      "loadFailed": "Could not load KPI data",
+      "noData": "No data yet",
+      "noProjects": "No tasks in this period",
+      "noAttention": "No tasks need attention",
+      "pendingEffort": "No actual effort data yet. It will appear once time logs are recorded.",
+      "pendingReopen": "No reopen data yet. It will appear once status history is recorded."
     },
     "myWork": {
       "title": "My tasks",

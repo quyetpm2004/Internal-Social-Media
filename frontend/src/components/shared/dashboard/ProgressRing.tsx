@@ -1,6 +1,6 @@
 export type RingLegendItem = {
   label: string;
-  value: number;
+  value: number | string;
   color: string;
 };
 
