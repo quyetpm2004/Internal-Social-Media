@@ -3,6 +3,8 @@ import { isAxiosError } from "axios";
 import {
   ArrowDownWideNarrow,
   ArrowUpNarrowWide,
+  ChevronLeft,
+  ChevronRight,
   LayoutGrid,
   List,
   Pencil,
@@ -12,6 +14,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
@@ -82,6 +85,7 @@ function LoadBar({ percent }: { percent: number }) {
 
 export default function DepartmentMembersPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const [members, setMembers] = useState<DepartmentMemberItem[]>([]);
   const [pagination, setPagination] = useState<PaginationData | null>(null);
@@ -359,6 +363,7 @@ export default function DepartmentMembersPage() {
         <FilterSelect
           value={projectId}
           label={t("department.members.projectFilter")}
+          showLabel
           onChange={changeProject}
         >
           <option value="">{t("department.members.allProjects")}</option>
@@ -371,6 +376,7 @@ export default function DepartmentMembersPage() {
         <FilterSelect
           value={sortKey}
           label={t("department.members.sortBy")}
+          showLabel
           onChange={(value) => changeSort(value as MemberSortKey)}
         >
           {SORT_KEYS.map((key) => (
@@ -637,12 +643,23 @@ export default function DepartmentMembersPage() {
                 )}
               >
                 {tasks.map((task) => (
-                  <li key={task.id} className="py-2.5">
+                  <li
+                    key={task.id}
+                    onClick={() =>
+                      navigate(
+                        task.project
+                          ? `/projects/${task.project.id}?tab=tasks&task=${task.id}`
+                          : `/work/department/tasks?task=${task.id}`,
+                      )
+                    }
+                    className="-mx-2 cursor-pointer rounded-lg px-2 py-2.5 transition-colors hover:bg-slate-50"
+                  >
                     <p className="truncate text-sm font-medium text-slate-800">
                       {task.title}
                     </p>
                     <p className="truncate text-[11px] text-slate-400">
-                      {task.code} · {task.project.name}
+                      {task.code}
+                      {task.project ? ` · ${task.project.name}` : ""}
                     </p>
                     <div className="mt-1 flex items-center gap-2 text-xs">
                       <span
@@ -671,10 +688,50 @@ export default function DepartmentMembersPage() {
               </ul>
             )}
             {taskPagination && taskPagination.totalPages > 1 && (
-              <Pagination
-                pagination={taskPagination}
-                onPageChange={setTaskPage}
-              />
+              <div className="mt-3 flex items-center justify-end gap-1">
+                <button
+                  type="button"
+                  disabled={taskPagination.page <= 1}
+                  onClick={() => setTaskPage(taskPagination.page - 1)}
+                  aria-label={t("common.pagination.previous")}
+                  className="inline-flex size-8 cursor-pointer items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronLeft className="size-4" />
+                </button>
+                {Array.from(
+                  { length: taskPagination.totalPages },
+                  (_, index) => index + 1,
+                ).map((pageNumber) => (
+                  <button
+                    key={pageNumber}
+                    type="button"
+                    aria-label={t("common.pagination.page", {
+                      page: pageNumber,
+                    })}
+                    aria-current={
+                      pageNumber === taskPagination.page ? "page" : undefined
+                    }
+                    onClick={() => setTaskPage(pageNumber)}
+                    className={cn(
+                      "inline-flex size-8 cursor-pointer items-center justify-center rounded-lg border text-sm font-medium transition-colors",
+                      pageNumber === taskPagination.page
+                        ? "border-primary bg-primary text-white"
+                        : "border-slate-200 text-slate-700 hover:bg-slate-50",
+                    )}
+                  >
+                    {pageNumber}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  disabled={taskPagination.page >= taskPagination.totalPages}
+                  onClick={() => setTaskPage(taskPagination.page + 1)}
+                  aria-label={t("common.pagination.next")}
+                  className="inline-flex size-8 cursor-pointer items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronRight className="size-4" />
+                </button>
+              </div>
             )}
           </DashboardCard>
         )}

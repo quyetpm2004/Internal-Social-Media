@@ -7,7 +7,8 @@ export type MyTask = {
   id: number;
   code: string;
   title: string;
-  project: { id: number; name: string };
+  project: { id: number; name: string } | null;
+  department: { id: number; name: string } | null;
   myRole: WorkRole;
   status: {
     id: number;

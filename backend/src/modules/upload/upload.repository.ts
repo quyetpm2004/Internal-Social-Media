@@ -111,7 +111,7 @@ export function createPendingTaskAttachment(data: {
   fileSize: number;
   source: "DESCRIPTION" | "FILE";
 }) {
-  return prisma.projectTaskAttachment.create({
+  return prisma.taskAttachment.create({
     data: {
       ...data,
       status: "PENDING",
@@ -127,7 +127,7 @@ export function createPendingTaskCommentAttachment(data: {
   uploadedById: number;
   fileSize: number;
 }) {
-  return prisma.projectTaskCommentAttachment.create({
+  return prisma.taskCommentAttachment.create({
     data: {
       ...data,
       status: "PENDING",
@@ -136,7 +136,7 @@ export function createPendingTaskCommentAttachment(data: {
 }
 
 export function getPendingTaskAttachment(attachmentId: number, userId: number) {
-  return prisma.projectTaskAttachment.findFirst({
+  return prisma.taskAttachment.findFirst({
     where: { id: attachmentId, status: "PENDING", uploadedById: userId },
   });
 }
@@ -146,7 +146,7 @@ export function markTaskAttachmentReady(
   mimeType: string,
   fileSize: number,
 ) {
-  return prisma.projectTaskAttachment.update({
+  return prisma.taskAttachment.update({
     where: { id: attachmentId },
     data: { mimeType, fileSize, status: "READY" },
   });
@@ -156,7 +156,7 @@ export function getPendingTaskCommentAttachment(
   attachmentId: number,
   userId: number,
 ) {
-  return prisma.projectTaskCommentAttachment.findFirst({
+  return prisma.taskCommentAttachment.findFirst({
     where: { id: attachmentId, status: "PENDING", uploadedById: userId },
   });
 }
@@ -166,7 +166,7 @@ export function markTaskCommentAttachmentReady(
   mimeType: string,
   fileSize: number,
 ) {
-  return prisma.projectTaskCommentAttachment.update({
+  return prisma.taskCommentAttachment.update({
     where: { id: attachmentId },
     data: { mimeType, fileSize, status: "READY" },
   });

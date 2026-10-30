@@ -8,8 +8,14 @@ const spaces = {
     subtitleKey: "personalSubtitle",
     members: 1,
     items: [
-      { vi: "Ghi chú việc cá nhân trong tuần", en: "Personal notes for the week" },
-      { vi: "Chuẩn bị nội dung báo cáo thứ sáu", en: "Prepare the Friday report" },
+      {
+        vi: "Ghi chú việc cá nhân trong tuần",
+        en: "Personal notes for the week",
+      },
+      {
+        vi: "Chuẩn bị nội dung báo cáo thứ sáu",
+        en: "Prepare the Friday report",
+      },
     ],
   },
   sales: {
@@ -17,7 +23,10 @@ const spaces = {
     subtitleKey: "salesSubtitle",
     members: 8,
     items: [
-      { vi: "Theo dõi đề xuất CollabNet cho khách mới", en: "Track the CollabNet proposal for a new client" },
+      {
+        vi: "Theo dõi đề xuất CollabNet cho khách mới",
+        en: "Track the CollabNet proposal for a new client",
+      },
       { vi: "Cập nhật pipeline tuần này", en: "Update this week's pipeline" },
     ],
   },
@@ -26,8 +35,14 @@ const spaces = {
     subtitleKey: "engineeringSubtitle",
     members: 12,
     items: [
-      { vi: "Rà sprint CollabNet Mobile", en: "Review the CollabNet Mobile sprint" },
-      { vi: "Chia task còn thiếu người nhận", en: "Assign the tasks that still have no owner" },
+      {
+        vi: "Rà sprint CollabNet Mobile",
+        en: "Review the CollabNet Mobile sprint",
+      },
+      {
+        vi: "Chia task còn thiếu người nhận",
+        en: "Assign the tasks that still have no owner",
+      },
     ],
   },
 } as const;

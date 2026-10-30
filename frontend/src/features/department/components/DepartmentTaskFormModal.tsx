@@ -1,36 +1,50 @@
-import { useRef, useState, type FormEvent } from "react";
-import { Paperclip, Plus, Search, X } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Loader2, Paperclip, Plus, Search, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import Field from "@/components/shared/Field";
 import Input from "@/components/shared/Input";
 import Modal from "@/components/shared/Modal";
 import Select from "@/components/shared/Select";
-import MemberAvatar from "@/features/department/components/MemberAvatar";
-import { useDepartmentStore } from "@/features/department/store/department.store";
+import { departmentTaskApi } from "@/features/department/api/department-task.api";
+import type { TaskPriority } from "@/features/department/types/department.type";
 import type {
-  DepartmentMember,
-  NewTaskInput,
-  TaskPriority,
-  TaskRecurrence,
-} from "@/features/department/types/department.type";
+  DepartmentTaskConfig,
+  DepartmentTaskDetail,
+  DepartmentTaskList,
+  SaveDepartmentTaskPayload,
+} from "@/features/department/types/department-task.type";
 import RichTextEditor from "@/features/new-feed/components/RichTextEditor";
 import {
   isRichTextEmpty,
   sanitizePostHtml,
 } from "@/features/new-feed/utils/rich-text";
-import { cn } from "@/lib/utils";
+import { compactDescriptionImages } from "@/features/project/utils/compact-description-images";
+import {
+  TASK_FILE_ACCEPT,
+  TaskUploadError,
+  formatFileSize,
+  uploadTaskFiles,
+} from "@/features/project/utils/upload-task-file";
+import {
+  getApiErrorMessages,
+  toastApiError,
+} from "@/features/project-template/utils/api-error";
 
 const FORM_ID = "department-task-form";
 const PRIORITIES: TaskPriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
-const RECURRENCES: TaskRecurrence[] = ["NONE", "WEEKLY", "MONTHLY"];
 const MAX_CHILDREN = 20;
 const MAX_ATTACHMENTS = 20;
-const MINUTES_PER_HOUR = 60;
 
 type ChildDraft = {
   key: string;
   title: string;
+};
+
+type DraftFile = {
+  id: number;
+  fileName: string;
+  fileSize: number;
 };
 
 type TaskDraft = {
@@ -41,23 +55,25 @@ type TaskDraft = {
   startDate: string;
   dueDate: string;
   estimatedMinutes: string;
-  recurrence: TaskRecurrence;
-  parentCode: string | null;
-  assigneeIds: number[];
-  reporterId: string;
-  reviewerIds: number[];
+  parentId: number | null;
+  assigneeId: string;
   newChildren: ChildDraft[];
-  files: string[];
+  files: DraftFile[];
 };
 
 type FieldErrors = Partial<Record<string, string>>;
 
-type CreateTaskModalProps = {
+type LoadedData = {
+  list: DepartmentTaskList;
+  config: DepartmentTaskConfig;
+};
+
+type DepartmentTaskFormModalProps = {
   open: boolean;
-  members: DepartmentMember[];
-  presetAssigneeIds?: number[];
+  task?: DepartmentTaskDetail;
+  presetAssigneeId?: number;
   onClose: () => void;
-  onSubmit: (input: NewTaskInput) => void;
+  onSaved: () => void;
 };
 
 function parseEstimate(value: string) {
@@ -70,70 +86,85 @@ function parseEstimate(value: string) {
 }
 
 function TaskForm({
-  members,
-  presetAssigneeIds = [],
+  data,
+  task,
+  presetAssigneeId,
   onClose,
-  onSubmit,
-}: Omit<CreateTaskModalProps, "open">) {
+  onSaved,
+}: Omit<DepartmentTaskFormModalProps, "open"> & { data: LoadedData }) {
   const { t } = useTranslation();
-  const info = useDepartmentStore((state) => state.info);
-  const workflow = useDepartmentStore((state) => state.workflow);
-  const statuses = useDepartmentStore((state) => state.statuses);
-  const tasks = useDepartmentStore((state) => state.tasks);
+  const { list, config } = data;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const childCounter = useRef(0);
 
-  const [draft, setDraft] = useState<TaskDraft>(() => ({
-    title: "",
-    description: "",
-    statusId: statuses.find((status) => status.isInitial)?.id ?? "",
-    priority: "MEDIUM",
-    startDate: "",
-    dueDate: "",
-    estimatedMinutes: "",
-    recurrence: "NONE",
-    parentCode: null,
-    assigneeIds: presetAssigneeIds,
-    reporterId: String(info.leaderId),
-    reviewerIds: [],
-    newChildren: [],
-    files: [],
-  }));
+  const [draft, setDraft] = useState<TaskDraft>(() =>
+    task
+      ? {
+          title: task.title,
+          description: task.description ?? "",
+          statusId: String(task.statusId),
+          priority: task.priority,
+          startDate: task.startDate ?? "",
+          dueDate: task.dueDate ?? "",
+          estimatedMinutes:
+            task.estimatedMinutes == null ? "" : String(task.estimatedMinutes),
+          parentId: task.parent?.id ?? null,
+          assigneeId: task.assignee ? String(task.assignee.userId) : "",
+          newChildren: [],
+          files: task.attachments.map((file) => ({
+            id: file.id,
+            fileName: file.fileName,
+            fileSize: file.fileSize,
+          })),
+        }
+      : {
+          title: "",
+          description: "",
+          statusId: String(
+            config.statuses.find((status) => status.isInitial)?.id ?? "",
+          ),
+          priority: "MEDIUM",
+          startDate: "",
+          dueDate: "",
+          estimatedMinutes: "",
+          parentId: null,
+          assigneeId: presetAssigneeId ? String(presetAssigneeId) : "",
+          newChildren: [],
+          files: [],
+        },
+  );
   const [errors, setErrors] = useState<FieldErrors>({});
   const [parentQuery, setParentQuery] = useState("");
   const [parentOpen, setParentOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [descriptionUploading, setDescriptionUploading] = useState(false);
+
+  const busy = saving || uploadingFiles || descriptionUploading;
 
   const patch = (partial: Partial<TaskDraft>) => {
     setDraft((current) => ({ ...current, ...partial }));
   };
 
-  const nameOf = (id: number) =>
-    members.find((member) => member.id === id)?.name ?? String(id);
-
-  const parentMatches = tasks
-    .filter((task) => {
+  const parentMatches = list.tasks
+    .filter((item) => {
       const keyword = parentQuery.trim().toLowerCase();
       return (
+        item.id !== task?.id &&
         keyword &&
-        (task.code.toLowerCase().includes(keyword) ||
-          task.title.toLowerCase().includes(keyword))
+        (item.code.toLowerCase().includes(keyword) ||
+          item.title.toLowerCase().includes(keyword))
       );
     })
     .slice(0, 8);
-  const parentTask = tasks.find((task) => task.code === draft.parentCode);
+  const parentTask = list.tasks.find((item) => item.id === draft.parentId);
 
-  const validate = (): NewTaskInput | null => {
+  const validate = (): SaveDepartmentTaskPayload | null => {
     const next: FieldErrors = {};
     const title = draft.title.trim();
     if (!title) next.title = t("pages.projects.tasks.form.titleRequired");
     if (!draft.statusId) {
       next.statusId = t("pages.projects.tasks.form.statusRequired");
-    }
-    if (draft.assigneeIds.length === 0) {
-      next.assignees = t("department.createTask.assigneeRequired");
-    }
-    if (!draft.reporterId) {
-      next.reporterId = t("pages.projects.tasks.form.reporterRequired");
     }
     if (draft.startDate && draft.dueDate && draft.dueDate < draft.startDate) {
       next.dates = t("pages.projects.tasks.form.dateOrder");
@@ -154,64 +185,114 @@ function TaskForm({
     return {
       title,
       description: isRichTextEmpty(draft.description)
-        ? ""
-        : sanitizePostHtml(draft.description),
+        ? null
+        : compactDescriptionImages(sanitizePostHtml(draft.description)),
+      statusId: Number(draft.statusId),
       priority: draft.priority,
-      statusId: draft.statusId,
-      assigneeIds: draft.assigneeIds,
-      reporterId: Number(draft.reporterId),
-      reviewerIds: draft.reviewerIds,
       startDate: draft.startDate || null,
       dueDate: draft.dueDate || null,
-      estimatedHours: (estimate ?? 0) / MINUTES_PER_HOUR,
-      recurrence: draft.recurrence,
-      parentCode: draft.parentCode,
-      children: draft.newChildren.map((child) => child.title.trim()),
-      attachments: draft.files,
+      estimatedMinutes: estimate,
+      parentTaskId: draft.parentId,
+      assigneeId: draft.assigneeId ? Number(draft.assigneeId) : null,
+      children: draft.newChildren.map((child) => ({
+        title: child.title.trim(),
+        estimatedMinutes: null,
+      })),
+      attachmentIds: draft.files.map((file) => file.id),
     };
   };
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    if (busy) return;
     const payload = validate();
     if (!payload) return;
-    onSubmit(payload);
-    toast.success(t("pages.projects.tasks.created"));
-    onClose();
+    setSaving(true);
+    try {
+      if (task) {
+        await departmentTaskApi.update(task.id, payload);
+        toast.success(t("pages.projects.tasks.updated"));
+      } else {
+        await departmentTaskApi.create(payload);
+        toast.success(t("pages.projects.tasks.created"));
+      }
+      onSaved();
+      onClose();
+    } catch (error) {
+      toastApiError(error);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const addFiles = (list: FileList | null) => {
-    const names = Array.from(list ?? []).map((file) => file.name);
-    if (names.length === 0) return;
-    if (draft.files.length + names.length > MAX_ATTACHMENTS) {
+  const uploadErrorMessage = (error: unknown) => {
+    if (error instanceof TaskUploadError) {
+      return t(`pages.projects.tasks.upload.${error.code}`, {
+        max: error.maxMb,
+      });
+    }
+    return (
+      getApiErrorMessages(error)[0] || t("pages.projects.tasks.upload.failed")
+    );
+  };
+
+  const uploadDescriptionImage = async (file: File) => {
+    try {
+      const [uploaded] = await uploadTaskFiles([file], "description");
+      if (!uploaded?.fileUrl || !uploaded.fileKey) {
+        throw new TaskUploadError("failed");
+      }
+      return {
+        src: uploaded.fileUrl,
+        fileKey: uploaded.fileKey,
+        alt: uploaded.fileName,
+      };
+    } catch (error) {
+      throw new Error(uploadErrorMessage(error));
+    }
+  };
+
+  const addFiles = async (selectedList: FileList | null) => {
+    const selected = Array.from(selectedList ?? []);
+    if (selected.length === 0) return;
+    if (draft.files.length + selected.length > MAX_ATTACHMENTS) {
       toast.error(t("pages.projects.tasks.form.attachmentLimit"));
       return;
     }
-    patch({ files: [...draft.files, ...names] });
+    setUploadingFiles(true);
+    try {
+      const uploaded = await uploadTaskFiles(selected, "task");
+      setDraft((current) => ({
+        ...current,
+        files: [...current.files, ...uploaded],
+      }));
+    } catch (error) {
+      toast.error(uploadErrorMessage(error));
+    } finally {
+      setUploadingFiles(false);
+    }
   };
-
-  const availableAssignees = members.filter(
-    (member) => !draft.assigneeIds.includes(member.id),
-  );
-  const availableReviewers = members.filter(
-    (member) => !draft.reviewerIds.includes(member.id),
-  );
 
   return (
     <Modal
       open
       onClose={onClose}
-      title={t("pages.projects.tasks.form.createTitle")}
+      title={
+        task
+          ? t("pages.projects.tasks.form.editTitle")
+          : t("pages.projects.tasks.form.createTitle")
+      }
       size="xl"
       className="max-h-[90vh] max-w-[min(96rem,calc(100vw-2rem))]"
       bodyClassName="[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
       formId={FORM_ID}
       confirmText={t("pages.projects.tasks.form.save")}
+      loading={busy}
     >
       <form
         id={FORM_ID}
         className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]"
-        onSubmit={handleSubmit}
+        onSubmit={(event) => void handleSubmit(event)}
       >
         <div className="space-y-4">
           <Field label={t("pages.projects.tasks.form.parent")}>
@@ -225,7 +306,7 @@ function TaskForm({
                 </p>
                 <button
                   type="button"
-                  onClick={() => patch({ parentCode: null })}
+                  onClick={() => patch({ parentId: null })}
                   className="cursor-pointer rounded-md p-1 text-slate-400 hover:bg-slate-100"
                   aria-label={t("common.cancel")}
                 >
@@ -257,22 +338,22 @@ function TaskForm({
                           : t("pages.projects.tasks.form.parentPlaceholder")}
                       </p>
                     ) : (
-                      parentMatches.map((task) => (
+                      parentMatches.map((item) => (
                         <button
-                          key={task.id}
+                          key={item.id}
                           type="button"
                           onMouseDown={(event) => event.preventDefault()}
                           onClick={() => {
-                            patch({ parentCode: task.code });
+                            patch({ parentId: item.id });
                             setParentQuery("");
                             setParentOpen(false);
                           }}
                           className="block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-slate-50"
                         >
                           <span className="font-semibold text-slate-500">
-                            {task.code}
+                            {item.code}
                           </span>{" "}
-                          {task.title}
+                          {item.title}
                         </button>
                       ))
                     )}
@@ -320,6 +401,17 @@ function TaskForm({
                 {t("pages.projects.tasks.form.addChild")}
               </button>
             </div>
+            {task?.children.map((child) => (
+              <p
+                key={child.id}
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700"
+              >
+                <span className="mr-2 font-mono text-xs text-slate-400">
+                  {child.code}
+                </span>
+                {child.title}
+              </p>
+            ))}
             {draft.newChildren.map((child) => (
               <div key={child.key} className="flex gap-2">
                 <Input
@@ -357,64 +449,6 @@ function TaskForm({
             )}
           </div>
 
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-slate-700">
-              {t("department.fields.assignees")}
-              <span className="ml-0.5 text-red-500">*</span>
-            </p>
-            {draft.assigneeIds.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {draft.assigneeIds.map((id) => (
-                  <span
-                    key={id}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 py-1 pr-2 pl-1 text-xs font-semibold text-violet-700"
-                  >
-                    <MemberAvatar
-                      id={id}
-                      name={nameOf(id)}
-                      className="size-5 text-[10px]"
-                    />
-                    {nameOf(id)}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        patch({
-                          assigneeIds: draft.assigneeIds.filter(
-                            (item) => item !== id,
-                          ),
-                        })
-                      }
-                      className="cursor-pointer rounded-full p-0.5 hover:bg-violet-100"
-                      aria-label={nameOf(id)}
-                    >
-                      <X className="size-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-            <Select
-              value=""
-              disabled={availableAssignees.length === 0}
-              onChange={(event) => {
-                const id = Number(event.target.value);
-                if (!id) return;
-                patch({ assigneeIds: [...draft.assigneeIds, id] });
-                setErrors((current) => ({ ...current, assignees: undefined }));
-              }}
-            >
-              <option value="">{t("department.createTask.addAssignee")}</option>
-              {availableAssignees.map((member) => (
-                <option key={member.id} value={member.id}>
-                  {member.name}
-                </option>
-              ))}
-            </Select>
-            {errors.assignees && (
-              <p className="text-xs text-red-600">{errors.assignees}</p>
-            )}
-          </div>
-
           <Field label={t("pages.projects.tasks.form.description")}>
             <RichTextEditor
               value={draft.description}
@@ -423,6 +457,8 @@ function TaskForm({
               placeholder={t("pages.projects.tasks.form.description")}
               minRows={4}
               extended
+              uploadImage={uploadDescriptionImage}
+              onUploadingChange={setDescriptionUploading}
             />
           </Field>
 
@@ -431,36 +467,49 @@ function TaskForm({
               ref={fileInputRef}
               type="file"
               multiple
+              accept={TASK_FILE_ACCEPT}
               className="hidden"
               onChange={(event) => {
-                addFiles(event.target.files);
+                void addFiles(event.target.files);
                 event.target.value = "";
               }}
             />
             <button
               type="button"
+              disabled={uploadingFiles}
               onClick={() => fileInputRef.current?.click()}
-              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
             >
-              <Paperclip className="size-4" />
+              {uploadingFiles ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Paperclip className="size-4" />
+              )}
               {t("pages.projects.tasks.form.addAttachment")}
             </button>
             {draft.files.length > 0 && (
               <ul className="mt-2 space-y-2">
-                {draft.files.map((name, index) => (
+                {draft.files.map((file) => (
                   <li
-                    key={`${name}-${index}`}
+                    key={file.id}
                     className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   >
-                    <span className="min-w-0 truncate font-medium text-slate-800">
-                      {name}
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-slate-800">
+                        {file.fileName}
+                      </span>
+                      <span className="text-xs text-slate-400">
+                        {formatFileSize(file.fileSize)}
+                      </span>
                     </span>
                     <button
                       type="button"
                       title={t("pages.projects.tasks.form.removeAttachment")}
                       onClick={() =>
                         patch({
-                          files: draft.files.filter((_, item) => item !== index),
+                          files: draft.files.filter(
+                            (item) => item.id !== file.id,
+                          ),
                         })
                       }
                       className="cursor-pointer rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
@@ -475,9 +524,12 @@ function TaskForm({
         </div>
 
         <div className="space-y-4">
-          <Field label={t("pages.projects.tasks.form.workflow")} htmlFor="department-task-workflow">
+          <Field
+            label={t("pages.projects.tasks.form.workflow")}
+            htmlFor="department-task-workflow"
+          >
             <Select id="department-task-workflow" value="fixed" disabled>
-              <option value="fixed">{workflow.name}</option>
+              <option value="fixed">{config.workflow.name}</option>
             </Select>
           </Field>
 
@@ -493,10 +545,30 @@ function TaskForm({
               aria-invalid={Boolean(errors.statusId)}
               onChange={(event) => patch({ statusId: event.target.value })}
             >
-              <option value="">{t("pages.projects.tasks.form.pickStatus")}</option>
-              {statuses.map((status) => (
+              <option value="">
+                {t("pages.projects.tasks.form.pickStatus")}
+              </option>
+              {config.statuses.map((status) => (
                 <option key={status.id} value={status.id}>
                   {status.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          <Field
+            label={t("department.fields.assignees")}
+            htmlFor="department-task-assignee"
+          >
+            <Select
+              id="department-task-assignee"
+              value={draft.assigneeId}
+              onChange={(event) => patch({ assigneeId: event.target.value })}
+            >
+              <option value="">{t("department.tasks.unassigned")}</option>
+              {list.members.map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.name}
                 </option>
               ))}
             </Select>
@@ -520,75 +592,6 @@ function TaskForm({
               ))}
             </Select>
           </Field>
-
-          <Field
-            label={t("pages.projects.tasks.form.reporter")}
-            htmlFor="department-task-reporter"
-            required
-            error={errors.reporterId}
-          >
-            <Select
-              id="department-task-reporter"
-              value={draft.reporterId}
-              aria-invalid={Boolean(errors.reporterId)}
-              onChange={(event) => patch({ reporterId: event.target.value })}
-            >
-              <option value="">
-                {t("pages.projects.tasks.form.pickReporter")}
-              </option>
-              {members.map((member) => (
-                <option key={member.id} value={member.id}>
-                  {member.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-slate-700">
-              {t("pages.projects.tasks.form.reviewer")}
-            </p>
-            {draft.reviewerIds.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {draft.reviewerIds.map((id) => (
-                  <span
-                    key={id}
-                    className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700"
-                  >
-                    {nameOf(id)}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        patch({
-                          reviewerIds: draft.reviewerIds.filter(
-                            (item) => item !== id,
-                          ),
-                        })
-                      }
-                      className="cursor-pointer rounded-full p-0.5 hover:bg-slate-200"
-                    >
-                      <X className="size-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-            <Select
-              value=""
-              onChange={(event) => {
-                const id = Number(event.target.value);
-                if (!id || draft.reviewerIds.includes(id)) return;
-                patch({ reviewerIds: [...draft.reviewerIds, id] });
-              }}
-            >
-              <option value="">{t("pages.projects.tasks.form.addReviewer")}</option>
-              {availableReviewers.map((member) => (
-                <option key={member.id} value={member.id}>
-                  {member.name}
-                </option>
-              ))}
-            </Select>
-          </div>
 
           <Field
             label={t("pages.projects.tasks.form.startDate")}
@@ -626,27 +629,10 @@ function TaskForm({
               min={0}
               value={draft.estimatedMinutes}
               aria-invalid={Boolean(errors.estimate)}
-              onChange={(event) => patch({ estimatedMinutes: event.target.value })}
-            />
-          </Field>
-          <Field
-            label={t("department.fields.recurrence")}
-            htmlFor="department-task-recurrence"
-          >
-            <Select
-              id="department-task-recurrence"
-              value={draft.recurrence}
               onChange={(event) =>
-                patch({ recurrence: event.target.value as TaskRecurrence })
+                patch({ estimatedMinutes: event.target.value })
               }
-              className={cn(draft.recurrence !== "NONE" && "text-violet-700")}
-            >
-              {RECURRENCES.map((item) => (
-                <option key={item} value={item}>
-                  {t(`department.recurrence.${item}`)}
-                </option>
-              ))}
-            </Select>
+            />
           </Field>
         </div>
       </form>
@@ -654,10 +640,38 @@ function TaskForm({
   );
 }
 
-export default function CreateTaskModal({
+export default function DepartmentTaskFormModal({
   open,
   ...rest
-}: CreateTaskModalProps) {
-  if (!open) return null;
-  return <TaskForm {...rest} />;
+}: DepartmentTaskFormModalProps) {
+  const [data, setData] = useState<LoadedData | null>(null);
+  const [failed, setFailed] = useState(false);
+  const { onClose } = rest;
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    Promise.all([departmentTaskApi.list(), departmentTaskApi.getConfig()])
+      .then(([list, config]) => {
+        if (cancelled) return;
+        setData({ list: list.data, config: config.data });
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        toastApiError(error);
+        setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+      setData(null);
+      setFailed(false);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (failed) onClose();
+  }, [failed, onClose]);
+
+  if (!open || !data) return null;
+  return <TaskForm data={data} {...rest} />;
 }

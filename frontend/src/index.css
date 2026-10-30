@@ -110,6 +110,29 @@ h1, h2, h3 {
   background: transparent;
 }
 
+.slim-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.slim-scrollbar::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.slim-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.slim-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 9999px;
+}
+
+.slim-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}
+
 .messenger-thread-scroll {
   overscroll-behavior: contain;
 }

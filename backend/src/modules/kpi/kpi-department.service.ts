@@ -1,13 +1,14 @@
 import { WorkflowStatusCategory } from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
-import type { KpiPeriod } from "@/modules/kpi/kpi.schema";
+import type { KpiMemberQuery, KpiPeriod } from "@/modules/kpi/kpi.schema";
 import * as kpiRepository from "@/modules/kpi/kpi.repository";
 import type { DepartmentTaskRow } from "@/modules/kpi/kpi.repository";
 import {
   KPI_TARGETS,
   addDays,
   bucketsOf,
-  percent,
+  diffDays,
+  getMyKpi,
   rangeOf,
   round,
   summarize,
@@ -15,8 +16,9 @@ import {
   utcDate,
   vietnamIso,
 } from "@/modules/kpi/kpi.service";
-import type { TaskFacts } from "@/modules/kpi/kpi.service";
+import type { DateRange, TaskFacts } from "@/modules/kpi/kpi.service";
 
+const MAX_CUSTOM_DAYS = 366;
 const PRIORITY_LIMIT = 6;
 const SUPPORT_THRESHOLD = 70;
 const TOP_LIMIT = 3;
@@ -34,6 +36,183 @@ function isOpen(item: TaskFacts) {
     item.category === WorkflowStatusCategory.TODO ||
     item.category === WorkflowStatusCategory.IN_PROGRESS
   );
+}
+
+function resolveMemberRanges(query: KpiMemberQuery, todayIso: string) {
+  if (query.period !== "custom") {
+    const range = rangeOf(query.period, todayIso);
+    return {
+      range,
+      previousRange: rangeOf(query.period, addDays(range.from, -1)),
+      buckets: bucketsOf(query.period, range),
+    };
+  }
+
+  const range = { from: query.from!, to: query.to! };
+  const length = diffDays(range.to, range.from) + 1;
+  const previousRange = {
+    from: addDays(range.from, -length),
+    to: addDays(range.from, -1),
+  };
+  const size = length <= 14 ? 1 : 7;
+  const buckets: DateRange[] = [];
+  for (let from = range.from; from <= range.to; from = addDays(from, size)) {
+    const to = addDays(from, size - 1);
+    buckets.push({ from, to: to > range.to ? range.to : to });
+  }
+  return { range, previousRange, buckets };
+}
+
+export async function getDepartmentKpi(
+  managerId: number,
+  query: KpiMemberQuery,
+) {
+  const department = await kpiRepository.findManagedDepartment(managerId);
+  if (!department) {
+    throw new AppError(404, "Bạn chưa quản lý phòng ban nào");
+  }
+
+  const members = department.users;
+  const todayIso = vietnamIso(new Date());
+  const { range, previousRange, buckets } = resolveMemberRanges(
+    query,
+    todayIso,
+  );
+
+  if (diffDays(range.to, range.from) > MAX_CUSTOM_DAYS) {
+    throw new AppError(400, "Khoảng thời gian tối đa là 1 năm");
+  }
+
+  const rows = members.length
+    ? await kpiRepository.findDepartmentTasks(
+        members.map((member) => member.id),
+        utcDate(previousRange.from),
+        utcDate(range.to),
+      )
+    : [];
+
+  const all = rows.map((row) => toFacts(row, todayIso)) as DepartmentFacts[];
+  const current = all.filter((item) => item.dueIso >= range.from);
+  const previous = all.filter((item) => item.dueIso < range.from);
+
+  const inBucket = (items: DepartmentFacts[], bucket: DateRange) =>
+    items.filter(
+      (item) => item.dueIso >= bucket.from && item.dueIso <= bucket.to,
+    );
+
+  const memberStats = members.map((member) => {
+    const mine = assignedTo(current, member.id);
+    const stats = summarize(mine);
+    const previousStats = summarize(assignedTo(previous, member.id));
+
+    return {
+      id: member.id,
+      name: member.fullName,
+      email: member.email,
+      position: member.position?.name ?? null,
+      avatarKey: member.profile?.avatarKey ?? null,
+      assigned: stats.active.length,
+      done: stats.done.length,
+      late: stats.late.length,
+      reopened: null,
+      completionRate: stats.completionRate,
+      onTimeRate: stats.onTimeRate,
+      avgDelayDays: stats.avgDelayDays,
+      score: stats.score,
+      previousScore: previousStats.score,
+      trend: buckets.map((bucket) => summarize(inBucket(mine, bucket)).score),
+    };
+  });
+
+  const now = summarize(current);
+  const before = summarize(previous);
+
+  const needSupport = memberStats
+    .filter((member) => member.score !== null && member.score < SUPPORT_THRESHOLD)
+    .sort((a, b) => a.score! - b.score!)
+    .map((member) => member.id);
+
+  const trend = buckets.map((bucket) => {
+    const stats = summarize(inBucket(current, bucket));
+    return {
+      from: bucket.from,
+      to: bucket.to,
+      completionRate: stats.completionRate,
+      onTimeRate: stats.onTimeRate,
+      score: stats.score,
+    };
+  });
+
+  return {
+    period: query.period,
+    range,
+    previousRange,
+    department: { id: department.id, name: department.name },
+    summary: {
+      memberCount: members.length,
+      assigned: now.active.length,
+      done: now.done.length,
+      late: now.late.length,
+      reopened: null,
+      completionRate: now.completionRate,
+      onTimeRate: now.onTimeRate,
+      score: now.score,
+      previousScore: before.score,
+    },
+    members: memberStats,
+    needSupport,
+    trend,
+  };
+}
+
+export async function getMemberKpi(
+  managerId: number,
+  userId: number,
+  period: KpiPeriod,
+) {
+  const department = await kpiRepository.findManagedDepartment(managerId);
+  if (!department) {
+    throw new AppError(404, "Bạn chưa quản lý phòng ban nào");
+  }
+
+  const member = department.users.find((user) => user.id === userId);
+  if (!member) {
+    throw new AppError(404, "Nhân viên không thuộc phòng ban của bạn");
+  }
+
+  const todayIso = vietnamIso(new Date());
+  const range = rangeOf(period, todayIso);
+  const [kpi, rows] = await Promise.all([
+    getMyKpi(userId, period),
+    kpiRepository.findDepartmentTasks(
+      department.users.map((user) => user.id),
+      utcDate(range.from),
+      utcDate(range.to),
+    ),
+  ]);
+
+  const current = rows.map((row) => toFacts(row, todayIso)) as DepartmentFacts[];
+  const ranked = department.users
+    .map((user) => ({
+      id: user.id,
+      score: summarize(assignedTo(current, user.id)).score,
+    }))
+    .filter((item) => item.score !== null)
+    .sort((a, b) => b.score! - a.score!);
+  const position = ranked.findIndex((item) => item.id === userId);
+
+  return {
+    ...kpi,
+    rank: position >= 0 ? position + 1 : null,
+    teamSize: ranked.length,
+    member: {
+      id: member.id,
+      name: member.fullName,
+      email: member.email,
+      position: member.position?.name ?? null,
+      avatarKey: member.profile?.avatarKey ?? null,
+    },
+  };
 }
 
 export async function getDepartmentOverview(
@@ -150,7 +329,7 @@ export async function getDepartmentOverview(
       id: item.row.id,
       code: item.row.code,
       title: item.row.title,
-      project: item.row.project.name,
+      project: item.row.project?.name ?? null,
       priority: item.row.priority,
       status: item.row.status.name,
       dueDate: item.dueIso,

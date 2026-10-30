@@ -80,6 +80,7 @@ export async function listMyTasks(userId: number, query: MyTaskListQuery) {
         code: row.code,
         title: row.title,
         project: row.project,
+        department: row.department,
         myRole: pickMyRole(roles, query.scope, query.role),
         status: row.status,
         dueDate: formatDateOnly(row.dueDate),

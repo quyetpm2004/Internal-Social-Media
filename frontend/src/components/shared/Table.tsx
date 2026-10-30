@@ -11,7 +11,7 @@ function Table({
     <div
       data-slot="table-container"
       className={cn(
-        "relative w-full overflow-hidden overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm",
+        "slim-scrollbar relative w-full overflow-hidden overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm",
         containerClassName,
       )}
     >

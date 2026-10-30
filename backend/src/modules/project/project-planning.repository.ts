@@ -26,9 +26,9 @@ const planningTaskSelect = {
       },
     },
   },
-} satisfies Prisma.ProjectTaskSelect;
+} satisfies Prisma.TaskSelect;
 
-export type PlanningTaskRow = Prisma.ProjectTaskGetPayload<{
+export type PlanningTaskRow = Prisma.TaskGetPayload<{
   select: typeof planningTaskSelect;
 }>;
 
@@ -76,7 +76,7 @@ export function findMilestone(projectId: number, milestoneId: number) {
 }
 
 export function listPlanningTasks(projectId: number) {
-  return prisma.projectTask.findMany({
+  return prisma.task.findMany({
     where: { projectId },
     orderBy: [{ taskType: { sortOrder: "asc" } }, { code: "asc" }],
     take: 500,
@@ -89,7 +89,7 @@ export function findProjectTasks(
   projectId: number,
   taskIds: number[],
 ) {
-  return db.projectTask.findMany({
+  return db.task.findMany({
     where: { projectId, id: { in: taskIds } },
     select: { id: true, phaseId: true },
   });
@@ -142,7 +142,7 @@ export function deletePhase(phaseId: number) {
 }
 
 export function clearPhaseTasks(db: Db, projectId: number, phaseId: number) {
-  return db.projectTask.updateMany({
+  return db.task.updateMany({
     where: { projectId, phaseId },
     data: { phaseId: null },
   });
@@ -154,7 +154,7 @@ export function releasePhaseTasksExcept(
   phaseId: number,
   keepIds: number[],
 ) {
-  return db.projectTask.updateMany({
+  return db.task.updateMany({
     where: { projectId, phaseId, id: { notIn: keepIds } },
     data: { phaseId: null },
   });
@@ -166,7 +166,7 @@ export function assignTasksToPhase(
   phaseId: number,
   taskIds: number[],
 ) {
-  return db.projectTask.updateMany({
+  return db.task.updateMany({
     where: { projectId, id: { in: taskIds } },
     data: { phaseId },
   });

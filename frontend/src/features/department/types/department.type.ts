@@ -1,100 +1,70 @@
-export type MemberStatus = "ACTIVE" | "REMOTE" | "LEAVE";
-
-export type MemberRole = "LEADER" | "MEMBER";
+import type { KpiResponse } from "@/features/work/types/kpi.type";
 
 export type TaskPriority = "URGENT" | "HIGH" | "MEDIUM" | "LOW";
 
 export type StatusCategory = "TODO" | "IN_PROGRESS" | "DONE" | "CANCELLED";
 
-export type DepartmentStatus = {
-  id: string;
-  name: string;
-  category: StatusCategory;
-  color: string;
-  isInitial: boolean;
-  isFinal: boolean;
-};
+export type KpiRange = "week" | "month" | "custom";
 
-export type DepartmentWorkflow = {
-  name: string;
-  description: string;
-};
-
-export type TaskRecurrence = "NONE" | "WEEKLY" | "MONTHLY";
-
-export type DepartmentInfo = {
-  id: number;
-  code: string;
-  name: string;
-  leaderId: number;
-};
-
-export type DepartmentMember = {
+export type KpiMemberRow = {
   id: number;
   name: string;
   email: string;
-  position: string;
-  role: MemberRole;
-  status: MemberStatus;
-  capacityHours: number;
-};
-
-export type MemberInput = {
-  name: string;
-  email: string;
-  position: string;
-  status: MemberStatus;
-  capacityHours: number;
-};
-
-export type DepartmentTask = {
-  id: number;
-  code: string;
-  title: string;
-  priority: TaskPriority;
-  statusId: string;
-  description: string;
-  assigneeIds: number[];
-  reporterId: number | null;
-  reviewerIds: number[];
-  startDate: string | null;
-  dueDate: string | null;
-  progress: number;
-  estimatedHours: number;
-  recurrence: TaskRecurrence;
-  project: string | null;
-};
-
-export type MemberKpi = {
-  memberId: number;
+  position: string | null;
+  avatarKey: string | null;
   assigned: number;
   done: number;
   late: number;
-  reopened: number;
-  estimatedHours: number;
-  actualHours: number;
-  score: number;
-  previousScore: number;
-  trend: number[];
+  reopened: number | null;
+  completionRate: number | null;
+  onTimeRate: number | null;
+  avgDelayDays: number | null;
+  score: number | null;
+  previousScore: number | null;
+  trend: (number | null)[];
 };
 
-export type KpiRange = "week" | "month" | "custom";
+export type DepartmentKpi = {
+  period: KpiRange;
+  range: { from: string; to: string };
+  previousRange: { from: string; to: string };
+  department: { id: number; name: string };
+  summary: {
+    memberCount: number;
+    assigned: number;
+    done: number;
+    late: number;
+    reopened: number | null;
+    completionRate: number | null;
+    onTimeRate: number | null;
+    score: number | null;
+    previousScore: number | null;
+  };
+  members: KpiMemberRow[];
+  needSupport: number[];
+  trend: {
+    from: string;
+    to: string;
+    completionRate: number | null;
+    onTimeRate: number | null;
+    score: number | null;
+  }[];
+};
 
-export type NewTaskInput = {
-  title: string;
-  description: string;
-  priority: TaskPriority;
-  statusId: string;
-  assigneeIds: number[];
-  reporterId: number | null;
-  reviewerIds: number[];
-  startDate: string | null;
-  dueDate: string | null;
-  estimatedHours: number;
-  recurrence: TaskRecurrence;
-  parentCode: string | null;
-  children: string[];
-  attachments: string[];
+export type KpiViewedMember = {
+  id: number;
+  name: string;
+  email: string;
+  position: string | null;
+  avatarKey: string | null;
+};
+
+export type MemberKpiResponse = KpiResponse & { member: KpiViewedMember };
+
+export type KpiQueryParams = {
+  period: KpiRange;
+  from?: string;
+  to?: string;
 };
 
 export type OverviewPeriod = "week" | "month" | "quarter";
@@ -125,7 +95,7 @@ export type OverviewPriorityTask = {
   id: number;
   code: string;
   title: string;
-  project: string;
+  project: string | null;
   priority: TaskPriority;
   status: string;
   dueDate: string;

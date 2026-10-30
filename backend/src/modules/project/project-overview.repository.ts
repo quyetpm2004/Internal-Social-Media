@@ -14,19 +14,19 @@ export function taskScope(projectId: number, workflowId?: number) {
   return {
     projectId,
     ...(workflowId ? { workflowId } : {}),
-  } satisfies Prisma.ProjectTaskWhereInput;
+  } satisfies Prisma.TaskWhereInput;
 }
 
-export function groupTasksByStatus(where: Prisma.ProjectTaskWhereInput) {
-  return prisma.projectTask.groupBy({
+export function groupTasksByStatus(where: Prisma.TaskWhereInput) {
+  return prisma.task.groupBy({
     by: ["statusId"],
     where,
     _count: { _all: true },
   });
 }
 
-export function groupTasksByPriority(where: Prisma.ProjectTaskWhereInput) {
-  return prisma.projectTask.groupBy({
+export function groupTasksByPriority(where: Prisma.TaskWhereInput) {
+  return prisma.task.groupBy({
     by: ["priority"],
     where,
     _count: { _all: true },
@@ -34,7 +34,7 @@ export function groupTasksByPriority(where: Prisma.ProjectTaskWhereInput) {
 }
 
 export function listStatuses(projectId: number, workflowId?: number) {
-  return prisma.projectWorkflowStatus.findMany({
+  return prisma.workflowStatus.findMany({
     where: {
       workflow: {
         projectId,
@@ -51,16 +51,16 @@ export function listStatuses(projectId: number, workflowId?: number) {
   });
 }
 
-export function countTasks(where: Prisma.ProjectTaskWhereInput) {
-  return prisma.projectTask.count({ where });
+export function countTasks(where: Prisma.TaskWhereInput) {
+  return prisma.task.count({ where });
 }
 
 export function listWeekActivity(
-  where: Prisma.ProjectTaskWhereInput,
+  where: Prisma.TaskWhereInput,
   rangeStart: Date,
   rangeEnd: Date,
 ) {
-  return prisma.projectTask.findMany({
+  return prisma.task.findMany({
     where: {
       ...where,
       OR: [
@@ -72,8 +72,8 @@ export function listWeekActivity(
   });
 }
 
-export function listAssigneeRows(where: Prisma.ProjectTaskWhereInput) {
-  return prisma.projectTaskMember.findMany({
+export function listAssigneeRows(where: Prisma.TaskWhereInput) {
+  return prisma.taskMember.findMany({
     where: {
       taskRole: "ASSIGNEE",
       task: where,
@@ -97,10 +97,10 @@ const taskNoticeSelect = {
   title: true,
   dueDate: true,
   priority: true,
-} satisfies Prisma.ProjectTaskSelect;
+} satisfies Prisma.TaskSelect;
 
-export function listUpcomingTasks(where: Prisma.ProjectTaskWhereInput, take: number) {
-  return prisma.projectTask.findMany({
+export function listUpcomingTasks(where: Prisma.TaskWhereInput, take: number) {
+  return prisma.task.findMany({
     where: {
       ...where,
       dueDate: { not: null },
@@ -113,11 +113,11 @@ export function listUpcomingTasks(where: Prisma.ProjectTaskWhereInput, take: num
 }
 
 export function listOverdueTasks(
-  where: Prisma.ProjectTaskWhereInput,
+  where: Prisma.TaskWhereInput,
   today: Date,
   take: number,
 ) {
-  return prisma.projectTask.findMany({
+  return prisma.task.findMany({
     where: {
       ...where,
       dueDate: { lt: today },
@@ -130,11 +130,11 @@ export function listOverdueTasks(
 }
 
 export function listUrgentTasks(
-  where: Prisma.ProjectTaskWhereInput,
+  where: Prisma.TaskWhereInput,
   today: Date,
   take: number,
 ) {
-  return prisma.projectTask.findMany({
+  return prisma.task.findMany({
     where: {
       ...where,
       priority: ProjectPriority.URGENT,
@@ -148,10 +148,10 @@ export function listUrgentTasks(
 }
 
 export function countAttention(
-  where: Prisma.ProjectTaskWhereInput,
+  where: Prisma.TaskWhereInput,
   today: Date,
 ) {
-  return prisma.projectTask.count({
+  return prisma.task.count({
     where: {
       ...where,
       status: { category: { notIn: CLOSED_CATEGORIES } },
@@ -160,8 +160,8 @@ export function countAttention(
   });
 }
 
-export function countOverdue(where: Prisma.ProjectTaskWhereInput, today: Date) {
-  return prisma.projectTask.count({
+export function countOverdue(where: Prisma.TaskWhereInput, today: Date) {
+  return prisma.task.count({
     where: {
       ...where,
       dueDate: { lt: today },
@@ -170,8 +170,8 @@ export function countOverdue(where: Prisma.ProjectTaskWhereInput, today: Date) {
   });
 }
 
-export function countUrgentOpen(where: Prisma.ProjectTaskWhereInput) {
-  return prisma.projectTask.count({
+export function countUrgentOpen(where: Prisma.TaskWhereInput) {
+  return prisma.task.count({
     where: {
       ...where,
       priority: ProjectPriority.URGENT,

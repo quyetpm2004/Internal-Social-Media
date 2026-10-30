@@ -236,12 +236,14 @@ export async function getMyKpi(userId: number, period: KpiPeriod) {
 
   const projectGroups = new Map<number, { name: string; items: TaskFacts[] }>();
   for (const item of current) {
-    const group = projectGroups.get(item.row.project.id) ?? {
-      name: item.row.project.name,
+    const project = item.row.project;
+    if (!project) continue;
+    const group = projectGroups.get(project.id) ?? {
+      name: project.name,
       items: [],
     };
     group.items.push(item);
-    projectGroups.set(item.row.project.id, group);
+    projectGroups.set(project.id, group);
   }
 
   const projects = [...projectGroups.entries()].map(([id, group]) => {
@@ -279,7 +281,7 @@ export async function getMyKpi(userId: number, period: KpiPeriod) {
       id: item.row.id,
       code: item.row.code,
       title: item.row.title,
-      project: item.row.project.name,
+      project: item.row.project?.name ?? null,
       kind: "overdue" as const,
       amount: item.lateDays,
     }));

@@ -201,7 +201,7 @@ export async function createProjectFromTemplate(
   const transitionMap = new Map<number, number>();
 
   for (const templateWorkflow of template.workflows) {
-    const projectWorkflow = await tx.projectWorkflow.create({
+    const projectWorkflow = await tx.workflow.create({
       data: {
         name: templateWorkflow.name,
         description: templateWorkflow.description,
@@ -212,7 +212,7 @@ export async function createProjectFromTemplate(
     });
     workflowMap.set(templateWorkflow.id, projectWorkflow.id);
     for (const templateStatus of templateWorkflow.statuses) {
-      const projectStatus = await tx.projectWorkflowStatus.create({
+      const projectStatus = await tx.workflowStatus.create({
         data: {
           name: templateStatus.name,
           key: templateStatus.key,
@@ -723,7 +723,7 @@ const projectWorkflowStatusSelect = {
   color: true,
   isInitial: true,
   isFinal: true,
-} satisfies Prisma.ProjectWorkflowStatusSelect;
+} satisfies Prisma.WorkflowStatusSelect;
 
 const projectApprovalRuleSelect = {
   id: true,
@@ -753,10 +753,10 @@ const projectWorkflowSummarySelect = {
   isDefault: true,
   isActive: true,
   transitionMode: true,
-} satisfies Prisma.ProjectWorkflowSelect;
+} satisfies Prisma.WorkflowSelect;
 
 export function listProjectWorkflows(projectId: number) {
-  return prisma.projectWorkflow.findMany({
+  return prisma.workflow.findMany({
     where: { projectId },
     orderBy: [{ isDefault: "desc" }, { id: "asc" }],
     select: {
@@ -792,14 +792,14 @@ export function listProjectTaskTypes(projectId: number) {
 }
 
 export function findProjectWorkflow(projectId: number, workflowId: number) {
-  return prisma.projectWorkflow.findFirst({
+  return prisma.workflow.findFirst({
     where: { id: workflowId, projectId },
     select: projectWorkflowSummarySelect,
   });
 }
 
 export function countProjectWorkflows(projectId: number) {
-  return prisma.projectWorkflow.count({ where: { projectId } });
+  return prisma.workflow.count({ where: { projectId } });
 }
 
 export function countTaskTypesUsingWorkflow(workflowId: number) {
@@ -819,13 +819,13 @@ export function createProjectWorkflow(
   return prisma.$transaction(async (tx) => {
     if (data.isDefault) {
       // Nếu isDefault = true, update các workflow khác thành false
-      await tx.projectWorkflow.updateMany({
+      await tx.workflow.updateMany({
         where: { projectId },
         data: { isDefault: false },
       });
     }
 
-    return tx.projectWorkflow.create({
+    return tx.workflow.create({
       data: {
         projectId,
         name: data.name,
@@ -852,13 +852,13 @@ export function updateProjectWorkflow(
 ) {
   return prisma.$transaction(async (tx) => {
     if (data.isDefault) {
-      await tx.projectWorkflow.updateMany({
+      await tx.workflow.updateMany({
         where: { projectId, id: { not: workflowId } },
         data: { isDefault: false },
       });
     }
 
-    return tx.projectWorkflow.update({
+    return tx.workflow.update({
       where: { id: workflowId },
       data: {
         ...(data.name !== undefined ? { name: data.name } : {}),
@@ -891,8 +891,8 @@ export function deleteProjectWorkflow(workflowId: number) {
     }
 
     await tx.projectWorkflowTransition.deleteMany({ where: { workflowId } });
-    await tx.projectWorkflowStatus.deleteMany({ where: { workflowId } });
-    await tx.projectWorkflow.delete({ where: { id: workflowId } });
+    await tx.workflowStatus.deleteMany({ where: { workflowId } });
+    await tx.workflow.delete({ where: { id: workflowId } });
   });
 }
 
@@ -900,7 +900,7 @@ export function findProjectWorkflowStatus(
   workflowId: number,
   statusId: number,
 ) {
-  return prisma.projectWorkflowStatus.findFirst({
+  return prisma.workflowStatus.findFirst({
     where: { id: statusId, workflowId },
     select: projectWorkflowStatusSelect,
   });
@@ -910,7 +910,7 @@ export function findProjectWorkflowStatusByKey(
   workflowId: number,
   key: string,
 ) {
-  return prisma.projectWorkflowStatus.findFirst({
+  return prisma.workflowStatus.findFirst({
     where: { workflowId, key },
     select: { id: true },
   });
@@ -920,14 +920,14 @@ export function findProjectWorkflowStatusByName(
   workflowId: number,
   name: string,
 ) {
-  return prisma.projectWorkflowStatus.findFirst({
+  return prisma.workflowStatus.findFirst({
     where: { workflowId, name },
     select: { id: true },
   });
 }
 
 export function listProjectWorkflowStatusIds(workflowId: number) {
-  return prisma.projectWorkflowStatus.findMany({
+  return prisma.workflowStatus.findMany({
     where: { workflowId },
     select: { id: true },
   });
@@ -937,7 +937,7 @@ export function countStatusesInWorkflow(
   workflowId: number,
   statusIds: number[],
 ) {
-  return prisma.projectWorkflowStatus.count({
+  return prisma.workflowStatus.count({
     where: { workflowId, id: { in: statusIds } },
   });
 }
@@ -957,13 +957,13 @@ export function createProjectWorkflowStatus(
 ) {
   return prisma.$transaction(async (tx) => {
     if (data.isInitial) {
-      await tx.projectWorkflowStatus.updateMany({
+      await tx.workflowStatus.updateMany({
         where: { workflowId },
         data: { isInitial: false },
       });
     }
 
-    return tx.projectWorkflowStatus.create({
+    return tx.workflowStatus.create({
       data: {
         workflowId,
         name: data.name,
@@ -995,13 +995,13 @@ export function updateProjectWorkflowStatus(
 ) {
   return prisma.$transaction(async (tx) => {
     if (data.isInitial) {
-      await tx.projectWorkflowStatus.updateMany({
+      await tx.workflowStatus.updateMany({
         where: { workflowId, id: { not: statusId } },
         data: { isInitial: false },
       });
     }
 
-    return tx.projectWorkflowStatus.update({
+    return tx.workflowStatus.update({
       where: { id: statusId },
       data: {
         ...(data.name !== undefined ? { name: data.name } : {}),
@@ -1041,7 +1041,7 @@ export function deleteProjectWorkflowStatus(statusId: number) {
       },
     });
 
-    await tx.projectWorkflowStatus.delete({ where: { id: statusId } });
+    await tx.workflowStatus.delete({ where: { id: statusId } });
   });
 }
 
@@ -1050,7 +1050,7 @@ export function reorderProjectWorkflowStatuses(statusIds: number[]) {
   // sortOrder = index trong mảng
   return prisma.$transaction(
     statusIds.map((id, sortOrder) =>
-      prisma.projectWorkflowStatus.update({
+      prisma.workflowStatus.update({
         where: { id },
         data: { sortOrder },
       }),

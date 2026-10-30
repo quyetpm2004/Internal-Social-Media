@@ -125,8 +125,7 @@
     "videoNotSupported": "Trình duyệt không hỗ trợ video.",
     "description": "Mô tả",
     "creator": "Người tạo",
-    "joinedAt": "Ngày tham gia"
-    ,
+    "joinedAt": "Ngày tham gia",
     "processing": "Đang xử lý...",
     "you": "Bạn",
     "goHome": "Về trang chủ",
@@ -196,11 +195,6 @@
     "languageToggle": "Đổi ngôn ngữ"
   },
   "department": {
-    "recurrence": {
-      "NONE": "Không lặp lại",
-      "WEEKLY": "Hằng tuần",
-      "MONTHLY": "Hằng tháng"
-    },
     "memberStatus": {
       "ACTIVE": "Đang làm việc",
       "REMOTE": "Làm từ xa",
@@ -213,15 +207,11 @@
       "priority": "Mức ưu tiên",
       "dueDate": "Hạn hoàn thành",
       "assignees": "Người thực hiện",
-      "reviewer": "Người kiểm duyệt",
       "estimate": "Effort dự kiến (giờ)",
-      "recurrence": "Lặp lại",
       "status": "Trạng thái"
     },
     "createTask": {
-      "button": "Tạo công việc",
-      "addAssignee": "Thêm người thực hiện",
-      "assigneeRequired": "Chọn ít nhất một người thực hiện"
+      "button": "Tạo công việc"
     },
     "taskConfig": {
       "button": "Cấu hình công việc",
@@ -292,7 +282,7 @@
       "priorityTasks": "Công việc cần ưu tiên xử lý",
       "noPriority": "Không có công việc cần ưu tiên.",
       "kpiOverview": "Tổng quan KPI",
-      "averageScore": "Điểm KPI trung bình của phòng ban",
+      "averageScore": "Điểm KPI của phòng ban",
       "topPerformers": "Nổi bật",
       "needSupport": "Cần hỗ trợ",
       "noSupport": "Chưa có nhân viên nào cần hỗ trợ.",
@@ -342,7 +332,7 @@
     },
     "tasks": {
       "title": "Công việc phòng ban",
-      "subtitle": "Công việc không thuộc dự án, bao gồm cả công việc định kỳ.",
+      "subtitle": "Công việc không thuộc dự án.",
       "search": "Tìm theo tên hoặc mã...",
       "allAssignees": "Mọi người thực hiện",
       "allPriorities": "Mọi mức ưu tiên",
@@ -354,7 +344,6 @@
         "all": "Tất cả",
         "overdue": "Quá hạn",
         "atRisk": "Nguy cơ chậm",
-        "recurring": "Định kỳ",
         "unassigned": "Chưa giao"
       },
       "view": {
@@ -362,8 +351,7 @@
         "board": "Dạng bảng Kanban"
       },
       "columns": {
-        "task": "Công việc",
-        "progress": "Tiến độ"
+        "task": "Công việc"
       }
     },
     "memberKpi": {
@@ -380,7 +368,7 @@
       },
       "from": "Từ ngày",
       "to": "Đến ngày",
-      "averageScore": "Điểm KPI trung bình",
+      "averageScore": "Điểm KPI của phòng ban",
       "vsPrevious": "{{delta}} so với kỳ trước",
       "doneTasks": "Việc hoàn thành",
       "completionHint": "{{percent}}% so với kế hoạch",
@@ -461,8 +449,7 @@
       "recentSearches": "Nội dung tìm kiếm gần đây",
       "noSearchHistory": "Chưa có lịch sử tìm kiếm.",
       "searching": "Đang tìm kiếm...",
-      "noUsersFound": "Không tìm thấy người dùng nào."
-      ,
+      "noUsersFound": "Không tìm thấy người dùng nào.",
       "filterAll": "Tất cả",
       "filterUnread": "Chưa đọc",
       "filterGroups": "Nhóm",
@@ -500,8 +487,7 @@
       "typeMessage": "Nhập tin nhắn...",
       "emoji": "Biểu cảm",
       "send": "Gửi",
-      "searchEmoji": "Tìm biểu cảm..."
-      ,
+      "searchEmoji": "Tìm biểu cảm...",
       "groupCreateSuccess": "Tạo nhóm chat thành công",
       "selectAtLeastOneUser": "Vui lòng chọn ít nhất một người",
       "memberAdded": "Đã thêm thành viên",
@@ -530,8 +516,7 @@
       "blockContact": "Chặn liên lạc",
       "creating": "Đang tạo...",
       "addMembers": "Thêm thành viên",
-      "members": "Thành viên"
-      ,
+      "members": "Thành viên",
       "recall": "Thu hồi",
       "recallConfirm": "Bạn có chắc muốn thu hồi tin nhắn này?",
       "edited": "Đã chỉnh sửa",
@@ -822,8 +807,7 @@
       "mediaTitle": "File phương tiện",
       "mediaDescription": "Ảnh và video từ các bài viết trong nhóm",
       "noMedia": "Chưa có file phương tiện nào",
-      "video": "Video"
-      ,
+      "video": "Video",
       "memberAdded": "Thêm thành viên thành công",
       "memberRoleUpdated": "Cập nhật quyền thành công",
       "memberRemoved": "Đã xóa thành viên khỏi nhóm",
@@ -839,15 +823,13 @@
       "settingPostReview": "Phê duyệt bài viết",
       "settingsGroup": "Thiết lập nhóm",
       "settingsMembers": "Quản lý thành viên",
-      "settingsContent": "Quản lý nội dung thảo luận"
-      ,
+      "settingsContent": "Quản lý nội dung thảo luận",
       "filterAll": "Tất cả",
       "filterMy": "Nhóm của bạn",
       "memberBadge": "Thành viên",
       "pendingBadge": "Đang chờ duyệt",
       "requestJoin": "Yêu cầu tham gia",
-      "join": "Tham gia"
-      ,
+      "join": "Tham gia",
       "createNewGroup": "Tạo nhóm mới",
       "groupName": "Tên nhóm",
       "groupNameExample": "Ví dụ: Nhóm Frontend",
@@ -865,8 +847,7 @@
       "removeMemberConfirm": "Bạn có chắc chắn muốn xóa {{name}} khỏi nhóm?",
       "searchMembersPlaceholder": "Tìm kiếm thành viên...",
       "established": "Thành lập",
-      "memberEmail": "Email thành viên"
-      ,
+      "memberEmail": "Email thành viên",
       "tabs": {
         "discussion": "Thảo luận",
         "members": "Thành viên",
@@ -1708,6 +1689,68 @@
       "projectTag": "Dự án",
       "noMatch": "Không có dữ liệu phù hợp"
     },
+    "orgDashboard": {
+      "title": "Tổng quan tổ chức",
+      "back": "Về tổng quan",
+      "detail": "Chi tiết",
+      "kpi": {
+        "onTime": "Đúng hạn",
+        "running": "Dự án chạy",
+        "lateProjects": "Dự án trễ",
+        "overdueTasks": "Task quá hạn",
+        "openIssues": "Issue mở",
+        "slowPeople": "Người chậm"
+      },
+      "health": {
+        "title": "Radar sức khỏe dự án",
+        "axisTime": "Thời gian đã trôi (%)",
+        "axisProgress": "Tiến độ (%)",
+        "dangerZone": "Vùng nguy hiểm",
+        "ok": "Ổn định",
+        "warn": "Cảnh báo",
+        "danger": "Nguy hiểm",
+        "tooltip": "Tiến độ {{progress}}% · đã trôi {{elapsed}}%"
+      },
+      "heat": {
+        "title": "Bản đồ nhiệt rủi ro",
+        "late": "Trễ",
+        "idle": "Rảnh",
+        "kpi": "Điểm KPI"
+      },
+      "risk": {
+        "title": "Điểm rủi ro tổ chức",
+        "level": {
+          "low": "Thấp",
+          "medium": "Trung bình",
+          "high": "Cao"
+        },
+        "factors": {
+          "lateProjects": "Dự án trễ",
+          "overdueTasks": "Task quá hạn"
+        },
+        "points": "+{{count}}"
+      },
+      "trend": {
+        "title": "Xu hướng"
+      },
+      "workload": {
+        "title": "Tải công việc",
+        "inProject": "Trong dự án",
+        "outside": "Ngoài dự án",
+        "overdue": "Quá hạn"
+      },
+      "activity": {
+        "title": "Hoạt động"
+      },
+      "sections": {
+        "projects": "Dự án",
+        "departments": "Phòng ban",
+        "workload": "Nhân sự",
+        "activity": "Hoạt động",
+        "risks": "Rủi ro"
+      },
+      "members": "{{count}} người"
+    },
     "kpi": {
       "title": "KPI nhân viên",
       "subtitle": "Đánh giá hiệu suất làm việc dựa trên nhiệm vụ được giao",
@@ -1840,6 +1883,7 @@
         "today": "Hôm nay",
         "thisWeek": "Tuần này",
         "later": "Sau này",
+        "finished": "Đã kết thúc",
         "none": "Không hạn"
       },
       "dueFilter": {

@@ -150,7 +150,7 @@ const openTaskSelect = {
 function openTaskWhere(
   memberIds: number[],
   projectId?: number,
-): Prisma.ProjectTaskWhereInput {
+): Prisma.TaskWhereInput {
   return {
     ...(projectId ? { projectId } : {}),
     status: { category: { in: OPEN_CATEGORIES } },
@@ -161,7 +161,7 @@ function openTaskWhere(
 }
 
 export function findOpenTasks(memberIds: number[], projectId?: number) {
-  return prisma.projectTask.findMany({
+  return prisma.task.findMany({
     where: openTaskWhere(memberIds, projectId),
     select: {
       ...openTaskSelect,
@@ -187,14 +187,14 @@ export async function findMemberOpenTasks(
   const where = openTaskWhere([userId], projectId);
 
   const [items, total] = await Promise.all([
-    prisma.projectTask.findMany({
+    prisma.task.findMany({
       where,
       select: openTaskSelect,
       orderBy: [{ dueDate: "asc" }, { id: "desc" }],
       skip,
       take,
     }),
-    prisma.projectTask.count({ where }),
+    prisma.task.count({ where }),
   ]);
 
   return { items, total };

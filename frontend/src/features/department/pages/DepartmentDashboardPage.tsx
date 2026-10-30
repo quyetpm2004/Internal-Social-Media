@@ -13,25 +13,20 @@ import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import DashboardCard from "@/components/shared/dashboard/DashboardCard";
 import MeterList from "@/components/shared/dashboard/MeterList";
-import NoticeList, {
-  type NoticeItem,
-} from "@/components/shared/dashboard/NoticeList";
 import ProgressRing from "@/components/shared/dashboard/ProgressRing";
 import ShareBars from "@/components/shared/dashboard/ShareBars";
 import StatCard from "@/components/shared/dashboard/StatCard";
 import TrendChart from "@/features/work/components/TrendChart";
 import { departmentOverviewApi } from "@/features/department/api/department-overview.api";
-import CreateTaskModal from "@/features/department/components/CreateTaskModal";
+import DepartmentTaskFormModal from "@/features/department/components/DepartmentTaskFormModal";
 import DepartmentPageHeader from "@/features/department/components/DepartmentPageHeader";
 import MemberAvatar from "@/features/department/components/MemberAvatar";
 import SegmentedControl from "@/features/department/components/SegmentedControl";
-import { useDepartmentStore } from "@/features/department/store/department.store";
 import type {
   DepartmentOverview,
   OverviewPeriod,
 } from "@/features/department/types/department.type";
 import {
-  formatDue,
   percentOf,
   scoreBadge,
 } from "@/features/department/utils/department-task";
@@ -63,9 +58,8 @@ function trendLabel(period: OverviewPeriod, from: string) {
 
 export default function DepartmentDashboardPage() {
   const { t } = useTranslation();
-  const storeMembers = useDepartmentStore((state) => state.members);
-  const addTask = useDepartmentStore((state) => state.addTask);
   const [creating, setCreating] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [period, setPeriod] = useState<OverviewPeriod>("month");
   const [result, setResult] = useState<{
     period: OverviewPeriod;
@@ -87,7 +81,7 @@ export default function DepartmentDashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [period]);
+  }, [period, reloadKey]);
 
   const loading = result?.period !== period;
   const data = loading ? null : result.data;
@@ -123,11 +117,10 @@ export default function DepartmentDashboardPage() {
   );
 
   const createModal = (
-    <CreateTaskModal
+    <DepartmentTaskFormModal
       open={creating}
-      members={storeMembers}
       onClose={() => setCreating(false)}
-      onSubmit={addTask}
+      onSaved={() => setReloadKey((key) => key + 1)}
     />
   );
 
@@ -172,20 +165,6 @@ export default function DepartmentDashboardPage() {
     value: data.status[key],
     percent: percentOf(data.status[key], statusTotal),
     color,
-  }));
-
-  const priorityItems: NoticeItem[] = data.priorityTasks.map((task) => ({
-    id: task.id,
-    title: `${task.code} · ${task.title}`,
-    meta: `${t("department.fields.dueDate")}: ${formatDue(task.dueDate)} · ${
-      task.assignees.map((assignee) => assignee.name).join(", ") ||
-      t("department.tasks.unassigned")
-    } · ${task.project}`,
-    badge:
-      task.kind === "overdue"
-        ? t("department.dashboard.overdueDays", { count: task.lateDays })
-        : t("department.dashboard.dueToday"),
-    tone: task.kind === "overdue" ? "rose" : "amber",
   }));
 
   const scored = (ids: number[]) =>
@@ -316,14 +295,25 @@ export default function DepartmentDashboardPage() {
       </section>
 
       <section className="grid gap-4 @4xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <DashboardCard title={t("department.dashboard.priorityTasks")}>
-          {priorityItems.length > 0 ? (
-            <NoticeList items={priorityItems} />
-          ) : (
-            <p className="py-6 text-center text-sm text-slate-400">
-              {t("department.dashboard.noPriority")}
-            </p>
-          )}
+        <DashboardCard title={t("department.dashboard.trend")}>
+          <TrendChart
+            labels={data.trend.map((point) => trendLabel(period, point.from))}
+            valueSuffix="%"
+            series={[
+              {
+                key: "completion",
+                label: t("department.kpi.completionRate"),
+                color: COLORS.emerald,
+                values: data.trend.map((point) => point.completionRate ?? 0),
+              },
+              {
+                key: "onTime",
+                label: t("department.kpi.onTimeRate"),
+                color: COLORS.primary,
+                values: data.trend.map((point) => point.onTimeRate ?? 0),
+              },
+            ]}
+          />
         </DashboardCard>
 
         <DashboardCard
@@ -370,27 +360,6 @@ export default function DepartmentDashboardPage() {
           )}
         </DashboardCard>
       </section>
-
-      <DashboardCard title={t("department.dashboard.trend")}>
-        <TrendChart
-          labels={data.trend.map((point) => trendLabel(period, point.from))}
-          valueSuffix="%"
-          series={[
-            {
-              key: "completion",
-              label: t("department.kpi.completionRate"),
-              color: COLORS.emerald,
-              values: data.trend.map((point) => point.completionRate ?? 0),
-            },
-            {
-              key: "onTime",
-              label: t("department.kpi.onTimeRate"),
-              color: COLORS.primary,
-              values: data.trend.map((point) => point.onTimeRate ?? 0),
-            },
-          ]}
-        />
-      </DashboardCard>
 
       {createModal}
     </main>

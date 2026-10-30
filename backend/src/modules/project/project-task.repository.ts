@@ -58,7 +58,7 @@ export const projectTaskListSelect = {
     },
   },
   _count: { select: { children: true } },
-} satisfies Prisma.ProjectTaskSelect;
+} satisfies Prisma.TaskSelect;
 
 export const projectTaskDetailSelect = {
   id: true,
@@ -137,17 +137,17 @@ export const projectTaskDetailSelect = {
       projectRole: { select: projectRoleSelect },
     },
   },
-} satisfies Prisma.ProjectTaskSelect;
+} satisfies Prisma.TaskSelect;
 
-export type ProjectTaskListRow = Prisma.ProjectTaskGetPayload<{
+export type ProjectTaskListRow = Prisma.TaskGetPayload<{
   select: typeof projectTaskListSelect;
 }>;
 
-export type ProjectTaskDetailRow = Prisma.ProjectTaskGetPayload<{
+export type ProjectTaskDetailRow = Prisma.TaskGetPayload<{
   select: typeof projectTaskDetailSelect;
 }>;
 
-function dateWhere(date: string): Prisma.ProjectTaskWhereInput {
+function dateWhere(date: string): Prisma.TaskWhereInput {
   const day = new Date(`${date}T00:00:00.000Z`);
   const start = new Date(`${date}T00:00:00.000+07:00`);
   const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
@@ -163,8 +163,8 @@ function dateWhere(date: string): Prisma.ProjectTaskWhereInput {
 export function buildTaskWhere(
   filter: TaskListFilter,
   includeStatus: boolean,
-): Prisma.ProjectTaskWhereInput {
-  const and: Prisma.ProjectTaskWhereInput[] = [{ projectId: filter.projectId }];
+): Prisma.TaskWhereInput {
+  const and: Prisma.TaskWhereInput[] = [{ projectId: filter.projectId }];
 
   if (filter.workflowId) {
     and.push({ workflowId: filter.workflowId });
@@ -232,7 +232,7 @@ export function isProjectMember(projectId: number, userId: number) {
 }
 
 export function findWorkflowInProject(projectId: number, workflowId: number) {
-  return prisma.projectWorkflow.findFirst({
+  return prisma.workflow.findFirst({
     where: { id: workflowId, projectId },
     select: { id: true, isActive: true, isDefault: true },
   });
@@ -246,7 +246,7 @@ export function findTaskTypeInProject(projectId: number, taskTypeId: number) {
 }
 
 export function findStatusInWorkflow(workflowId: number, statusId: number) {
-  return prisma.projectWorkflowStatus.findFirst({
+  return prisma.workflowStatus.findFirst({
     where: { id: statusId, workflowId },
     select: { id: true, category: true },
   });
@@ -258,7 +258,7 @@ export function updateProjectTaskStatus(
   updatedById: number,
   completedAt: Date | null,
 ) {
-  return prisma.projectTask.update({
+  return prisma.task.update({
     where: { id: taskId },
     data: { statusId, updatedById, completedAt },
     select: { id: true },
@@ -266,7 +266,7 @@ export function updateProjectTaskStatus(
 }
 
 export function listWorkflowNames(projectId: number) {
-  return prisma.projectWorkflow.findMany({
+  return prisma.workflow.findMany({
     where: { projectId },
     orderBy: [{ isDefault: "desc" }, { id: "asc" }],
     select: { id: true, name: true },
@@ -274,7 +274,7 @@ export function listWorkflowNames(projectId: number) {
 }
 
 export function listStatusSummaries(workflowId: number) {
-  return prisma.projectWorkflowStatus.findMany({
+  return prisma.workflowStatus.findMany({
     where: { workflowId },
     orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     select: {
@@ -288,11 +288,11 @@ export function listStatusSummaries(workflowId: number) {
 }
 
 export function listProjectTasks(
-  where: Prisma.ProjectTaskWhereInput,
+  where: Prisma.TaskWhereInput,
   skip: number,
   take: number,
 ) {
-  return prisma.projectTask.findMany({
+  return prisma.task.findMany({
     where,
     skip,
     take,
@@ -301,20 +301,20 @@ export function listProjectTasks(
   });
 }
 
-export function countProjectTasks(where: Prisma.ProjectTaskWhereInput) {
-  return prisma.projectTask.count({ where });
+export function countProjectTasks(where: Prisma.TaskWhereInput) {
+  return prisma.task.count({ where });
 }
 
-export function groupTaskCountsByWorkflow(where: Prisma.ProjectTaskWhereInput) {
-  return prisma.projectTask.groupBy({
+export function groupTaskCountsByWorkflow(where: Prisma.TaskWhereInput) {
+  return prisma.task.groupBy({
     by: ["workflowId"],
     where,
     _count: { _all: true },
   });
 }
 
-export function groupTaskCountsByStatus(where: Prisma.ProjectTaskWhereInput) {
-  return prisma.projectTask.groupBy({
+export function groupTaskCountsByStatus(where: Prisma.TaskWhereInput) {
+  return prisma.task.groupBy({
     by: ["statusId"],
     where,
     _count: { _all: true },
@@ -322,26 +322,26 @@ export function groupTaskCountsByStatus(where: Prisma.ProjectTaskWhereInput) {
 }
 
 export function findProjectTaskDetail(projectId: number, taskId: number) {
-  return prisma.projectTask.findFirst({
+  return prisma.task.findFirst({
     where: { id: taskId, projectId },
     select: projectTaskDetailSelect,
   });
 }
 
 export function countTasksUsingWorkflow(workflowId: number) {
-  return prisma.projectTask.count({ where: { workflowId } });
+  return prisma.task.count({ where: { workflowId } });
 }
 
 export function countTasksUsingStatus(statusId: number) {
-  return prisma.projectTask.count({ where: { statusId } });
+  return prisma.task.count({ where: { statusId } });
 }
 
 export function countTasksUsingTaskType(taskTypeId: number) {
-  return prisma.projectTask.count({ where: { taskTypeId } });
+  return prisma.task.count({ where: { taskTypeId } });
 }
 
 export function countTasksUsingProjectRole(projectRoleId: number) {
-  return prisma.projectTaskMember.count({ where: { projectRoleId } });
+  return prisma.taskMember.count({ where: { projectRoleId } });
 }
 
 /**
@@ -367,7 +367,7 @@ export function findActiveWorkflow(
   projectId: number,
   workflowId: number,
 ) {
-  return tx.projectWorkflow.findFirst({
+  return tx.workflow.findFirst({
     where: { id: workflowId, projectId, isActive: true },
     select: { id: true, isDefault: true },
   });
@@ -389,7 +389,7 @@ export function findWorkflowStatus(
   workflowId: number,
   statusId: number,
 ) {
-  return tx.projectWorkflowStatus.findFirst({
+  return tx.workflowStatus.findFirst({
     where: { id: statusId, workflowId },
     select: { id: true, category: true },
   });
@@ -399,7 +399,7 @@ export function findInitialStatus(
   tx: Prisma.TransactionClient,
   workflowId: number,
 ) {
-  return tx.projectWorkflowStatus.findFirst({
+  return tx.workflowStatus.findFirst({
     where: { workflowId, isInitial: true },
     orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     select: { id: true, category: true },
@@ -436,7 +436,7 @@ export function findTaskParent(
   projectId: number,
   taskId: number,
 ) {
-  return tx.projectTask.findFirst({
+  return tx.task.findFirst({
     where: { id: taskId, projectId },
     select: { id: true, parentTaskId: true },
   });
@@ -464,7 +464,7 @@ export function createProjectTask(
   tx: Prisma.TransactionClient,
   data: TaskWriteData,
 ) {
-  return tx.projectTask.create({
+  return tx.task.create({
     data,
     select: { id: true },
   });
@@ -474,7 +474,7 @@ export function createProjectTasks(
   tx: Prisma.TransactionClient,
   data: TaskWriteData[],
 ) {
-  return tx.projectTask.createMany({ data });
+  return tx.task.createMany({ data });
 }
 
 export function findTaskIdsByCodes(
@@ -482,7 +482,7 @@ export function findTaskIdsByCodes(
   projectId: number,
   codes: string[],
 ) {
-  return tx.projectTask.findMany({
+  return tx.task.findMany({
     where: { projectId, code: { in: codes } },
     select: { id: true },
   });
@@ -499,7 +499,7 @@ export function createTaskMembers(
   tx: Prisma.TransactionClient,
   data: TaskMemberWrite[],
 ) {
-  return tx.projectTaskMember.createMany({ data });
+  return tx.taskMember.createMany({ data });
 }
 
 export function replaceTaskMembers(
@@ -507,9 +507,9 @@ export function replaceTaskMembers(
   taskId: number,
   data: TaskMemberWrite[],
 ) {
-  return tx.projectTaskMember
+  return tx.taskMember
     .deleteMany({ where: { taskId } })
-    .then(() => tx.projectTaskMember.createMany({ data }));
+    .then(() => tx.taskMember.createMany({ data }));
 }
 
 export function updateProjectTask(
@@ -531,7 +531,7 @@ export function updateProjectTask(
     completedAt: Date | null;
   },
 ) {
-  return tx.projectTask.update({
+  return tx.task.update({
     where: { id: taskId },
     data,
     select: { id: true },
@@ -543,7 +543,7 @@ export function countChildTasks(
   projectId: number,
   taskId: number,
 ) {
-  return tx.projectTask.count({
+  return tx.task.count({
     where: { projectId, parentTaskId: taskId },
   });
 }
@@ -552,7 +552,7 @@ export function deleteProjectTask(
   tx: Prisma.TransactionClient,
   taskId: number,
 ) {
-  return tx.projectTask.delete({ where: { id: taskId } });
+  return tx.task.delete({ where: { id: taskId } });
 }
 
 const taskFileSelect = {
@@ -563,7 +563,7 @@ const taskFileSelect = {
   fileSize: true,
   attachmentType: true,
   source: true,
-} satisfies Prisma.ProjectTaskAttachmentSelect;
+} satisfies Prisma.TaskAttachmentSelect;
 
 const commentFileSelect = {
   id: true,
@@ -572,7 +572,7 @@ const commentFileSelect = {
   mimeType: true,
   fileSize: true,
   attachmentType: true,
-} satisfies Prisma.ProjectTaskCommentAttachmentSelect;
+} satisfies Prisma.TaskCommentAttachmentSelect;
 
 const taskCommentSelect = {
   id: true,
@@ -590,10 +590,10 @@ const taskCommentSelect = {
     orderBy: { id: "asc" },
     select: commentFileSelect,
   },
-} satisfies Prisma.ProjectTaskCommentSelect;
+} satisfies Prisma.TaskCommentSelect;
 
 export function listTaskComments(taskId: number) {
-  return prisma.projectTaskComment.findMany({
+  return prisma.taskComment.findMany({
     where: { taskId },
     orderBy: { createdAt: "asc" },
     select: taskCommentSelect,
@@ -601,7 +601,7 @@ export function listTaskComments(taskId: number) {
 }
 
 export function listTaskAttachments(taskId: number) {
-  return prisma.projectTaskAttachment.findMany({
+  return prisma.taskAttachment.findMany({
     where: { taskId, status: "READY" },
     orderBy: { id: "asc" },
     select: taskFileSelect,
@@ -614,7 +614,7 @@ export function findDescriptionImageIds(
   taskId: number | null,
   keys: string[],
 ) {
-  return tx.projectTaskAttachment.findMany({
+  return tx.taskAttachment.findMany({
     where: {
       fileKey: { in: keys },
       source: "DESCRIPTION",
@@ -636,7 +636,7 @@ export async function claimTaskAttachments(
   source: "DESCRIPTION" | "FILE",
   ids: number[],
 ) {
-  await tx.projectTaskAttachment.updateMany({
+  await tx.taskAttachment.updateMany({
     where: {
       taskId,
       source,
@@ -647,7 +647,7 @@ export async function claimTaskAttachments(
 
   if (ids.length === 0) return;
 
-  const updated = await tx.projectTaskAttachment.updateMany({
+  const updated = await tx.taskAttachment.updateMany({
     where: {
       id: { in: ids },
       source,
@@ -674,13 +674,13 @@ export async function createTaskComment(
   attachmentIds: number[],
 ) {
   return prisma.$transaction(async (tx) => {
-    const comment = await tx.projectTaskComment.create({
+    const comment = await tx.taskComment.create({
       data: { taskId, userId, content },
       select: { id: true },
     });
 
     if (attachmentIds.length > 0) {
-      const updated = await tx.projectTaskCommentAttachment.updateMany({
+      const updated = await tx.taskCommentAttachment.updateMany({
         where: {
           id: { in: attachmentIds },
           commentId: null,
@@ -694,7 +694,7 @@ export async function createTaskComment(
       }
     }
 
-    return tx.projectTaskComment.findUniqueOrThrow({
+    return tx.taskComment.findUniqueOrThrow({
       where: { id: comment.id },
       select: taskCommentSelect,
     });

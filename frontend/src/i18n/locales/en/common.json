@@ -198,11 +198,6 @@
     "languageToggle": "Change language"
   },
   "department": {
-    "recurrence": {
-      "NONE": "Does not repeat",
-      "WEEKLY": "Weekly",
-      "MONTHLY": "Monthly"
-    },
     "memberStatus": {
       "ACTIVE": "Working",
       "REMOTE": "Remote",
@@ -215,15 +210,11 @@
       "priority": "Priority",
       "dueDate": "Due date",
       "assignees": "Assignees",
-      "reviewer": "Reviewer",
       "estimate": "Estimated effort (hours)",
-      "recurrence": "Repeat",
       "status": "Status"
     },
     "createTask": {
-      "button": "Create task",
-      "addAssignee": "Add assignee",
-      "assigneeRequired": "Select at least one assignee"
+      "button": "Create task"
     },
     "taskConfig": {
       "button": "Task settings",
@@ -294,7 +285,7 @@
       "priorityTasks": "Tasks that need attention",
       "noPriority": "No tasks need attention.",
       "kpiOverview": "KPI overview",
-      "averageScore": "Average department KPI score",
+      "averageScore": "Department KPI score",
       "topPerformers": "Top performers",
       "needSupport": "Needs support",
       "noSupport": "Nobody needs support right now.",
@@ -344,7 +335,7 @@
     },
     "tasks": {
       "title": "Department tasks",
-      "subtitle": "Tasks outside projects, including recurring work.",
+      "subtitle": "Tasks outside projects.",
       "search": "Search by name or code...",
       "allAssignees": "All assignees",
       "allPriorities": "All priorities",
@@ -356,7 +347,6 @@
         "all": "All",
         "overdue": "Overdue",
         "atRisk": "At risk",
-        "recurring": "Recurring",
         "unassigned": "Unassigned"
       },
       "view": {
@@ -364,8 +354,7 @@
         "board": "Kanban view"
       },
       "columns": {
-        "task": "Task",
-        "progress": "Progress"
+        "task": "Task"
       }
     },
     "memberKpi": {
@@ -382,7 +371,7 @@
       },
       "from": "From",
       "to": "To",
-      "averageScore": "Average KPI score",
+      "averageScore": "Department KPI score",
       "vsPrevious": "{{delta}} vs previous period",
       "doneTasks": "Tasks completed",
       "completionHint": "{{percent}}% of plan",
@@ -463,8 +452,7 @@
       "recentSearches": "Recent searches",
       "noSearchHistory": "No search history yet.",
       "searching": "Searching...",
-      "noUsersFound": "No users found."
-      ,
+      "noUsersFound": "No users found.",
       "filterAll": "All",
       "filterUnread": "Unread",
       "filterGroups": "Groups",
@@ -502,8 +490,7 @@
       "typeMessage": "Type a message...",
       "emoji": "Emoji",
       "send": "Send",
-      "searchEmoji": "Search emoji..."
-      ,
+      "searchEmoji": "Search emoji...",
       "groupCreateSuccess": "Chat group created successfully",
       "selectAtLeastOneUser": "Please select at least one person",
       "memberAdded": "Member added",
@@ -532,8 +519,7 @@
       "blockContact": "Block contact",
       "creating": "Creating...",
       "addMembers": "Add members",
-      "members": "Members"
-      ,
+      "members": "Members",
       "recall": "Recall",
       "recallConfirm": "Are you sure you want to recall this message?",
       "edited": "Edited",
@@ -824,8 +810,7 @@
       "mediaTitle": "Media files",
       "mediaDescription": "Images and videos from group posts",
       "noMedia": "No media files yet",
-      "video": "Video"
-      ,
+      "video": "Video",
       "memberAdded": "Member added successfully",
       "memberRoleUpdated": "Role updated successfully",
       "memberRemoved": "Member removed from group",
@@ -841,15 +826,13 @@
       "settingPostReview": "Post approval",
       "settingsGroup": "Group settings",
       "settingsMembers": "Member management",
-      "settingsContent": "Discussion content management"
-      ,
+      "settingsContent": "Discussion content management",
       "filterAll": "All",
       "filterMy": "Your groups",
       "memberBadge": "Member",
       "pendingBadge": "Pending approval",
       "requestJoin": "Request to join",
-      "join": "Join"
-      ,
+      "join": "Join",
       "createNewGroup": "Create new group",
       "groupName": "Group name",
       "groupNameExample": "Example: Frontend Team",
@@ -867,8 +850,7 @@
       "removeMemberConfirm": "Are you sure you want to remove {{name}} from this group?",
       "searchMembersPlaceholder": "Search members...",
       "established": "Established",
-      "memberEmail": "Member email"
-      ,
+      "memberEmail": "Member email",
       "tabs": {
         "discussion": "Discussion",
         "members": "Members",
@@ -1710,6 +1692,68 @@
       "projectTag": "Project",
       "noMatch": "Nothing matches"
     },
+    "orgDashboard": {
+      "title": "Organization overview",
+      "back": "Back to overview",
+      "detail": "Details",
+      "kpi": {
+        "onTime": "On time",
+        "running": "Running",
+        "lateProjects": "Late projects",
+        "overdueTasks": "Overdue tasks",
+        "openIssues": "Open issues",
+        "slowPeople": "Slow people"
+      },
+      "health": {
+        "title": "Project health radar",
+        "axisTime": "Time elapsed (%)",
+        "axisProgress": "Progress (%)",
+        "dangerZone": "Danger zone",
+        "ok": "Healthy",
+        "warn": "Warning",
+        "danger": "Critical",
+        "tooltip": "Progress {{progress}}% · elapsed {{elapsed}}%"
+      },
+      "heat": {
+        "title": "Risk heatmap",
+        "late": "Late",
+        "idle": "Idle",
+        "kpi": "KPI score"
+      },
+      "risk": {
+        "title": "Organization risk score",
+        "level": {
+          "low": "Low",
+          "medium": "Medium",
+          "high": "High"
+        },
+        "factors": {
+          "lateProjects": "Late projects",
+          "overdueTasks": "Overdue tasks"
+        },
+        "points": "+{{count}}"
+      },
+      "trend": {
+        "title": "Trends"
+      },
+      "workload": {
+        "title": "Workload",
+        "inProject": "In projects",
+        "outside": "Outside projects",
+        "overdue": "Overdue"
+      },
+      "activity": {
+        "title": "Activity"
+      },
+      "sections": {
+        "projects": "Projects",
+        "departments": "Departments",
+        "workload": "People",
+        "activity": "Activity",
+        "risks": "Risks"
+      },
+      "members": "{{count}} people"
+    },
     "kpi": {
       "title": "Employee KPI",
       "subtitle": "Performance based on assigned tasks",
@@ -1842,6 +1886,7 @@
         "today": "Today",
         "thisWeek": "This week",
         "later": "Later",
+        "finished": "Finished",
         "none": "No due date"
       },
       "dueFilter": {

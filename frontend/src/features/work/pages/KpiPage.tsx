@@ -32,9 +32,9 @@ import {
   TableRow,
 } from "@/components/shared/Table";
 import { useAuthStore } from "@/features/auth/store/auth.store";
-import { departmentKpiApi } from "@/features/department/api/department-kpi.api";
+import { departmentMemberKpiApi } from "@/features/department/api/department-member-kpi.api";
 import MemberKpiBanner from "@/features/department/components/MemberKpiBanner";
-import { useDepartmentStore } from "@/features/department/store/department.store";
+import type { MemberKpiResponse } from "@/features/department/types/department.type";
 import ForbiddenPage from "@/features/forbidden/pages/ForbiddenPage";
 import { toastApiError } from "@/features/project-template/utils/api-error";
 import { kpiApi } from "@/features/work/api/kpi.api";
@@ -124,28 +124,33 @@ function PendingHint({ message }: { message: string }) {
   );
 }
 
+function isMemberKpi(
+  data: KpiResponse | MemberKpiResponse,
+): data is MemberKpiResponse {
+  return "member" in data;
+}
+
 export default function KpiPage() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const role = useAuthStore((state) => state.user?.role);
-  const departmentMembers = useDepartmentStore((state) => state.members);
   const memberParam = searchParams.get("member");
-  const viewedMember = memberParam
-    ? (departmentMembers.find((item) => String(item.id) === memberParam) ?? null)
-    : null;
-  const forbidden = memberParam !== null && (role !== "MANAGER" || !viewedMember);
+  const memberId = memberParam !== null ? Number(memberParam) : null;
+  const forbidden =
+    memberId !== null && (role !== "MANAGER" || !Number.isInteger(memberId));
   const [period, setPeriod] = useState<KpiPeriod>("month");
   const [result, setResult] = useState<{
     period: KpiPeriod;
-    data: KpiResponse | null;
+    data: KpiResponse | MemberKpiResponse | null;
   } | null>(null);
 
   useEffect(() => {
     if (forbidden) return;
     let cancelled = false;
-    const request = viewedMember
-      ? departmentKpiApi.getMemberKpi(viewedMember.id, period)
-      : kpiApi.getMyKpi(period);
+    const request =
+      memberId !== null
+        ? departmentMemberKpiApi.getMemberKpi(memberId, period)
+        : kpiApi.getMyKpi(period);
     request
       .then((response) => {
         if (!cancelled) setResult({ period, data: response.data });
@@ -158,7 +163,7 @@ export default function KpiPage() {
     return () => {
       cancelled = true;
     };
-  }, [period, forbidden, viewedMember]);
+  }, [period, forbidden, memberId]);
 
   if (forbidden) return <ForbiddenPage />;
 
@@ -201,8 +206,13 @@ export default function KpiPage() {
     </header>
   );
 
+  const viewedMember = data && isMemberKpi(data) ? data.member : null;
   const memberBanner = viewedMember ? (
-    <MemberKpiBanner member={viewedMember} rank={data?.rank ?? null} total={data?.teamSize ?? null} />
+    <MemberKpiBanner
+      member={viewedMember}
+      rank={data?.rank ?? null}
+      total={data?.teamSize ?? null}
+    />
   ) : null;
 
   if (!data) {
@@ -281,7 +291,7 @@ export default function KpiPage() {
   const attentionItems: NoticeItem[] = data.attention.map((item) => ({
     id: item.id,
     title: `${item.code} · ${item.title}`,
-    meta: item.project,
+    meta: item.project ?? "",
     badge: t(`pages.kpi.attention.${item.kind}`, { count: item.amount }),
     tone: attentionTones[item.kind],
   }));

@@ -40,7 +40,8 @@ import ProjectTemplateDetailPage from "@/features/project-template/pages/Project
 import ProjectListPage from "@/features/project/pages/ProjectListPage";
 import ProjectDetailPage from "@/features/project/pages/ProjectDetailPage";
 import WorkLayout from "@/components/layout/work/WorkLayout";
-import OrgOverviewPage from "@/features/work/pages/OrgOverviewPage";
+import OrgOverviewDashboardPage from "@/features/work/pages/OrgOverviewDashboardPage";
+import OrgOverviewDetailPage from "@/features/work/pages/OrgOverviewDetailPage";
 import MyWorkPage from "@/features/work/pages/MyWorkPage";
 import WorkSpacePage from "@/features/work/pages/WorkSpacePage";
 import KpiPage from "@/features/work/pages/KpiPage";
@@ -179,7 +180,11 @@ export const router = createBrowserRouter([
         children: [
           {
             path: "/work",
-            element: <OrgOverviewPage />,
+            element: <OrgOverviewDashboardPage />,
+          },
+          {
+            path: "/work/overview/:section",
+            element: <OrgOverviewDetailPage />,
           },
           {
             path: "/work/mine",

@@ -88,15 +88,17 @@ function workloadOf(tasks: OpenTaskRow[], memberId: number, todayIso: string) {
     { id: number; name: string; open: number; overdue: number }
   >();
   for (const task of mine) {
-    const entry = projects.get(task.project.id) ?? {
-      id: task.project.id,
-      name: task.project.name,
+    const project = task.project;
+    if (!project) continue;
+    const entry = projects.get(project.id) ?? {
+      id: project.id,
+      name: project.name,
       open: 0,
       overdue: 0,
     };
     entry.open += 1;
     if (isLate(task)) entry.overdue += 1;
-    projects.set(task.project.id, entry);
+    projects.set(project.id, entry);
   }
 
   return {

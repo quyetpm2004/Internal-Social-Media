@@ -13,25 +13,31 @@ import type {
 } from "@/features/work/types/work.type";
 import { toastApiError } from "@/features/project-template/utils/api-error";
 
-type DueBucket = "overdue" | "today" | "thisWeek" | "later" | "none";
+type DueBucket =
+  "overdue" | "today" | "thisWeek" | "later" | "finished" | "none";
 type DueFilter = "all" | WorkDue;
 type GroupBy = "due" | "project";
 
-const CATEGORIES: WorkCategory[] = [
-  "TODO",
-  "IN_PROGRESS",
-  "DONE",
-  "CANCELLED",
-];
+const CATEGORIES: WorkCategory[] = ["TODO", "IN_PROGRESS", "DONE", "CANCELLED"];
 const OPEN_CATEGORIES: WorkCategory[] = ["TODO", "IN_PROGRESS"];
-const DUE_ORDER: DueBucket[] = ["overdue", "today", "thisWeek", "later", "none"];
+const DUE_ORDER: DueBucket[] = [
+  "overdue",
+  "today",
+  "thisWeek",
+  "later",
+  "finished",
+  "none",
+];
 const MINE_ROLES: WorkRole[] = ["ASSIGNEE", "REVIEWER"];
 const ASSIGNED_ROLES: WorkRole[] = ["REPORTER"];
 
 const categoryTone: Record<WorkCategory, { dot: string; active: string }> = {
   TODO: { dot: "bg-blue-500", active: "border-blue-500 text-blue-600" },
   IN_PROGRESS: { dot: "bg-sky-500", active: "border-sky-500 text-sky-600" },
-  DONE: { dot: "bg-emerald-500", active: "border-emerald-500 text-emerald-600" },
+  DONE: {
+    dot: "bg-emerald-500",
+    active: "border-emerald-500 text-emerald-600",
+  },
   CANCELLED: { dot: "bg-slate-400", active: "border-slate-400 text-slate-600" },
 };
 
@@ -50,9 +56,16 @@ function addIsoDays(iso: string, days: number) {
   return date.toISOString().slice(0, 10);
 }
 
-function dueBucket(due: string | null, today: string, weekEnd: string): DueBucket {
+function dueBucket(
+  due: string | null,
+  category: WorkCategory,
+  today: string,
+  weekEnd: string,
+): DueBucket {
   if (!due) return "none";
-  if (due < today) return "overdue";
+  if (due < today) {
+    return OPEN_CATEGORIES.includes(category) ? "overdue" : "finished";
+  }
   if (due === today) return "today";
   if (due <= weekEnd) return "thisWeek";
   return "later";
@@ -63,8 +76,24 @@ function formatDue(due: string) {
   return `${day}/${month}/${year.slice(2)}`;
 }
 
+function spaceOf(task: MyTask) {
+  if (task.project) return task.project;
+  const department = task.department;
+  return { id: -(department?.id ?? 0), name: department?.name ?? "" };
+}
+
+function taskPath(task: MyTask) {
+  if (task.project) {
+    return `/projects/${task.project.id}?tab=tasks&task=${task.id}`;
+  }
+  return "/work/department/tasks";
+}
+
 function sameCategories(left: WorkCategory[], right: WorkCategory[]) {
-  return left.length === right.length && right.every((status) => left.includes(status));
+  return (
+    left.length === right.length &&
+    right.every((status) => left.includes(status))
+  );
 }
 
 function SelectField({
@@ -142,7 +171,7 @@ export default function MyWorkPage() {
         setProjectId((current) => {
           if (current === "all") return current;
           const stillThere = response.data.items.some(
-            (task) => task.project.id === current,
+            (task) => spaceOf(task).id === current,
           );
           return stillThere ? current : "all";
         });
@@ -160,7 +189,10 @@ export default function MyWorkPage() {
 
   const projects = useMemo(() => {
     const names = new Map<number, string>();
-    for (const task of tasks) names.set(task.project.id, task.project.name);
+    for (const task of tasks) {
+      const space = spaceOf(task);
+      names.set(space.id, space.name);
+    }
     return [...names.entries()]
       .map(([id, name]) => ({ id, name }))
       .sort((left, right) => left.name.localeCompare(right.name, "vi"));
@@ -169,7 +201,7 @@ export default function MyWorkPage() {
   const visible = tasks.filter(
     (task) =>
       categories.includes(task.status.category) &&
-      (projectId === "all" || task.project.id === projectId),
+      (projectId === "all" || spaceOf(task).id === projectId),
   );
 
   const groups = useMemo(() => {
@@ -178,7 +210,7 @@ export default function MyWorkPage() {
         .map((project) => ({
           key: String(project.id),
           label: project.name,
-          tasks: visible.filter((task) => task.project.id === project.id),
+          tasks: visible.filter((task) => spaceOf(task).id === project.id),
         }))
         .filter((group) => group.tasks.length > 0);
     }
@@ -187,14 +219,16 @@ export default function MyWorkPage() {
       key: bucket,
       label: t(`pages.myWork.bucket.${bucket}`),
       tasks: visible.filter(
-        (task) => dueBucket(task.dueDate, today, weekEnd) === bucket,
+        (task) =>
+          dueBucket(task.dueDate, task.status.category, today, weekEnd) ===
+          bucket,
       ),
     })).filter((group) => group.tasks.length > 0);
   }, [groupBy, projects, t, today, visible, weekEnd]);
 
   const projectStats = projects
     .map((project) => {
-      const rows = tasks.filter((task) => task.project.id === project.id);
+      const rows = tasks.filter((task) => spaceOf(task).id === project.id);
       const statusCounts = Object.fromEntries(
         CATEGORIES.map((category) => [
           category,
@@ -254,7 +288,9 @@ export default function MyWorkPage() {
               <span
                 className={cn(
                   "inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs",
-                  active ? "bg-primary/10 text-primary" : "bg-slate-100 text-slate-500",
+                  active
+                    ? "bg-primary/10 text-primary"
+                    : "bg-slate-100 text-slate-500",
                 )}
               >
                 {counts[key]}
@@ -277,7 +313,9 @@ export default function MyWorkPage() {
         <SelectField
           value={projectId === "all" ? "all" : String(projectId)}
           label={t("pages.myWork.allProjects")}
-          onChange={(value) => setProjectId(value === "all" ? "all" : Number(value))}
+          onChange={(value) =>
+            setProjectId(value === "all" ? "all" : Number(value))
+          }
         >
           <option value="all">{t("pages.myWork.allProjects")}</option>
           {projects.map((project) => (
@@ -313,13 +351,17 @@ export default function MyWorkPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-5 pb-3 sm:px-6">
-        <span className="text-sm text-slate-500">{t("pages.myWork.statusLabel")}</span>
+        <span className="text-sm text-slate-500">
+          {t("pages.myWork.statusLabel")}
+        </span>
         <button
           type="button"
           onClick={() => selectCategories(OPEN_CATEGORIES)}
           className={cn(
             "cursor-pointer rounded-full px-3 py-1 text-sm font-medium",
-            openPreset ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-100",
+            openPreset
+              ? "bg-primary text-white"
+              : "text-slate-600 hover:bg-slate-100",
           )}
         >
           {t("pages.myWork.openOnly")}
@@ -329,7 +371,9 @@ export default function MyWorkPage() {
           onClick={() => selectCategories(CATEGORIES)}
           className={cn(
             "cursor-pointer rounded-full px-3 py-1 text-sm font-medium",
-            allPreset ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-100",
+            allPreset
+              ? "bg-primary text-white"
+              : "text-slate-600 hover:bg-slate-100",
           )}
         >
           {t("pages.myWork.all")}
@@ -348,14 +392,19 @@ export default function MyWorkPage() {
               )}
             >
               <span
-                className={cn("size-2 rounded-full", selected ? tone.dot : "bg-slate-300")}
+                className={cn(
+                  "size-2 rounded-full",
+                  selected ? tone.dot : "bg-slate-300",
+                )}
               />
               {t(`pages.myWork.status.${category}`)}
             </button>
           );
         })}
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <span className="text-sm text-slate-500">{t("pages.myWork.groupLabel")}</span>
+          <span className="text-sm text-slate-500">
+            {t("pages.myWork.groupLabel")}
+          </span>
           {(["due", "project"] as GroupBy[]).map((key) => (
             <button
               key={key}
@@ -368,7 +417,9 @@ export default function MyWorkPage() {
                   : "border-slate-200 text-slate-500 hover:bg-slate-50",
               )}
             >
-              {t(key === "due" ? "pages.myWork.byDue" : "pages.myWork.byProject")}
+              {t(
+                key === "due" ? "pages.myWork.byDue" : "pages.myWork.byProject",
+              )}
             </button>
           ))}
         </div>
@@ -399,49 +450,53 @@ export default function MyWorkPage() {
                 </div>
                 <ul>
                   {group.tasks.map((task) => {
-                    const bucket = dueBucket(task.dueDate, today, weekEnd);
+                    const bucket = dueBucket(
+                      task.dueDate,
+                      task.status.category,
+                      today,
+                      weekEnd,
+                    );
                     const tone = categoryTone[task.status.category];
                     return (
                       <li key={task.id} className="border-b border-slate-100">
                         <button
                           type="button"
-                          onClick={() =>
-                            navigate(
-                              `/projects/${task.project.id}?tab=tasks&task=${task.id}`,
-                            )
-                          }
+                          onClick={() => navigate(taskPath(task))}
                           className="flex w-full cursor-pointer items-center gap-3 px-5 py-3 text-left hover:bg-slate-50 sm:px-6"
                         >
-                        <span
-                          className={cn(
-                            "size-2.5 shrink-0 rounded-full",
-                            task.status.color ? undefined : tone.dot,
-                          )}
-                          style={
-                            task.status.color
-                              ? { backgroundColor: task.status.color }
-                              : undefined
-                          }
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm text-slate-800">{task.title}</p>
-                          <p className="mt-0.5 truncate text-xs text-slate-400">
-                            {task.project.name} · {t(`pages.myWork.role.${task.myRole}`)}
-                          </p>
-                        </div>
-                        <span className="hidden text-xs text-slate-500 sm:inline">
-                          {task.status.name}
-                        </span>
-                        <span
-                          className={cn(
-                            "w-16 shrink-0 text-right text-xs",
-                            bucket === "overdue"
-                              ? "font-medium text-rose-500"
-                              : "text-slate-400",
-                          )}
-                        >
-                          {task.dueDate ? formatDue(task.dueDate) : "—"}
-                        </span>
+                          <span
+                            className={cn(
+                              "size-2.5 shrink-0 rounded-full",
+                              task.status.color ? undefined : tone.dot,
+                            )}
+                            style={
+                              task.status.color
+                                ? { backgroundColor: task.status.color }
+                                : undefined
+                            }
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm text-slate-800">
+                              {task.title}
+                            </p>
+                            <p className="mt-0.5 truncate text-xs text-slate-400">
+                              {spaceOf(task).name} ·
+                              {t(`pages.myWork.role.${task.myRole}`)}
+                            </p>
+                          </div>
+                          <span className="hidden text-xs text-slate-500 sm:inline">
+                            {task.status.name}
+                          </span>
+                          <span
+                            className={cn(
+                              "w-16 shrink-0 text-right text-xs",
+                              bucket === "overdue"
+                                ? "font-medium text-rose-500"
+                                : "text-slate-400",
+                            )}
+                          >
+                            {task.dueDate ? formatDue(task.dueDate) : "—"}
+                          </span>
                         </button>
                       </li>
                     );
@@ -463,7 +518,9 @@ export default function MyWorkPage() {
           </div>
           {projectStats.length === 0 ? (
             <p className="px-5 py-10 text-center text-sm text-slate-400">
-              {loading ? t("pages.myWork.loading") : t("pages.myWork.statsEmpty")}
+              {loading
+                ? t("pages.myWork.loading")
+                : t("pages.myWork.statsEmpty")}
             </p>
           ) : (
             <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-4">
@@ -472,18 +529,24 @@ export default function MyWorkPage() {
                   <button
                     type="button"
                     onClick={() =>
-                      setProjectId((current) => (current === item.id ? "all" : item.id))
+                      setProjectId((current) =>
+                        current === item.id ? "all" : item.id,
+                      )
                     }
                     className={cn(
                       "w-full cursor-pointer rounded-xl px-3 py-2.5 text-left",
-                      projectId === item.id ? "bg-primary/10" : "hover:bg-slate-50",
+                      projectId === item.id
+                        ? "bg-primary/10"
+                        : "hover:bg-slate-50",
                     )}
                   >
                     <span className="flex items-center justify-between gap-3">
                       <span className="truncate text-sm font-medium text-slate-800">
                         {item.name}
                       </span>
-                      <span className="text-xs text-slate-400">{item.total}</span>
+                      <span className="text-xs text-slate-400">
+                        {item.total}
+                      </span>
                     </span>
                     <span className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-slate-100">
                       {CATEGORIES.map((category) =>
@@ -512,7 +575,9 @@ export default function MyWorkPage() {
             key={category}
             className="inline-flex items-center gap-1.5 text-[11px] text-slate-500"
           >
-            <span className={cn("size-2 rounded-full", categoryTone[category].dot)} />
+            <span
+              className={cn("size-2 rounded-full", categoryTone[category].dot)}
+            />
             {t(`pages.myWork.status.${category}`)}
           </span>
         ))}

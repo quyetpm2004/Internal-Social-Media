@@ -51,7 +51,7 @@ export type DepartmentMemberTask = {
   code: string;
   title: string;
   priority: TaskPriority;
-  project: { id: number; name: string };
+  project: { id: number; name: string } | null;
   status: { name: string; color: string; category: string };
   dueDate: string | null;
   isOverdue: boolean;

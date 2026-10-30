@@ -14,12 +14,14 @@ import Field from "@/components/shared/Field";
 import Input from "@/components/shared/Input";
 import Modal from "@/components/shared/Modal";
 import Select from "@/components/shared/Select";
-import { useDepartmentStore } from "@/features/department/store/department.store";
+import { departmentTaskApi } from "@/features/department/api/department-task.api";
+import type { StatusCategory } from "@/features/department/types/department.type";
 import type {
-  DepartmentStatus,
-  DepartmentWorkflow,
-  StatusCategory,
-} from "@/features/department/types/department.type";
+  DepartmentTaskConfig,
+  DepartmentTaskStatus,
+  DepartmentTaskWorkflow,
+} from "@/features/department/types/department-task.type";
+import { toastApiError } from "@/features/project-template/utils/api-error";
 import { flagsForCategory } from "@/features/project/components/workflow/workflow-flow";
 import { cn } from "@/lib/utils";
 
@@ -34,21 +36,49 @@ const CATEGORIES: StatusCategory[] = [
 ];
 const DEFAULT_COLOR = "#3B82F6";
 
-type TaskConfigModalProps = {
-  open: boolean;
-  onClose: () => void;
+type DraftStatus = Pick<
+  DepartmentTaskStatus,
+  "name" | "category" | "isInitial" | "isFinal" | "taskCount"
+> & {
+  uid: string;
+  id: number | null;
+  color: string;
 };
 
-function ConfigForm({ onClose }: Pick<TaskConfigModalProps, "onClose">) {
+type TaskConfigModalProps = {
+  open: boolean;
+  config: DepartmentTaskConfig;
+  onClose: () => void;
+  onSaved: (config: DepartmentTaskConfig) => void;
+};
+
+function toDrafts(config: DepartmentTaskConfig): DraftStatus[] {
+  return config.statuses.map((status) => ({
+    uid: String(status.id),
+    id: status.id,
+    name: status.name,
+    category: status.category,
+    color: status.color ?? DEFAULT_COLOR,
+    isInitial: status.isInitial,
+    isFinal: status.isFinal,
+    taskCount: status.taskCount,
+  }));
+}
+
+function ConfigForm({
+  config,
+  onClose,
+  onSaved,
+}: Omit<TaskConfigModalProps, "open">) {
   const { t } = useTranslation();
-  const savedWorkflow = useDepartmentStore((state) => state.workflow);
-  const savedStatuses = useDepartmentStore((state) => state.statuses);
-  const tasks = useDepartmentStore((state) => state.tasks);
-  const saveTaskConfig = useDepartmentStore((state) => state.saveTaskConfig);
+  const savedWorkflow = config.workflow;
+  const savedStatuses = toDrafts(config);
 
   const [tab, setTab] = useState<ConfigTab>("workflow");
-  const [workflow, setWorkflow] = useState<DepartmentWorkflow>(savedWorkflow);
-  const [statuses, setStatuses] = useState<DepartmentStatus[]>(savedStatuses);
+  const [workflow, setWorkflow] =
+    useState<DepartmentTaskWorkflow>(savedWorkflow);
+  const [statuses, setStatuses] = useState<DraftStatus[]>(savedStatuses);
+  const [saving, setSaving] = useState(false);
   const [newName, setNewName] = useState("");
   const [newCategory, setNewCategory] = useState<StatusCategory>("TODO");
   const [newColor, setNewColor] = useState(DEFAULT_COLOR);
@@ -59,27 +89,24 @@ function ConfigForm({ onClose }: Pick<TaskConfigModalProps, "onClose">) {
     JSON.stringify([workflow, statuses]) !==
     JSON.stringify([savedWorkflow, savedStatuses]);
 
-  const usage = (statusId: string) =>
-    tasks.filter((task) => task.statusId === statusId).length;
-
-  const patchStatus = (id: string, partial: Partial<DepartmentStatus>) => {
+  const patchStatus = (uid: string, partial: Partial<DraftStatus>) => {
     setError("");
     setStatuses((current) =>
       current.map((status) =>
-        status.id === id ? { ...status, ...partial } : status,
+        status.uid === uid ? { ...status, ...partial } : status,
       ),
     );
   };
 
-  const changeCategory = (status: DepartmentStatus, next: StatusCategory) => {
+  const changeCategory = (status: DraftStatus, next: StatusCategory) => {
     const flags = flagsForCategory(next, status);
-    patchStatus(status.id, flags);
+    patchStatus(status.uid, flags);
   };
 
-  const setInitial = (id: string) => {
+  const setInitial = (uid: string) => {
     setError("");
     setStatuses((current) =>
-      current.map((status) => ({ ...status, isInitial: status.id === id })),
+      current.map((status) => ({ ...status, isInitial: status.uid === uid })),
     );
   };
 
@@ -103,7 +130,14 @@ function ConfigForm({ onClose }: Pick<TaskConfigModalProps, "onClose">) {
     });
     setStatuses((current) => [
       ...current,
-      { id: `NEW_${counter.current}`, name, color: newColor, ...flags },
+      {
+        uid: `new-${counter.current}`,
+        id: null,
+        name,
+        color: newColor,
+        taskCount: 0,
+        ...flags,
+      },
     ]);
     setNewName("");
     setNewCategory("TODO");
@@ -111,7 +145,7 @@ function ConfigForm({ onClose }: Pick<TaskConfigModalProps, "onClose">) {
     setError("");
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!workflow.name.trim()) {
       setTab("workflow");
       setError(t("department.taskConfig.errors.workflowName"));
@@ -132,12 +166,28 @@ function ConfigForm({ onClose }: Pick<TaskConfigModalProps, "onClose">) {
       setError(t("department.taskConfig.errors.needDone"));
       return;
     }
-    saveTaskConfig(
-      { name: workflow.name.trim(), description: workflow.description.trim() },
-      statuses.map((status) => ({ ...status, name: status.name.trim() })),
-    );
-    toast.success(t("department.taskConfig.saved"));
-    onClose();
+    setSaving(true);
+    try {
+      const response = await departmentTaskApi.saveConfig({
+        name: workflow.name.trim(),
+        description: workflow.description.trim(),
+        statuses: statuses.map((status) => ({
+          id: status.id,
+          name: status.name.trim(),
+          category: status.category,
+          color: status.color,
+          isInitial: status.isInitial,
+          isFinal: status.isFinal,
+        })),
+      });
+      toast.success(t("department.taskConfig.saved"));
+      onSaved(response.data);
+      onClose();
+    } catch (saveError) {
+      toastApiError(saveError);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDiscard = () => {
@@ -182,7 +232,7 @@ function ConfigForm({ onClose }: Pick<TaskConfigModalProps, "onClose">) {
           <div className="flex gap-2">
             <button
               type="button"
-              disabled={!dirty}
+              disabled={!dirty || saving}
               onClick={handleDiscard}
               className="h-10 cursor-pointer rounded-lg border border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -190,8 +240,8 @@ function ConfigForm({ onClose }: Pick<TaskConfigModalProps, "onClose">) {
             </button>
             <button
               type="button"
-              disabled={!dirty}
-              onClick={handleSave}
+              disabled={!dirty || saving}
+              onClick={() => void handleSave()}
               className="h-10 cursor-pointer rounded-lg bg-primary px-4 text-sm font-semibold text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {t("department.taskConfig.save")}
@@ -275,12 +325,12 @@ function ConfigForm({ onClose }: Pick<TaskConfigModalProps, "onClose">) {
           ) : (
             <ul className="space-y-2">
               {statuses.map((status, index) => {
-                const used = usage(status.id);
+                const used = status.taskCount;
                 const canDelete =
                   used === 0 && !status.isInitial && statuses.length > 2;
                 return (
                   <li
-                    key={status.id}
+                    key={status.uid}
                     className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-2"
                   >
                     <div className="flex flex-col">
@@ -308,7 +358,7 @@ function ConfigForm({ onClose }: Pick<TaskConfigModalProps, "onClose">) {
                       aria-label={t("pages.projects.workflowPanel.color")}
                       value={status.color}
                       onChange={(event) =>
-                        patchStatus(status.id, { color: event.target.value })
+                        patchStatus(status.uid, { color: event.target.value })
                       }
                       className="size-8 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0"
                     />
@@ -317,7 +367,7 @@ function ConfigForm({ onClose }: Pick<TaskConfigModalProps, "onClose">) {
                       maxLength={150}
                       aria-label={t("pages.projects.workflowPanel.name")}
                       onChange={(event) =>
-                        patchStatus(status.id, { name: event.target.value })
+                        patchStatus(status.uid, { name: event.target.value })
                       }
                       className="min-w-40 flex-1"
                     />
@@ -347,7 +397,7 @@ function ConfigForm({ onClose }: Pick<TaskConfigModalProps, "onClose">) {
                         status.category === "IN_PROGRESS"
                       }
                       onChange={(event) =>
-                        patchStatus(status.id, { isFinal: event.target.checked })
+                        patchStatus(status.uid, { isFinal: event.target.checked })
                       }
                     />
                     <button
@@ -355,7 +405,7 @@ function ConfigForm({ onClose }: Pick<TaskConfigModalProps, "onClose">) {
                       disabled={status.category !== "TODO"}
                       title={t("pages.projects.workflowPanel.initial")}
                       aria-label={t("pages.projects.workflowPanel.initial")}
-                      onClick={() => setInitial(status.id)}
+                      onClick={() => setInitial(status.uid)}
                       className={cn(
                         "cursor-pointer rounded-lg p-1.5 disabled:cursor-not-allowed disabled:opacity-30",
                         status.isInitial
@@ -381,7 +431,7 @@ function ConfigForm({ onClose }: Pick<TaskConfigModalProps, "onClose">) {
                       aria-label={t("common.delete")}
                       onClick={() =>
                         setStatuses((current) =>
-                          current.filter((item) => item.id !== status.id),
+                          current.filter((item) => item.uid !== status.uid),
                         )
                       }
                       className="cursor-pointer rounded-lg p-1.5 text-slate-400 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-30"
@@ -448,7 +498,10 @@ function ConfigForm({ onClose }: Pick<TaskConfigModalProps, "onClose">) {
   );
 }
 
-export default function TaskConfigModal({ open, onClose }: TaskConfigModalProps) {
+export default function TaskConfigModal({
+  open,
+  ...rest
+}: TaskConfigModalProps) {
   if (!open) return null;
-  return <ConfigForm onClose={onClose} />;
+  return <ConfigForm {...rest} />;
 }

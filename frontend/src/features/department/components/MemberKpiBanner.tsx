@@ -1,13 +1,11 @@
 import { ArrowLeft, Trophy } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { cn } from "@/lib/utils";
 import MemberAvatar from "@/features/department/components/MemberAvatar";
-import type { DepartmentMember } from "@/features/department/types/department.type";
-import { memberStatusTone } from "@/features/department/utils/department-task";
+import type { KpiViewedMember } from "@/features/department/types/department.type";
 
 type MemberKpiBannerProps = {
-  member: DepartmentMember;
+  member: KpiViewedMember;
   rank: number | null;
   total: number | null;
 };
@@ -35,17 +33,10 @@ export default function MemberKpiBanner({
             {member.name}
           </p>
           <p className="truncate text-sm text-slate-500">
-            {member.position} · {member.email}
+            {member.position ? `${member.position} · ` : ""}
+            {member.email}
           </p>
         </div>
-        <span
-          className={cn(
-            "rounded-full px-3 py-1 text-xs font-medium",
-            memberStatusTone[member.status],
-          )}
-        >
-          {t(`department.memberStatus.${member.status}`)}
-        </span>
         {rank !== null && total !== null && (
           <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
             <Trophy className="size-3.5" />

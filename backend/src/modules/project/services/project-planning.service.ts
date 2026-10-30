@@ -83,7 +83,10 @@ function mapPlanningTask(
     title: task.title,
     phaseId: task.phaseId,
     priority: task.priority,
-    taskType: { id: task.taskType.id, name: task.taskType.name },
+    taskType: {
+      id: task.taskType?.id ?? 0,
+      name: task.taskType?.name ?? "",
+    },
     status: task.status,
     assignees: task.members.map((member) => ({
       userId: member.userId,

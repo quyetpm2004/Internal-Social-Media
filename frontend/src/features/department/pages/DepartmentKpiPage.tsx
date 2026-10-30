@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Gauge, LifeBuoy, TrendingDown, TrendingUp } from "lucide-react";
+import { Gauge, LifeBuoy, Loader2, TrendingDown, TrendingUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import DashboardCard from "@/components/shared/dashboard/DashboardCard";
-import GroupedBars from "@/components/shared/dashboard/GroupedBars";
 import StatCard from "@/components/shared/dashboard/StatCard";
 import Pagination from "@/components/shared/Pagination";
 import {
@@ -16,75 +15,41 @@ import {
   TableRow,
 } from "@/components/shared/Table";
 import TrendChart from "@/features/work/components/TrendChart";
+import { departmentMemberKpiApi } from "@/features/department/api/department-member-kpi.api";
 import DepartmentPageHeader from "@/features/department/components/DepartmentPageHeader";
 import FilterSelect from "@/features/department/components/FilterSelect";
 import MemberAvatar from "@/features/department/components/MemberAvatar";
 import SegmentedControl from "@/features/department/components/SegmentedControl";
-import { departmentTrend } from "@/features/department/data/department.mock";
-import { useDepartmentStore } from "@/features/department/store/department.store";
 import type {
+  DepartmentKpi,
   KpiRange,
-  MemberKpi,
 } from "@/features/department/types/department.type";
-import { kpiTotals } from "@/features/department/utils/department-metrics";
 import {
-  percentOf,
   scoreBadge,
   shiftIso,
   todayIso,
 } from "@/features/department/utils/department-task";
+import { toastApiError } from "@/features/project-template/utils/api-error";
 
-type SortKey = "score" | "late" | "reopened" | "effort";
+type SortKey = "score" | "late";
 
 const RANGES: KpiRange[] = ["week", "month", "custom"];
-const SORT_KEYS: SortKey[] = ["score", "late", "reopened", "effort"];
-const SUPPORT_THRESHOLD = 70;
-const MONTH_DAYS = 30;
+const SORT_KEYS: SortKey[] = ["score", "late"];
 const PAGE_SIZE = 5;
 
 const COLORS = {
   primary: "#0A6AF6",
   emerald: "#10b981",
-  amber: "#f59e0b",
-  violet: "#7c3aed",
   slate: "#94a3b8",
 };
 
-function rangeFactor(range: KpiRange, from: string, to: string) {
-  if (range === "week") return 0.25;
-  if (range === "month") return 1;
-  const days = Math.round(
-    (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) /
-      86_400_000,
-  );
-  return Math.max(0.1, Math.min(3, (days + 1) / MONTH_DAYS));
-}
-
-function scaleKpi(item: MemberKpi, factor: number): MemberKpi {
-  const scale = (value: number) => Math.max(0, Math.round(value * factor));
-  return {
-    ...item,
-    assigned: scale(item.assigned),
-    done: scale(item.done),
-    late: scale(item.late),
-    reopened: scale(item.reopened),
-    estimatedHours: scale(item.estimatedHours),
-    actualHours: scale(item.actualHours),
-  };
-}
-
-function effortVariance(item: MemberKpi) {
-  return item.estimatedHours > 0
-    ? Math.round(
-        ((item.actualHours - item.estimatedHours) / item.estimatedHours) * 100,
-      )
-    : 0;
+function bucketLabel(from: string) {
+  const [, month, day] = from.split("-");
+  return `${day}/${month}`;
 }
 
 export default function DepartmentKpiPage() {
   const { t } = useTranslation();
-  const members = useDepartmentStore((state) => state.members);
-  const kpis = useDepartmentStore((state) => state.kpis);
 
   const today = todayIso();
   const [range, setRange] = useState<KpiRange>("month");
@@ -93,17 +58,107 @@ export default function DepartmentKpiPage() {
   const [sortKey, setSortKey] = useState<SortKey>("score");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
+  const [result, setResult] = useState<{
+    key: string;
+    data: DepartmentKpi | null;
+  } | null>(null);
 
-  const factor = rangeFactor(range, from, to);
-  const scaled = kpis.map((item) => scaleKpi(item, factor));
-  const totals = kpiTotals(scaled);
-  const baseTotals = kpiTotals(kpis);
+  const validRange = range !== "custom" || (from !== "" && to !== "" && from <= to);
+  const requestKey = `${range}|${from}|${to}`;
 
-  const sorted = [...scaled].sort((left, right) => {
+  useEffect(() => {
+    if (!validRange) return;
+    let cancelled = false;
+    departmentMemberKpiApi
+      .getDepartmentKpi(
+        range === "custom" ? { period: range, from, to } : { period: range },
+      )
+      .then((response) => {
+        if (!cancelled) setResult({ key: requestKey, data: response.data });
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setResult({ key: requestKey, data: null });
+        toastApiError(error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [range, from, to, validRange, requestKey]);
+
+  const loading = result?.key !== requestKey;
+  const data = loading ? null : result.data;
+
+  const header = (
+    <DepartmentPageHeader
+      icon={Gauge}
+      title={t("department.kpi.title")}
+      subtitle={t("department.kpi.subtitle")}
+      actions={
+        <>
+          {range === "custom" && (
+            <div className="flex items-center gap-1.5 text-sm text-slate-500">
+              <input
+                type="date"
+                value={from}
+                max={to}
+                aria-label={t("department.kpi.from")}
+                onChange={(event) => {
+                  setFrom(event.target.value);
+                  setPage(1);
+                }}
+                className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700 outline-none focus:border-primary"
+              />
+              <span>–</span>
+              <input
+                type="date"
+                value={to}
+                min={from}
+                aria-label={t("department.kpi.to")}
+                onChange={(event) => {
+                  setTo(event.target.value);
+                  setPage(1);
+                }}
+                className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700 outline-none focus:border-primary"
+              />
+            </div>
+          )}
+          <SegmentedControl
+            value={range}
+            onChange={(value) => {
+              setRange(value);
+              setPage(1);
+            }}
+            options={RANGES.map((key) => ({
+              value: key,
+              label: t(`department.kpi.ranges.${key}`),
+            }))}
+          />
+        </>
+      }
+    />
+  );
+
+  if (!data) {
+    return (
+      <main className="@container space-y-4 px-4 py-5 sm:px-6 sm:py-6">
+        {header}
+        <div className="flex h-64 items-center justify-center text-sm text-slate-400">
+          {loading && validRange ? (
+            <Loader2 className="size-5 animate-spin" />
+          ) : (
+            t("pages.kpi.loadFailed")
+          )}
+        </div>
+      </main>
+    );
+  }
+
+  const { summary, members } = data;
+
+  const sorted = [...members].sort((left, right) => {
     if (sortKey === "late") return right.late - left.late;
-    if (sortKey === "reopened") return right.reopened - left.reopened;
-    if (sortKey === "effort") return effortVariance(right) - effortVariance(left);
-    return right.score - left.score;
+    return (right.score ?? -1) - (left.score ?? -1);
   });
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
@@ -113,37 +168,27 @@ export default function DepartmentKpiPage() {
     currentPage * PAGE_SIZE,
   );
 
-  const memberOf = (id: number) => members.find((member) => member.id === id);
-  const needSupport = scaled
-    .filter((item) => item.score < SUPPORT_THRESHOLD)
-    .sort((left, right) => left.score - right.score);
+  const needSupport = data.needSupport.flatMap((id) => {
+    const member = members.find((item) => item.id === id);
+    return member ? [member] : [];
+  });
 
-  const selected = scaled.find((item) => item.memberId === selectedId) ?? null;
-  const selectedMember = selected ? memberOf(selected.memberId) : null;
+  const selected = members.find((member) => member.id === selectedId) ?? null;
 
-  const effortGroups = scaled.map((item) => ({
-    label: memberOf(item.memberId)?.name.split(" ").slice(-1)[0] ?? "",
-    values: [item.estimatedHours, item.actualHours],
-  }));
-
+  const labels = data.trend.map((point) => bucketLabel(point.from));
   const trendSeries = selected
     ? [
         {
           key: "member",
-          label: selectedMember?.name ?? "",
+          label: selected.name,
           color: COLORS.primary,
-          values: selected.trend,
+          values: selected.trend.map((value) => value ?? 0),
         },
         {
           key: "team",
           label: t("department.kpi.teamAverage"),
           color: COLORS.slate,
-          values: departmentTrend.labels.map((_, index) =>
-            Math.round(
-              kpis.reduce((sum, item) => sum + item.trend[index], 0) /
-                kpis.length,
-            ),
-          ),
+          values: data.trend.map((point) => point.score ?? 0),
         },
       ]
     : [
@@ -151,63 +196,27 @@ export default function DepartmentKpiPage() {
           key: "completion",
           label: t("department.kpi.completionRate"),
           color: COLORS.emerald,
-          values: departmentTrend.completionRate,
+          values: data.trend.map((point) => point.completionRate ?? 0),
         },
         {
           key: "onTime",
           label: t("department.kpi.onTimeRate"),
           color: COLORS.primary,
-          values: departmentTrend.onTimeRate,
+          values: data.trend.map((point) => point.onTimeRate ?? 0),
         },
       ];
 
-  const totalDelta = totals.averageScore - baseTotals.averageScore;
+  const averageScore = summary.score ?? 0;
+  const totalDelta = averageScore - (summary.previousScore ?? averageScore);
 
   return (
     <main className="@container space-y-4 px-4 py-5 sm:px-6 sm:py-6">
-      <DepartmentPageHeader
-        icon={Gauge}
-        title={t("department.kpi.title")}
-        subtitle={t("department.kpi.subtitle")}
-        actions={
-          <>
-            {range === "custom" && (
-              <div className="flex items-center gap-1.5 text-sm text-slate-500">
-                <input
-                  type="date"
-                  value={from}
-                  max={to}
-                  aria-label={t("department.kpi.from")}
-                  onChange={(event) => setFrom(event.target.value)}
-                  className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700 outline-none focus:border-primary"
-                />
-                <span>–</span>
-                <input
-                  type="date"
-                  value={to}
-                  min={from}
-                  aria-label={t("department.kpi.to")}
-                  onChange={(event) => setTo(event.target.value)}
-                  className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700 outline-none focus:border-primary"
-                />
-              </div>
-            )}
-            <SegmentedControl
-              value={range}
-              onChange={setRange}
-              options={RANGES.map((key) => ({
-                value: key,
-                label: t(`department.kpi.ranges.${key}`),
-              }))}
-            />
-          </>
-        }
-      />
+      {header}
 
       <section className="grid grid-cols-1 gap-3 @xl:grid-cols-2 @4xl:grid-cols-4">
         <StatCard
           label={t("department.kpi.averageScore")}
-          value={String(totals.averageScore)}
+          value={summary.score === null ? "—" : String(summary.score)}
           hint={t("department.kpi.vsPrevious", {
             delta: `${totalDelta >= 0 ? "+" : ""}${totalDelta}`,
           })}
@@ -216,27 +225,24 @@ export default function DepartmentKpiPage() {
         />
         <StatCard
           label={t("department.kpi.doneTasks")}
-          value={`${totals.done}/${totals.assigned}`}
+          value={`${summary.done}/${summary.assigned}`}
           hint={t("department.kpi.completionHint", {
-            percent: totals.completionRate,
+            percent: summary.completionRate ?? 0,
           })}
           icon={<TrendingUp className="size-4" />}
           tone="emerald"
         />
         <StatCard
           label={t("department.kpi.lateTasks")}
-          value={String(totals.late)}
-          hint={t("department.kpi.reopenedHint", { count: totals.reopened })}
+          value={String(summary.late)}
+          hint="—"
           icon={<TrendingDown className="size-4" />}
           tone="rose"
         />
         <StatCard
           label={t("department.kpi.effort")}
-          value={`${totals.actualHours}h`}
-          hint={t("department.kpi.effortHint", {
-            planned: totals.estimatedHours,
-            percent: percentOf(totals.actualHours, totals.estimatedHours),
-          })}
+          value="—"
+          hint="—"
           icon={<Gauge className="size-4" />}
           tone="violet"
         />
@@ -287,20 +293,20 @@ export default function DepartmentKpiPage() {
           </TableHeader>
           <TableBody>
             {pagedRows.map((item) => {
-              const member = memberOf(item.memberId);
-              if (!member) return null;
-              const variance = effortVariance(item);
-              const delta = item.score - item.previousScore;
+              const delta =
+                item.score !== null && item.previousScore !== null
+                  ? item.score - item.previousScore
+                  : null;
               return (
-                <TableRow key={item.memberId}>
+                <TableRow key={item.id}>
                   <TableCell>
                     <Link
-                      to={`/work/kpi?member=${member.id}`}
+                      to={`/work/kpi?member=${item.id}`}
                       className="flex items-center gap-2.5 hover:underline"
                     >
-                      <MemberAvatar id={member.id} name={member.name} />
+                      <MemberAvatar id={item.id} name={item.name} />
                       <span className="font-medium text-slate-800">
-                        {member.name}
+                        {item.name}
                       </span>
                     </Link>
                   </TableCell>
@@ -310,44 +316,40 @@ export default function DepartmentKpiPage() {
                   <TableCell
                     className={cn(
                       "text-right",
-                      item.late > 0 ? "font-semibold text-rose-600" : "text-slate-600",
+                      item.late > 0
+                        ? "font-semibold text-rose-600"
+                        : "text-slate-600",
                     )}
                   >
                     {item.late}
                   </TableCell>
-                  <TableCell className="text-right text-slate-600">
-                    {item.reopened}
-                  </TableCell>
-                  <TableCell
-                    className={cn(
-                      "text-right",
-                      variance > 10 ? "text-rose-600" : "text-slate-600",
-                    )}
-                  >
-                    {item.actualHours}/{item.estimatedHours}h
-                    <span className="ml-1 text-xs">
-                      ({variance > 0 ? "+" : ""}
-                      {variance}%)
-                    </span>
-                  </TableCell>
+                  <TableCell className="text-right text-slate-600">—</TableCell>
+                  <TableCell className="text-right text-slate-600">—</TableCell>
                   <TableCell className="text-right">
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-0.5 text-xs font-semibold",
-                        scoreBadge(item.score),
-                      )}
-                    >
-                      {item.score}
-                    </span>
+                    {item.score === null ? (
+                      <span className="text-slate-400">—</span>
+                    ) : (
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-0.5 text-xs font-semibold",
+                          scoreBadge(item.score),
+                        )}
+                      >
+                        {item.score}
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell
                     className={cn(
                       "text-right text-xs font-medium",
-                      delta >= 0 ? "text-emerald-600" : "text-rose-600",
+                      delta === null
+                        ? "text-slate-400"
+                        : delta >= 0
+                          ? "text-emerald-600"
+                          : "text-rose-600",
                     )}
                   >
-                    {delta >= 0 ? "+" : ""}
-                    {delta}
+                    {delta === null ? "—" : `${delta >= 0 ? "+" : ""}${delta}`}
                   </TableCell>
                 </TableRow>
               );
@@ -373,8 +375,8 @@ export default function DepartmentKpiPage() {
       <section className="grid gap-4 @4xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <DashboardCard
           title={
-            selectedMember
-              ? t("department.kpi.trendOf", { name: selectedMember.name })
+            selected
+              ? t("department.kpi.trendOf", { name: selected.name })
               : t("department.kpi.trend")
           }
           extra={
@@ -395,7 +397,7 @@ export default function DepartmentKpiPage() {
           }
         >
           <TrendChart
-            labels={departmentTrend.labels}
+            labels={labels}
             series={trendSeries}
             valueSuffix={selected ? "" : "%"}
           />
@@ -409,42 +411,34 @@ export default function DepartmentKpiPage() {
           ) : (
             <ul className="divide-y divide-slate-100">
               {needSupport.map((item) => {
-                const member = memberOf(item.memberId);
-                if (!member) return null;
                 const reasons = [
                   item.late > 0 &&
                     t("department.kpi.reason.late", { count: item.late }),
-                  item.reopened > 0 &&
-                    t("department.kpi.reason.reopened", {
-                      count: item.reopened,
-                    }),
-                  effortVariance(item) > 10 &&
-                    t("department.kpi.reason.effort", {
-                      percent: effortVariance(item),
-                    }),
                 ].filter(Boolean);
                 return (
                   <li
-                    key={item.memberId}
+                    key={item.id}
                     className="flex items-start gap-3 py-3 first:pt-0 last:pb-0"
                   >
-                    <MemberAvatar id={member.id} name={member.name} />
+                    <MemberAvatar id={item.id} name={item.name} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-slate-800">
-                        {member.name}
+                        {item.name}
                       </p>
                       <p className="text-xs text-slate-400">
                         {reasons.join(" · ")}
                       </p>
                     </div>
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-0.5 text-xs font-semibold",
-                        scoreBadge(item.score),
-                      )}
-                    >
-                      {item.score}
-                    </span>
+                    {item.score !== null && (
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-0.5 text-xs font-semibold",
+                          scoreBadge(item.score),
+                        )}
+                      >
+                        {item.score}
+                      </span>
+                    )}
                     <LifeBuoy className="mt-0.5 size-4 shrink-0 text-slate-300" />
                   </li>
                 );
@@ -453,16 +447,6 @@ export default function DepartmentKpiPage() {
           )}
         </DashboardCard>
       </section>
-
-      <DashboardCard title={t("department.kpi.effortCompare")}>
-        <GroupedBars
-          series={[
-            { label: t("department.kpi.estimated"), color: COLORS.slate },
-            { label: t("department.kpi.actual"), color: COLORS.primary },
-          ]}
-          groups={effortGroups}
-        />
-      </DashboardCard>
     </main>
   );
 }

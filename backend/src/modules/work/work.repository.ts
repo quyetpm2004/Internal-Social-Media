@@ -1,5 +1,9 @@
 import prisma from "@/shared/utils/prisma";
-import { Prisma, TemplateTaskRole } from "@prisma/client";
+import {
+  Prisma,
+  TemplateTaskRole,
+  WorkflowStatusCategory,
+} from "@prisma/client";
 
 export type MyTaskScope = "mine" | "assigned";
 export type MyTaskDue = "overdue" | "today" | "week" | "none";
@@ -24,9 +28,18 @@ function dueFilter(
   due: MyTaskDue,
   today: Date,
   weekEnd: Date,
-): Prisma.ProjectTaskWhereInput {
+): Prisma.TaskWhereInput {
   if (due === "none") return { dueDate: null };
-  if (due === "overdue") return { dueDate: { lt: today } };
+  if (due === "overdue") {
+    return {
+      dueDate: { lt: today },
+      status: {
+        category: {
+          notIn: [WorkflowStatusCategory.DONE, WorkflowStatusCategory.CANCELLED],
+        },
+      },
+    };
+  }
   if (due === "today") return { dueDate: today };
   return { dueDate: { gte: today, lte: weekEnd } };
 }
@@ -34,12 +47,12 @@ function dueFilter(
 /** null nghĩa là bộ lọc vai trò không giao với scope, danh sách rỗng. */
 export function buildMyTaskWhere(
   filter: MyTaskListFilter,
-): Prisma.ProjectTaskWhereInput | null {
+): Prisma.TaskWhereInput | null {
   if (filter.scope === "mine" && filter.role === TemplateTaskRole.REPORTER) {
     return null;
   }
 
-  const membership: Prisma.ProjectTaskWhereInput =
+  const membership: Prisma.TaskWhereInput =
     filter.scope === "assigned"
       ? {
           members: {
@@ -58,7 +71,7 @@ export function buildMyTaskWhere(
           },
         };
 
-  const and: Prisma.ProjectTaskWhereInput[] = [membership];
+  const and: Prisma.TaskWhereInput[] = [membership];
 
   if (
     filter.scope === "assigned" &&
@@ -86,7 +99,7 @@ export function listMyTasks(filter: MyTaskListFilter) {
   const where = buildMyTaskWhere(filter);
   if (!where) return Promise.resolve([]);
 
-  return prisma.projectTask.findMany({
+  return prisma.task.findMany({
     where,
     orderBy: [{ dueDate: "asc" }, { id: "desc" }],
     select: {
@@ -95,6 +108,7 @@ export function listMyTasks(filter: MyTaskListFilter) {
       title: true,
       dueDate: true,
       project: { select: { id: true, name: true } },
+      department: { select: { id: true, name: true } },
       status: {
         select: {
           id: true,
@@ -113,7 +127,7 @@ export function listMyTasks(filter: MyTaskListFilter) {
 }
 
 export function countMyTasks(userId: number, scope: MyTaskScope) {
-  return prisma.projectTask.count({
+  return prisma.task.count({
     where: buildMyTaskWhere({
       userId,
       scope,

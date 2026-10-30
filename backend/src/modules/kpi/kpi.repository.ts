@@ -9,7 +9,7 @@ import { Status, TemplateTaskRole, WorkflowStatusCategory } from "@prisma/client
  * select thêm vào đây rồi dùng trong kpi.service.
  */
 export function findAssignedTasks(userId: number, from: Date, to: Date) {
-  return prisma.projectTask.findMany({
+  return prisma.task.findMany({
     where: {
       dueDate: { gte: from, lte: to },
       members: {
@@ -87,7 +87,7 @@ export function findDepartmentTasks(
   to: Date,
   projectId?: number,
 ) {
-  return prisma.projectTask.findMany({
+  return prisma.task.findMany({
     where: {
       ...(projectId ? { projectId } : {}),
       dueDate: { gte: from, lte: to },
@@ -104,7 +104,7 @@ export function findDepartmentTasks(
 }
 
 export function findDepartmentUnfinishedTasks(memberIds: number[], until: Date) {
-  return prisma.projectTask.findMany({
+  return prisma.task.findMany({
     where: {
       dueDate: { lte: until },
       status: {

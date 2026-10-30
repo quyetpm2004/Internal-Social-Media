@@ -380,11 +380,11 @@ export type UpdateProjectTaskTypeInput = z.infer<
   typeof updateProjectTaskTypeSchema
 >;
 
-const taskDateSchema = z
+export const taskDateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Ngày không hợp lệ");
 
-const taskChildSchema = z.object({
+export const taskChildSchema = z.object({
   title: z
     .string()
     .trim()

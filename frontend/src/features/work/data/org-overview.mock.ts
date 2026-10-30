@@ -69,6 +69,7 @@ export type WorkloadRow = {
   name: string;
   inProject: number;
   outside: number;
+  overdue: number;
 };
 
 export type ActivityItem = {
@@ -234,8 +235,18 @@ const month: PeriodSnapshot = {
     },
   ],
   alerts: [
-    { id: "overdue-tasks", labelKey: "overdueTasks", value: "23", tone: "rose" },
-    { id: "sprints-ending", labelKey: "sprintsEnding", value: "2", tone: "amber" },
+    {
+      id: "overdue-tasks",
+      labelKey: "overdueTasks",
+      value: "23",
+      tone: "rose",
+    },
+    {
+      id: "sprints-ending",
+      labelKey: "sprintsEnding",
+      value: "2",
+      tone: "amber",
+    },
     { id: "unassigned", labelKey: "unassigned", value: "12", tone: "violet" },
     { id: "no-sprint", labelKey: "noSprint", value: "2", tone: "sky" },
   ],
@@ -323,8 +334,18 @@ const quarter: PeriodSnapshot = {
     },
   ],
   alerts: [
-    { id: "overdue-tasks", labelKey: "overdueTasks", value: "16", tone: "rose" },
-    { id: "sprints-ending", labelKey: "sprintsEnding", value: "0", tone: "amber" },
+    {
+      id: "overdue-tasks",
+      labelKey: "overdueTasks",
+      value: "16",
+      tone: "rose",
+    },
+    {
+      id: "sprints-ending",
+      labelKey: "sprintsEnding",
+      value: "0",
+      tone: "amber",
+    },
     { id: "unassigned", labelKey: "unassigned", value: "9", tone: "violet" },
     { id: "no-sprint", labelKey: "noSprint", value: "1", tone: "sky" },
   ],
@@ -689,14 +710,14 @@ export const chartSeries = [
 ];
 
 export const workload: WorkloadRow[] = [
-  { id: "w1", name: "Đinh Văn An", inProject: 8, outside: 1 },
-  { id: "w2", name: "Hà Quốc Hưng", inProject: 6, outside: 0 },
-  { id: "w3", name: "Nguyễn Ngọc Huy", inProject: 7, outside: 2 },
-  { id: "w4", name: "Ngô Thu Hà", inProject: 5, outside: 0 },
-  { id: "w5", name: "Phạm Gia Bảo", inProject: 4, outside: 3 },
-  { id: "w6", name: "Lê Khánh Linh", inProject: 3, outside: 1 },
-  { id: "w7", name: "Võ Minh Khang", inProject: 6, outside: 0 },
-  { id: "w8", name: "Bùi Hoàng Long", inProject: 2, outside: 0 },
+  { id: "w1", name: "Đinh Văn An", inProject: 8, outside: 1, overdue: 2 },
+  { id: "w2", name: "Hà Quốc Hưng", inProject: 6, outside: 0, overdue: 1 },
+  { id: "w3", name: "Nguyễn Ngọc Huy", inProject: 7, outside: 2, overdue: 3 },
+  { id: "w4", name: "Ngô Thu Hà", inProject: 5, outside: 0, overdue: 0 },
+  { id: "w5", name: "Phạm Gia Bảo", inProject: 4, outside: 3, overdue: 1 },
+  { id: "w6", name: "Lê Khánh Linh", inProject: 3, outside: 1, overdue: 0 },
+  { id: "w7", name: "Võ Minh Khang", inProject: 6, outside: 0, overdue: 1 },
+  { id: "w8", name: "Bùi Hoàng Long", inProject: 2, outside: 0, overdue: 0 },
 ];
 
 export const activities: ActivityItem[] = [

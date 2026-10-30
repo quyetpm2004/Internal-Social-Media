@@ -40,7 +40,7 @@ export type KpiAttentionItem = {
   id: number;
   code: string;
   title: string;
-  project: string;
+  project: string | null;
   kind: "overdue" | "reopened" | "overEffort";
   amount: number;
 };

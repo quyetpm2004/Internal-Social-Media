@@ -22,6 +22,7 @@ import type {
   TaskDetail,
   TaskListItem,
 } from "@/features/project/types/task.type";
+import { compactDescriptionImages } from "@/features/project/utils/compact-description-images";
 import { toDateInputValue } from "@/features/project/utils/project-date";
 import { statusesForTaskMove } from "@/features/project/components/workflow/workflow-flow";
 import { taskTypeMatchesWorkflow } from "@/features/project/utils/task-type-workflow";
@@ -151,17 +152,6 @@ function draftFromDetail(detail: TaskDetail): TaskDraft {
     newChildren: [],
     files: [],
   };
-}
-
-function compactDescriptionImages(html: string) {
-  return html.replace(/<img\b([^>]*?)\/?>/gi, (tag, attrs: string) => {
-    const key = /\bdata-file-key\s*=\s*"([^"]*)"/i.exec(attrs)?.[1];
-    if (!key) return tag;
-    const nextAttrs = /\bsrc\s*=\s*"[^"]*"/i.test(attrs)
-      ? attrs.replace(/\bsrc\s*=\s*"[^"]*"/i, `src="${key}"`)
-      : ` src="${key}"${attrs}`;
-    return `<img${nextAttrs}>`;
-  });
 }
 
 function sprintDay(value: string, language: string) {

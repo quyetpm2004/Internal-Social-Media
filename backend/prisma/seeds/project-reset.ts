@@ -7,22 +7,22 @@ export async function clearProjects(prisma: PrismaClient) {
 
   await prisma.$transaction(
     async (tx) => {
-      await tx.projectTask.updateMany({
+      await tx.task.updateMany({
         data: { parentTaskId: null, phaseId: null },
       });
       await tx.projectMilestoneTask.deleteMany();
-      await tx.projectTaskCommentAttachment.deleteMany();
-      await tx.projectTaskComment.deleteMany();
-      await tx.projectTaskAttachment.deleteMany();
-      await tx.projectTaskMember.deleteMany();
-      await tx.projectTask.deleteMany();
+      await tx.taskCommentAttachment.deleteMany();
+      await tx.taskComment.deleteMany();
+      await tx.taskAttachment.deleteMany();
+      await tx.taskMember.deleteMany();
+      await tx.task.deleteMany();
       await tx.projectMilestone.deleteMany();
       await tx.projectPhase.deleteMany();
       await tx.projectApprovalRule.deleteMany();
       await tx.projectWorkflowTransition.deleteMany();
-      await tx.projectWorkflowStatus.deleteMany();
+      await tx.workflowStatus.deleteMany();
       await tx.projectTaskType.deleteMany();
-      await tx.projectWorkflow.deleteMany();
+      await tx.workflow.deleteMany();
       await tx.projectMember.deleteMany();
       await tx.projectRole.deleteMany();
       await tx.project.deleteMany();

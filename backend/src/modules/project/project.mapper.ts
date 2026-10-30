@@ -364,7 +364,7 @@ export function mapProjectTaskListItem(
     id: number;
     code: string;
     title: string;
-    taskType: { id: number; name: string; key: string };
+    taskType: { id: number; name: string; key: string } | null;
     workflow: { id: number; name: string };
     status: TaskStatusRow;
     members: TaskAssigneeRow[];
@@ -423,9 +423,9 @@ export function mapProjectTaskDetail(
     title: string;
     description: string | null;
     workflowId: number;
-    taskTypeId: number;
+    taskTypeId: number | null;
     statusId: number;
-    taskType: { id: number; name: string; key: string };
+    taskType: { id: number; name: string; key: string } | null;
     workflow: {
       id: number;
       name: string;

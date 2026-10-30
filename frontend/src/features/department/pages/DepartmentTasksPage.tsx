@@ -1,14 +1,14 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ClipboardList,
   Columns3,
   List,
   Plus,
-  Repeat,
   Search,
   Settings2,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   Table,
@@ -18,116 +18,118 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/shared/Table";
-import CreateTaskModal from "@/features/department/components/CreateTaskModal";
+import { departmentTaskApi } from "@/features/department/api/department-task.api";
+import DepartmentTaskDetailView from "@/features/department/components/DepartmentTaskDetailView";
+import DepartmentTaskFormModal from "@/features/department/components/DepartmentTaskFormModal";
 import TaskConfigModal from "@/features/department/components/TaskConfigModal";
 import DepartmentPageHeader from "@/features/department/components/DepartmentPageHeader";
 import FilterSelect from "@/features/department/components/FilterSelect";
-import MemberAvatar from "@/features/department/components/MemberAvatar";
-import { useDepartmentStore } from "@/features/department/store/department.store";
+import type { TaskPriority } from "@/features/department/types/department.type";
 import type {
-  DepartmentMember,
-  DepartmentTask,
-  TaskPriority,
-} from "@/features/department/types/department.type";
+  DepartmentTaskConfig,
+  DepartmentTaskDetail,
+  DepartmentTaskItem,
+  DepartmentTaskMember,
+} from "@/features/department/types/department-task.type";
 import {
   PRIORITIES,
   formatDue,
   priorityTone,
-  taskRules,
-  type TaskRules,
 } from "@/features/department/utils/department-task";
+import {
+  departmentTaskRules,
+  type DepartmentTaskRules,
+} from "@/features/department/utils/department-task-rules";
+import { taskStatusColor } from "@/features/project/components/tasks/task-display";
+import { toastApiError } from "@/features/project-template/utils/api-error";
 
 type ViewMode = "list" | "board";
-type QuickFilter = "all" | "overdue" | "atRisk" | "recurring" | "unassigned";
+type QuickFilter = "all" | "overdue" | "atRisk" | "unassigned";
 
-const QUICK_FILTERS: QuickFilter[] = [
-  "all",
-  "overdue",
-  "atRisk",
-  "recurring",
-  "unassigned",
-];
+const QUICK_FILTERS: QuickFilter[] = ["all", "overdue", "atRisk", "unassigned"];
+const FALLBACK_COLOR = "#94a3b8";
 
 function quickMatchersFor(
-  rules: TaskRules,
-): Record<QuickFilter, (task: DepartmentTask) => boolean> {
+  rules: DepartmentTaskRules,
+): Record<QuickFilter, (task: DepartmentTaskItem) => boolean> {
   return {
     all: () => true,
     overdue: rules.isOverdue,
     atRisk: rules.isAtRisk,
-    recurring: (task) => task.recurrence !== "NONE",
-    unassigned: (task) => task.assigneeIds.length === 0,
+    unassigned: (task) => task.assignee === null,
   };
-}
-
-function AssigneeStack({
-  ids,
-  members,
-}: {
-  ids: number[];
-  members: DepartmentMember[];
-}) {
-  const { t } = useTranslation();
-  const people = members.filter((member) => ids.includes(member.id));
-
-  if (people.length === 0) {
-    return (
-      <span className="text-xs text-slate-400">
-        {t("department.tasks.unassigned")}
-      </span>
-    );
-  }
-
-  return (
-    <div className="flex -space-x-2">
-      {people.slice(0, 3).map((member) => (
-        <MemberAvatar
-          key={member.id}
-          id={member.id}
-          name={member.name}
-          className="size-7 text-[10px] ring-2 ring-white"
-        />
-      ))}
-      {people.length > 3 && (
-        <span className="flex size-7 items-center justify-center rounded-full bg-slate-100 text-[10px] font-semibold text-slate-600 ring-2 ring-white">
-          +{people.length - 3}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function ProgressBar({ value, color }: { value: number; color: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="h-1.5 w-20 overflow-hidden rounded-full bg-slate-100">
-        <div
-          className="h-full rounded-full"
-          style={{ width: `${value}%`, backgroundColor: color }}
-        />
-      </div>
-      <span className="w-8 text-xs text-slate-500">{value}%</span>
-    </div>
-  );
 }
 
 export default function DepartmentTasksPage() {
   const { t } = useTranslation();
-  const members = useDepartmentStore((state) => state.members);
-  const tasks = useDepartmentStore((state) => state.tasks);
-  const addTask = useDepartmentStore((state) => state.addTask);
-  const updateStatus = useDepartmentStore((state) => state.updateStatus);
-  const statuses = useDepartmentStore((state) => state.statuses);
 
+  const [tasks, setTasks] = useState<DepartmentTaskItem[]>([]);
+  const [members, setMembers] = useState<DepartmentTaskMember[]>([]);
+  const [config, setConfig] = useState<DepartmentTaskConfig | null>(null);
+  const [loading, setLoading] = useState(true);
   const [view, setView] = useState<ViewMode>("list");
   const [quick, setQuick] = useState<QuickFilter>("all");
   const [query, setQuery] = useState("");
   const [assignee, setAssignee] = useState("all");
   const [priority, setPriority] = useState<"all" | TaskPriority>("all");
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [configuring, setConfiguring] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [detail, setDetail] = useState<DepartmentTaskDetail | null>(null);
 
-  const rules = taskRules(statuses);
+  const rawTaskId = Number(searchParams.get("task"));
+  const taskId =
+    Number.isInteger(rawTaskId) && rawTaskId > 0 ? rawTaskId : null;
+  const detailLoading = taskId !== null && detail?.id !== taskId;
+
+  const load = useCallback(async () => {
+    try {
+      const [list, nextConfig] = await Promise.all([
+        departmentTaskApi.list(),
+        departmentTaskApi.getConfig(),
+      ]);
+      setTasks(list.data.tasks);
+      setMembers(list.data.members);
+      setConfig(nextConfig.data);
+    } catch (error) {
+      toastApiError(error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const fetchDetail = useCallback(
+    async (id: number) => {
+      try {
+        const response = await departmentTaskApi.get(id);
+        setDetail(response.data);
+      } catch (error) {
+        toastApiError(error);
+        setSearchParams({}, { replace: true });
+      }
+    },
+    [setSearchParams],
+  );
+
+  useEffect(() => {
+    if (taskId === null || detail?.id === taskId) return;
+    void fetchDetail(taskId);
+  }, [taskId, detail?.id, fetchDetail]);
+
+  const openTask = (id: number) => setSearchParams({ task: String(id) });
+
+  const closeDetail = () => {
+    setSearchParams({});
+    void load();
+  };
+
+  const statuses = config?.statuses ?? [];
+  const rules = departmentTaskRules(statuses);
   const { isOverdue, isAtRisk } = rules;
   const quickMatchers = quickMatchersFor(rules);
   const keyword = query.trim().toLowerCase();
@@ -135,41 +137,88 @@ export default function DepartmentTasksPage() {
     (task) =>
       quickMatchers[quick](task) &&
       (priority === "all" || task.priority === priority) &&
-      (assignee === "all" || task.assigneeIds.includes(Number(assignee))) &&
+      (assignee === "all" || task.assignee?.id === Number(assignee)) &&
       (!keyword ||
         task.title.toLowerCase().includes(keyword) ||
         task.code.toLowerCase().includes(keyword)),
   );
 
-  const reviewerNames = (ids: number[]) =>
-    members
-      .filter((member) => ids.includes(member.id))
-      .map((member) => member.name)
-      .join(", ") || "—";
-
-  const colorOf = (statusId: string) =>
-    statuses.find((status) => status.id === statusId)?.color ?? "#94a3b8";
-
-  const dueClass = (task: DepartmentTask) =>
+  const dueClass = (task: DepartmentTaskItem) =>
     isOverdue(task)
       ? "font-medium text-rose-500"
       : isAtRisk(task)
         ? "font-medium text-amber-600"
         : "text-slate-500";
 
-  const statusSelect = (task: DepartmentTask) => (
-    <FilterSelect
-      value={task.statusId}
-      label={t("department.fields.status")}
-      onChange={(value) => updateStatus(task.id, value)}
-    >
-      {statuses.map((status) => (
-        <option key={status.id} value={status.id}>
-          {status.name}
-        </option>
-      ))}
-    </FilterSelect>
-  );
+  const changeStatus = async (task: DepartmentTaskItem, value: string) => {
+    const statusId = Number(value);
+    if (statusId === task.statusId) return;
+    try {
+      await departmentTaskApi.updateStatus(task.id, statusId);
+      setTasks((current) =>
+        current.map((item) =>
+          item.id === task.id ? { ...item, statusId } : item,
+        ),
+      );
+    } catch (error) {
+      toastApiError(error);
+    }
+  };
+
+  const assigneeName = (task: DepartmentTaskItem) =>
+    task.assignee?.name ?? null;
+
+  const statusSelect = (task: DepartmentTaskItem) => {
+    const current = statuses.find((status) => status.id === task.statusId);
+    return (
+      <div className="flex items-center gap-2">
+        <span
+          className="size-2.5 shrink-0 rounded-full"
+          style={{
+            backgroundColor: current ? taskStatusColor(current) : FALLBACK_COLOR,
+          }}
+        />
+        <FilterSelect
+          value={String(task.statusId)}
+          label={t("department.fields.status")}
+          onChange={(value) => void changeStatus(task, value)}
+        >
+          {statuses.map((status) => (
+            <option key={status.id} value={status.id}>
+              {status.name}
+            </option>
+          ))}
+        </FilterSelect>
+      </div>
+    );
+  };
+
+  if (taskId !== null) {
+    return (
+      <main className="@container space-y-4 px-4 py-5 sm:px-6 sm:py-6">
+        <DepartmentTaskDetailView
+          task={detail?.id === taskId ? detail : null}
+          loading={detailLoading}
+          onBack={closeDetail}
+          onEdit={() => setEditing(true)}
+          onOpenTask={openTask}
+          onDeleted={closeDetail}
+          onUpdated={setDetail}
+        />
+        {detail && (
+          <DepartmentTaskFormModal
+            open={editing}
+            task={detail}
+            onClose={() => setEditing(false)}
+            onSaved={() => {
+              void fetchDetail(detail.id);
+              void load();
+            }}
+          />
+        )}
+      </main>
+    );
+  }
 
   return (
     <main className="@container space-y-4 px-4 py-5 sm:px-6 sm:py-6">
@@ -181,8 +230,9 @@ export default function DepartmentTasksPage() {
           <>
             <button
               type="button"
+              disabled={!config}
               onClick={() => setConfiguring(true)}
-              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
             >
               <Settings2 className="size-4" />
               {t("department.taskConfig.button")}
@@ -280,7 +330,11 @@ export default function DepartmentTasksPage() {
         </div>
       </div>
 
-      {visible.length === 0 ? (
+      {loading ? (
+        <p className="rounded-2xl border border-slate-200 bg-white py-16 text-center text-sm text-slate-400">
+          {t("common.loading")}
+        </p>
+      ) : visible.length === 0 ? (
         <p className="rounded-2xl border border-slate-200 bg-white py-16 text-center text-sm text-slate-400">
           {t("department.tasks.empty")}
         </p>
@@ -291,9 +345,8 @@ export default function DepartmentTasksPage() {
               <TableHead>{t("department.tasks.columns.task")}</TableHead>
               <TableHead>{t("department.fields.priority")}</TableHead>
               <TableHead>{t("department.fields.assignees")}</TableHead>
-              <TableHead>{t("department.fields.reviewer")}</TableHead>
+              <TableHead>{t("pages.projects.tasks.form.startDate")}</TableHead>
               <TableHead>{t("department.fields.dueDate")}</TableHead>
-              <TableHead>{t("department.tasks.columns.progress")}</TableHead>
               <TableHead>{t("department.fields.status")}</TableHead>
             </TableRow>
           </TableHeader>
@@ -301,18 +354,15 @@ export default function DepartmentTasksPage() {
             {visible.map((task) => (
               <TableRow key={task.id}>
                 <TableCell className="max-w-72">
-                  <p className="truncate font-medium text-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => openTask(task.id)}
+                    className="block max-w-full cursor-pointer truncate text-left font-medium text-slate-800 hover:text-primary"
+                  >
                     {task.title}
-                  </p>
-                  <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-slate-400">
+                  </button>
+                  <p className="mt-0.5 truncate text-xs text-slate-400">
                     {task.code}
-                    {task.recurrence !== "NONE" && (
-                      <span className="inline-flex items-center gap-1 text-violet-600">
-                        <Repeat className="size-3" />
-                        {t(`department.recurrence.${task.recurrence}`)}
-                      </span>
-                    )}
-                    {task.project && <span>· {task.project}</span>}
                   </p>
                 </TableCell>
                 <TableCell>
@@ -325,11 +375,15 @@ export default function DepartmentTasksPage() {
                     {t(`pages.projects.tasks.priority.${task.priority}`)}
                   </span>
                 </TableCell>
-                <TableCell>
-                  <AssigneeStack ids={task.assigneeIds} members={members} />
-                </TableCell>
                 <TableCell className="text-slate-600">
-                  {reviewerNames(task.reviewerIds)}
+                  {assigneeName(task) ?? (
+                    <span className="text-xs text-slate-400">
+                      {t("department.tasks.unassigned")}
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell className="text-slate-500">
+                  {formatDue(task.startDate)}
                 </TableCell>
                 <TableCell className={dueClass(task)}>
                   {formatDue(task.dueDate)}
@@ -343,9 +397,6 @@ export default function DepartmentTasksPage() {
                       {t("department.tasks.atRisk")}
                     </span>
                   )}
-                </TableCell>
-                <TableCell>
-                  <ProgressBar value={task.progress} color={colorOf(task.statusId)} />
                 </TableCell>
                 <TableCell>{statusSelect(task)}</TableCell>
               </TableRow>
@@ -364,7 +415,7 @@ export default function DepartmentTasksPage() {
                 <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
                   <span
                     className="size-2 rounded-full"
-                    style={{ backgroundColor: status.color }}
+                    style={{ backgroundColor: status.color ?? FALLBACK_COLOR }}
                   />
                   {status.name}
                   <span className="text-xs font-medium text-slate-400">
@@ -377,14 +428,13 @@ export default function DepartmentTasksPage() {
                       key={task.id}
                       className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-medium text-slate-800">
-                          {task.title}
-                        </p>
-                        {task.recurrence !== "NONE" && (
-                          <Repeat className="mt-0.5 size-3.5 shrink-0 text-violet-500" />
-                        )}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => openTask(task.id)}
+                        className="cursor-pointer text-left text-sm font-medium text-slate-800 hover:text-primary"
+                      >
+                        {task.title}
+                      </button>
                       <div className="mt-2 flex items-center gap-2 text-xs">
                         <span
                           className={cn(
@@ -399,10 +449,9 @@ export default function DepartmentTasksPage() {
                         </span>
                       </div>
                       <div className="mt-3 flex items-center justify-between gap-2">
-                        <AssigneeStack
-                          ids={task.assigneeIds}
-                          members={members}
-                        />
+                        <span className="truncate text-xs text-slate-600">
+                          {assigneeName(task) ?? t("department.tasks.unassigned")}
+                        </span>
                         {statusSelect(task)}
                       </div>
                     </li>
@@ -414,16 +463,22 @@ export default function DepartmentTasksPage() {
         </div>
       )}
 
-      <TaskConfigModal
-        open={configuring}
-        onClose={() => setConfiguring(false)}
-      />
+      {config && (
+        <TaskConfigModal
+          open={configuring}
+          config={config}
+          onClose={() => setConfiguring(false)}
+          onSaved={(next) => {
+            setConfig(next);
+            void load();
+          }}
+        />
+      )}
 
-      <CreateTaskModal
+      <DepartmentTaskFormModal
         open={creating}
-        members={members}
         onClose={() => setCreating(false)}
-        onSubmit={addTask}
+        onSaved={() => void load()}
       />
     </main>
   );

@@ -1440,7 +1440,7 @@ async function createProject(
       let defaultWorkflowId = 0;
 
       for (const workflow of template.workflows) {
-        const created = await tx.projectWorkflow.create({
+        const created = await tx.workflow.create({
           data: {
             projectId: project.id,
             name: workflow.name,
@@ -1460,7 +1460,7 @@ async function createProject(
           { id: number; category: WorkflowStatusCategory }
         >();
         for (const status of workflow.statuses) {
-          const row = await tx.projectWorkflowStatus.create({
+          const row = await tx.workflowStatus.create({
             data: {
               workflowId: created.id,
               name: status.name,
@@ -1639,7 +1639,7 @@ async function createProject(
         const done = status.category === WorkflowStatusCategory.DONE;
         const reporterId = requireUser(reporterEmail);
 
-        const created = await tx.projectTask.create({
+        const created = await tx.task.create({
           data: {
             projectId: project.id,
             code: nextCode(),
