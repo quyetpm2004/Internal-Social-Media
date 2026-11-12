@@ -384,15 +384,6 @@ export const taskDateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Ngày không hợp lệ");
 
-export const taskChildSchema = z.object({
-  title: z
-    .string()
-    .trim()
-    .min(1, "Tên không được để trống")
-    .max(200, "Tên tối đa 200 ký tự"),
-  estimatedMinutes: z.number().int().min(0).max(1_000_000).nullable(),
-});
-
 export const projectTaskParamsSchema = z.object({
   id: z.coerce.number().int().positive("ID dự án không hợp lệ"),
   taskId: z.coerce.number().int().positive("ID công việc không hợp lệ"),
@@ -435,7 +426,6 @@ export const saveProjectTaskSchema = z.object({
   startDate: taskDateSchema.nullable(),
   dueDate: taskDateSchema.nullable(),
   estimatedMinutes: z.number().int().min(0).max(1_000_000).nullable(),
-  parentTaskId: z.number().int().positive().nullable(),
   assignees: z
     .array(
       z.object({
@@ -446,10 +436,6 @@ export const saveProjectTaskSchema = z.object({
     .default([]),
   reporterId: z.number().int().positive(),
   reviewerIds: z.array(z.number().int().positive()).default([]),
-  children: z
-    .array(taskChildSchema)
-    .max(20, "Tối đa 20 việc con mỗi lần")
-    .default([]),
   attachmentIds: z
     .array(z.number().int().positive())
     .max(20, "Tối đa 20 tệp đính kèm")
@@ -550,4 +536,74 @@ export const projectMilestoneParamsSchema = z.object({
 export type SaveProjectPhaseInput = z.infer<typeof saveProjectPhaseSchema>;
 export type SaveProjectMilestoneInput = z.infer<
   typeof saveProjectMilestoneSchema
+>;
+
+export const taskDependencyParamsSchema = z.object({
+  id: z.coerce.number().int().positive("ID dự án không hợp lệ"),
+  taskId: z.coerce.number().int().positive("ID công việc không hợp lệ"),
+  dependencyId: z.coerce
+    .number()
+    .int()
+    .positive("ID quan hệ phụ thuộc không hợp lệ"),
+});
+
+export const dependencyGroupParamsSchema = z.object({
+  id: z.coerce.number().int().positive("ID dự án không hợp lệ"),
+  taskId: z.coerce.number().int().positive("ID công việc không hợp lệ"),
+  groupId: z.coerce.number().int().positive("ID nhóm điều kiện không hợp lệ"),
+});
+
+const dependencyLogicSchema = z.enum(["AND", "OR"]);
+const dependencySelectionModeSchema = z.enum(["MANUAL", "AUTO"]);
+
+export const saveTaskDependencySchema = z.object({
+  predecessorTaskId: z
+    .number()
+    .int()
+    .positive("Công việc tiền nhiệm không hợp lệ"),
+  relationshipType: z.enum(["FS", "SS", "FF", "SF"]),
+  lag: z
+    .number()
+    .min(-1000, "Độ trễ tối thiểu là -1000")
+    .max(1000, "Độ trễ tối đa là 1000")
+    .multipleOf(0.01, "Độ trễ tối đa 2 chữ số thập phân")
+    .default(0),
+  lagUnit: z.enum(["DAY", "HOUR"]).default("DAY"),
+  groupId: z.number().int().positive().nullable().default(null),
+});
+
+export const createDependencyGroupSchema = z.object({
+  logicType: dependencyLogicSchema,
+  selectionMode: dependencySelectionModeSchema.default("MANUAL"),
+  dependencyIds: z
+    .array(z.number().int().positive())
+    .min(1, "Chọn ít nhất một quan hệ phụ thuộc")
+    .max(50, "Tối đa 50 quan hệ phụ thuộc mỗi nhóm"),
+});
+
+export const updateDependencyGroupSchema = z.object({
+  logicType: dependencyLogicSchema,
+  selectionMode: dependencySelectionModeSchema,
+  selectedDependencyId: z.number().int().positive().nullable(),
+});
+
+export const newTaskDependencySchema = saveTaskDependencySchema.omit({
+  groupId: true,
+});
+
+export const createProjectTaskSchema = saveProjectTaskSchema.extend({
+  dependencies: z
+    .array(newTaskDependencySchema)
+    .max(20, "Tối đa 20 quan hệ phụ thuộc mỗi lần")
+    .default([]),
+});
+
+export type NewTaskDependencyInput = z.infer<typeof newTaskDependencySchema>;
+export type CreateProjectTaskInput = z.infer<typeof createProjectTaskSchema>;
+export type SaveTaskDependencyInput = z.infer<typeof saveTaskDependencySchema>;
+export type CreateDependencyGroupInput = z.infer<
+  typeof createDependencyGroupSchema
+>;
+export type UpdateDependencyGroupInput = z.infer<
+  typeof updateDependencyGroupSchema
 >;

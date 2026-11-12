@@ -1306,8 +1306,6 @@
         "clearFilters": "Xóa bộ lọc",
         "retry": "Thử lại",
         "taskCount": "{{count}} công việc",
-        "parentCode": "Cha {{code}}",
-        "childCount": "{{count}} việc con",
         "notMember": "Chỉ thành viên dự án mới tạo được công việc",
         "created": "Đã tạo công việc",
         "updated": "Đã cập nhật công việc",
@@ -1337,14 +1335,8 @@
           "createTitle": "Tạo công việc",
           "editTitle": "Sửa công việc",
           "viewTitle": "Chi tiết công việc",
-          "parent": "Mã việc cha",
-          "parentPlaceholder": "Tìm theo mã hoặc tên",
-          "parentEmpty": "Không tìm thấy công việc",
           "title": "Tên công việc",
           "titlePlaceholder": "Tên công việc",
-          "addChild": "Thêm việc con",
-          "childTitle": "Tên việc con",
-          "existingChildren": "Việc con",
           "roles": "Quyền phụ trách",
           "rolesHint": "Chọn quyền để lọc nhanh người trong dự án, rồi chọn người phụ trách.",
           "addRole": "Thêm quyền",
@@ -1386,9 +1378,7 @@
           "assigneePersonRequired": "Chọn người cho từng quyền phụ trách",
           "reporterRequired": "Chọn người giao việc",
           "dateOrder": "Hạn chót không được trước ngày bắt đầu",
-          "estimateInvalid": "Ước lượng phải là số phút từ 0 đến 1000000",
-          "childTitleRequired": "Nhập tên việc con",
-          "childLimit": "Chỉ thêm tối đa 20 việc con mỗi lần"
+          "estimateInvalid": "Ước lượng phải là số phút từ 0 đến 1000000"
         },
         "detail": {
           "back": "Danh sách công việc",
@@ -1402,7 +1392,7 @@
             "comments": "Bình luận",
             "activity": "Nhật ký",
             "history": "Lịch sử",
-            "children": "Nhiệm vụ con",
+            "dependencies": "Phụ thuộc",
             "attachments": "Đính kèm"
           },
           "commentsEmpty": "Chưa có bình luận nào",
@@ -1425,7 +1415,6 @@
           "historyCreated": "Tạo công việc",
           "historyUpdated": "Cập nhật công việc",
           "historyHint": "Chỉ ghi nhận thời điểm tạo và cập nhật. Hệ thống chưa lưu từng thay đổi từng trường.",
-          "childrenEmpty": "Chưa có nhiệm vụ con",
           "attachmentsEmpty": "Chưa có tệp đính kèm",
           "attachmentTabs": {
             "images": "Ảnh",
@@ -1433,6 +1422,79 @@
           },
           "imagesEmpty": "Chưa có ảnh trong mô tả",
           "filesEmpty": "Chưa có tệp đính kèm"
+        },
+        "dependencies": {
+          "predecessors": "Việc phải làm trước",
+          "successors": "Việc phụ thuộc vào việc này",
+          "successorsEmpty": "Chưa có việc nào phụ thuộc vào việc này",
+          "empty": "Chưa có quan hệ phụ thuộc",
+          "add": "Thêm phụ thuộc",
+          "edit": "Sửa",
+          "delete": "Xóa",
+          "mergeGroup": "Gộp nhóm",
+          "groupSettings": "Thiết lập nhóm",
+          "groupName": "Nhóm {{index}}",
+          "selected": "Đang chọn",
+          "noSelection": "Chưa chọn phụ thuộc",
+          "createTitle": "Thêm quan hệ phụ thuộc",
+          "editTitle": "Sửa quan hệ phụ thuộc",
+          "predecessor": "Công việc tiền nhiệm",
+          "searchTask": "Tìm theo mã hoặc tên",
+          "pickPredecessor": "Chọn công việc",
+          "predecessorRequired": "Chọn công việc tiền nhiệm",
+          "type": "Loại quan hệ",
+          "types": {
+            "FS": "Kết thúc → Bắt đầu",
+            "SS": "Bắt đầu → Bắt đầu",
+            "FF": "Kết thúc → Kết thúc",
+            "SF": "Bắt đầu → Kết thúc"
+          },
+          "typeHints": {
+            "FS": "Việc này chỉ bắt đầu sau khi việc trước hoàn thành",
+            "SS": "Việc này chỉ bắt đầu sau khi việc trước bắt đầu",
+            "FF": "Việc này chỉ hoàn thành sau khi việc trước hoàn thành",
+            "SF": "Việc này chỉ hoàn thành sau khi việc trước bắt đầu"
+          },
+          "lag": "Độ trễ",
+          "lagHint": "Số dương: chờ thêm. Số âm: cho phép làm chồng lên",
+          "lagUnit": "Đơn vị",
+          "lagInvalid": "Độ trễ phải từ -1000 đến 1000, tối đa 2 chữ số thập phân",
+          "units": {
+            "DAY": "ngày",
+            "HOUR": "giờ"
+          },
+          "group": "Nhóm điều kiện",
+          "newGroup": "Nhóm mới (Tất cả)",
+          "logicLabel": "Điều kiện",
+          "logic": {
+            "AND": "Tất cả (AND)",
+            "OR": "Một trong (OR)"
+          },
+          "modeLabel": "Cách chọn",
+          "mode": {
+            "MANUAL": "Thủ công",
+            "AUTO": "Tự động"
+          },
+          "groupCreateTitle": "Gộp thành nhóm điều kiện",
+          "groupEditTitle": "Thiết lập nhóm điều kiện",
+          "groupHint": "Các nhóm của một công việc luôn kết hợp với nhau bằng AND",
+          "groupMembers": "Phụ thuộc trong nhóm",
+          "groupPickRequired": "Chọn ít nhất một quan hệ phụ thuộc",
+          "selectedLabel": "Phụ thuộc được dùng",
+          "created": "Đã thêm quan hệ phụ thuộc",
+          "updated": "Đã cập nhật quan hệ phụ thuộc",
+          "deleted": "Đã xóa quan hệ phụ thuộc",
+          "groupCreated": "Đã tạo nhóm điều kiện",
+          "groupUpdated": "Đã cập nhật nhóm điều kiện",
+          "deleteTitle": "Xóa quan hệ phụ thuộc",
+          "deleteDescription": "Xóa phụ thuộc vào {{code}}?",
+          "sectionTitle": "Phụ thuộc",
+          "sectionHint": "Các việc phải làm trước việc này",
+          "draftErrors": {
+            "predecessorRequired": "Chọn công việc tiền nhiệm cho mỗi dòng phụ thuộc",
+            "lagInvalid": "Độ trễ phải từ -1000 đến 1000, tối đa 2 chữ số thập phân",
+            "duplicate": "Mỗi công việc tiền nhiệm chỉ chọn một lần"
+          }
         }
       },
       "membersPanel": {

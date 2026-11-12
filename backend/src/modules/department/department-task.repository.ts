@@ -49,7 +49,6 @@ export const departmentTaskListSelect = {
   dueDate: true,
   estimatedMinutes: true,
   statusId: true,
-  parentTaskId: true,
   completedAt: true,
   createdAt: true,
   status: { select: statusSelect },
@@ -59,7 +58,6 @@ export const departmentTaskListSelect = {
     take: 1,
     select: { user: { select: personSelect } },
   },
-  _count: { select: { children: true } },
 } satisfies Prisma.TaskSelect;
 
 export const departmentTaskDetailSelect = {
@@ -86,18 +84,6 @@ export const departmentTaskDetailSelect = {
     },
   },
   status: { select: statusSelect },
-  parent: { select: { id: true, code: true, title: true } },
-  children: {
-    orderBy: { id: "asc" },
-    select: {
-      id: true,
-      code: true,
-      title: true,
-      estimatedMinutes: true,
-      priority: true,
-      status: { select: statusSelect },
-    },
-  },
   members: {
     orderBy: { id: "asc" },
     select: { taskRole: true, user: { select: personSelect } },
@@ -234,17 +220,6 @@ export function findDepartmentUserIds(
   });
 }
 
-export function findTaskParent(
-  tx: Prisma.TransactionClient,
-  departmentId: number,
-  taskId: number,
-) {
-  return tx.task.findFirst({
-    where: { id: taskId, departmentId },
-    select: { id: true, parentTaskId: true },
-  });
-}
-
 export async function allocateTaskCodes(
   tx: Prisma.TransactionClient,
   departmentId: number,
@@ -270,7 +245,6 @@ export type DepartmentTaskWrite = {
   startDate: Date | null;
   dueDate: Date | null;
   estimatedMinutes: number | null;
-  parentTaskId: number | null;
   createdById: number;
   completedAt: Date | null;
 };
@@ -280,24 +254,6 @@ export function createDepartmentTask(
   data: DepartmentTaskWrite,
 ) {
   return tx.task.create({ data, select: { id: true } });
-}
-
-export function createDepartmentTasks(
-  tx: Prisma.TransactionClient,
-  data: DepartmentTaskWrite[],
-) {
-  return tx.task.createMany({ data });
-}
-
-export function findTaskIdsByCodes(
-  tx: Prisma.TransactionClient,
-  departmentId: number,
-  codes: string[],
-) {
-  return tx.task.findMany({
-    where: { departmentId, code: { in: codes } },
-    select: { id: true },
-  });
 }
 
 export function updateDepartmentTask(
@@ -311,7 +267,6 @@ export function updateDepartmentTask(
     startDate: Date | null;
     dueDate: Date | null;
     estimatedMinutes: number | null;
-    parentTaskId: number | null;
     updatedById: number;
     completedAt: Date | null;
   },
@@ -333,16 +288,6 @@ export function updateTaskStatus(
     where: { id: taskId },
     data: { statusId, updatedById, completedAt },
     select: { id: true },
-  });
-}
-
-export function countChildTasks(
-  tx: Prisma.TransactionClient,
-  departmentId: number,
-  taskId: number,
-) {
-  return tx.task.count({
-    where: { departmentId, parentTaskId: taskId },
   });
 }
 

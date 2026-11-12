@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Loader2, Paperclip, Plus, Search, X } from "lucide-react";
+import { Loader2, Paperclip, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import Field from "@/components/shared/Field";
@@ -33,13 +33,7 @@ import {
 
 const FORM_ID = "department-task-form";
 const PRIORITIES: TaskPriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
-const MAX_CHILDREN = 20;
 const MAX_ATTACHMENTS = 20;
-
-type ChildDraft = {
-  key: string;
-  title: string;
-};
 
 type DraftFile = {
   id: number;
@@ -55,9 +49,7 @@ type TaskDraft = {
   startDate: string;
   dueDate: string;
   estimatedMinutes: string;
-  parentId: number | null;
   assigneeId: string;
-  newChildren: ChildDraft[];
   files: DraftFile[];
 };
 
@@ -95,7 +87,6 @@ function TaskForm({
   const { t } = useTranslation();
   const { list, config } = data;
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const childCounter = useRef(0);
 
   const [draft, setDraft] = useState<TaskDraft>(() =>
     task
@@ -108,9 +99,7 @@ function TaskForm({
           dueDate: task.dueDate ?? "",
           estimatedMinutes:
             task.estimatedMinutes == null ? "" : String(task.estimatedMinutes),
-          parentId: task.parent?.id ?? null,
           assigneeId: task.assignee ? String(task.assignee.userId) : "",
-          newChildren: [],
           files: task.attachments.map((file) => ({
             id: file.id,
             fileName: file.fileName,
@@ -127,15 +116,11 @@ function TaskForm({
           startDate: "",
           dueDate: "",
           estimatedMinutes: "",
-          parentId: null,
           assigneeId: presetAssigneeId ? String(presetAssigneeId) : "",
-          newChildren: [],
           files: [],
         },
   );
   const [errors, setErrors] = useState<FieldErrors>({});
-  const [parentQuery, setParentQuery] = useState("");
-  const [parentOpen, setParentOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [descriptionUploading, setDescriptionUploading] = useState(false);
@@ -145,19 +130,6 @@ function TaskForm({
   const patch = (partial: Partial<TaskDraft>) => {
     setDraft((current) => ({ ...current, ...partial }));
   };
-
-  const parentMatches = list.tasks
-    .filter((item) => {
-      const keyword = parentQuery.trim().toLowerCase();
-      return (
-        item.id !== task?.id &&
-        keyword &&
-        (item.code.toLowerCase().includes(keyword) ||
-          item.title.toLowerCase().includes(keyword))
-      );
-    })
-    .slice(0, 8);
-  const parentTask = list.tasks.find((item) => item.id === draft.parentId);
 
   const validate = (): SaveDepartmentTaskPayload | null => {
     const next: FieldErrors = {};
@@ -173,12 +145,6 @@ function TaskForm({
     if (estimate === "invalid") {
       next.estimate = t("pages.projects.tasks.form.estimateInvalid");
     }
-    if (draft.newChildren.length > MAX_CHILDREN) {
-      next.children = t("pages.projects.tasks.form.childLimit");
-    } else if (draft.newChildren.some((child) => !child.title.trim())) {
-      next.children = t("pages.projects.tasks.form.childTitleRequired");
-    }
-
     setErrors(next);
     if (Object.keys(next).length > 0 || estimate === "invalid") return null;
 
@@ -192,12 +158,7 @@ function TaskForm({
       startDate: draft.startDate || null,
       dueDate: draft.dueDate || null,
       estimatedMinutes: estimate,
-      parentTaskId: draft.parentId,
       assigneeId: draft.assigneeId ? Number(draft.assigneeId) : null,
-      children: draft.newChildren.map((child) => ({
-        title: child.title.trim(),
-        estimatedMinutes: null,
-      })),
       attachmentIds: draft.files.map((file) => file.id),
     };
   };
@@ -295,74 +256,6 @@ function TaskForm({
         onSubmit={(event) => void handleSubmit(event)}
       >
         <div className="space-y-4">
-          <Field label={t("pages.projects.tasks.form.parent")}>
-            {parentTask ? (
-              <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2">
-                <p className="min-w-0 text-sm text-slate-800">
-                  <span className="font-semibold text-slate-500">
-                    {parentTask.code}
-                  </span>{" "}
-                  {parentTask.title}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => patch({ parentId: null })}
-                  className="cursor-pointer rounded-md p-1 text-slate-400 hover:bg-slate-100"
-                  aria-label={t("common.cancel")}
-                >
-                  <X className="size-4" />
-                </button>
-              </div>
-            ) : (
-              <div className="relative">
-                <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                  value={parentQuery}
-                  placeholder={t("pages.projects.tasks.form.parentPlaceholder")}
-                  className="pl-9"
-                  onFocus={() => setParentOpen(true)}
-                  onChange={(event) => {
-                    setParentQuery(event.target.value);
-                    setParentOpen(true);
-                  }}
-                  onBlur={() => {
-                    window.setTimeout(() => setParentOpen(false), 150);
-                  }}
-                />
-                {parentOpen && (
-                  <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
-                    {parentMatches.length === 0 ? (
-                      <p className="px-3 py-2 text-sm text-slate-500">
-                        {parentQuery.trim()
-                          ? t("pages.projects.tasks.form.parentEmpty")
-                          : t("pages.projects.tasks.form.parentPlaceholder")}
-                      </p>
-                    ) : (
-                      parentMatches.map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onMouseDown={(event) => event.preventDefault()}
-                          onClick={() => {
-                            patch({ parentId: item.id });
-                            setParentQuery("");
-                            setParentOpen(false);
-                          }}
-                          className="block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-slate-50"
-                        >
-                          <span className="font-semibold text-slate-500">
-                            {item.code}
-                          </span>{" "}
-                          {item.title}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </Field>
-
           <Field
             label={t("pages.projects.tasks.form.title")}
             htmlFor="department-task-title"
@@ -378,76 +271,6 @@ function TaskForm({
               onChange={(event) => patch({ title: event.target.value })}
             />
           </Field>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-medium text-slate-700">
-                {t("pages.projects.tasks.form.existingChildren")}
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  childCounter.current += 1;
-                  patch({
-                    newChildren: [
-                      ...draft.newChildren,
-                      { key: `new-${childCounter.current}`, title: "" },
-                    ],
-                  });
-                }}
-                className="inline-flex cursor-pointer items-center gap-1 text-sm font-semibold text-primary"
-              >
-                <Plus className="size-4" />
-                {t("pages.projects.tasks.form.addChild")}
-              </button>
-            </div>
-            {task?.children.map((child) => (
-              <p
-                key={child.id}
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700"
-              >
-                <span className="mr-2 font-mono text-xs text-slate-400">
-                  {child.code}
-                </span>
-                {child.title}
-              </p>
-            ))}
-            {draft.newChildren.map((child) => (
-              <div key={child.key} className="flex gap-2">
-                <Input
-                  value={child.title}
-                  maxLength={200}
-                  placeholder={t("pages.projects.tasks.form.childTitle")}
-                  onChange={(event) =>
-                    patch({
-                      newChildren: draft.newChildren.map((item) =>
-                        item.key === child.key
-                          ? { ...item, title: event.target.value }
-                          : item,
-                      ),
-                    })
-                  }
-                />
-                <button
-                  type="button"
-                  onClick={() =>
-                    patch({
-                      newChildren: draft.newChildren.filter(
-                        (item) => item.key !== child.key,
-                      ),
-                    })
-                  }
-                  className="inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"
-                  aria-label={t("common.cancel")}
-                >
-                  <X className="size-4" />
-                </button>
-              </div>
-            ))}
-            {errors.children && (
-              <p className="text-xs text-red-600">{errors.children}</p>
-            )}
-          </div>
 
           <Field label={t("pages.projects.tasks.form.description")}>
             <RichTextEditor

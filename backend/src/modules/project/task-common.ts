@@ -105,13 +105,6 @@ export function assertDates(startDate: string | null, dueDate: string | null) {
   }
 }
 
-export function isForeignKeyError(error: unknown) {
-  return (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === "P2003"
-  );
-}
-
 export async function presentDescription(html: string | null) {
   if (!html) return html;
   const keys = [

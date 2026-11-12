@@ -3,9 +3,9 @@ import {
   ArrowLeft,
   ChevronDown,
   FileText,
+  GitBranch,
   History,
   Image as ImageIcon,
-  ListTree,
   Loader2,
   MessageSquare,
   Paperclip,
@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import ConfirmModal from "@/components/common/ConfirmModal";
 import { projectApi } from "@/features/project/api/project.api";
+import TaskDependencyPanel from "@/features/project/components/tasks/TaskDependencyPanel";
 import {
   formatTaskCreated,
   priorityBadgeClass,
@@ -42,7 +43,12 @@ import RichTextContent from "@/features/new-feed/components/RichTextContent";
 import { isRichTextEmpty } from "@/features/new-feed/utils/rich-text";
 import { getDefaultAvatarUrl } from "@/lib/utils";
 
-type DetailTab = "comments" | "activity" | "history" | "children" | "attachments";
+type DetailTab =
+  | "comments"
+  | "activity"
+  | "history"
+  | "dependencies"
+  | "attachments";
 
 type TaskDetailViewProps = {
   projectId: number;
@@ -246,11 +252,13 @@ export default function TaskDetailView({
   const [deleting, setDeleting] = useState(false);
   const [statusId, setStatusId] = useState<number | null>(null);
   const [statusSaving, setStatusSaving] = useState(false);
+  const [dependencyCount, setDependencyCount] = useState<number | null>(null);
 
   useEffect(() => {
     setTab("comments");
     setDraft("");
     setCommentFiles([]);
+    setDependencyCount(null);
     if (!task) {
       setComments([]);
       setCommentsLoading(false);
@@ -469,10 +477,10 @@ export default function TaskDetailView({
       icon: History,
     },
     {
-      id: "children",
-      label: t("pages.projects.tasks.detail.tabs.children"),
-      icon: ListTree,
-      count: task.children.length,
+      id: "dependencies",
+      label: t("pages.projects.tasks.detail.tabs.dependencies"),
+      icon: GitBranch,
+      count: dependencyCount ?? undefined,
     },
     {
       id: "attachments",
@@ -769,51 +777,14 @@ export default function TaskDetailView({
             </ul>
           )}
 
-          {tab === "children" &&
-            (task.children.length === 0 ? (
-              <p className="py-8 text-center text-sm text-slate-400">
-                {t("pages.projects.tasks.detail.childrenEmpty")}
-              </p>
-            ) : (
-              <ul className="divide-y divide-slate-100">
-                {task.children.map((child) => (
-                  <li key={child.id}>
-                    <button
-                      type="button"
-                      onClick={() => onOpenTask(child.id)}
-                      className="flex w-full cursor-pointer items-center justify-between gap-3 py-3 text-left hover:bg-slate-50"
-                    >
-                      <span className="min-w-0">
-                        <span className="mr-2 font-mono text-xs text-slate-400">
-                          {child.code}
-                        </span>
-                        <span className="text-sm font-medium text-slate-800">
-                          {child.title}
-                        </span>
-                      </span>
-                      <span className="flex shrink-0 items-center gap-2">
-                        <span
-                          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
-                          style={{
-                            color: taskStatusColor(child.status),
-                            backgroundColor: `${taskStatusColor(child.status)}18`,
-                          }}
-                        >
-                          {child.status.name}
-                        </span>
-                        {child.estimatedMinutes != null && (
-                          <span className="text-xs text-slate-400">
-                            {t("pages.projects.tasks.detail.minutes", {
-                              count: child.estimatedMinutes,
-                            })}
-                          </span>
-                        )}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ))}
+          {tab === "dependencies" && (
+            <TaskDependencyPanel
+              projectId={projectId}
+              taskId={task.id}
+              onOpenTask={onOpenTask}
+              onCountChange={setDependencyCount}
+            />
+          )}
 
           {tab === "attachments" && (
             <div>
@@ -957,20 +928,6 @@ export default function TaskDetailView({
                 </li>
               ))}
             </ul>
-          )}
-        </SideRow>
-        <SideRow label={t("pages.projects.tasks.form.parent")}>
-          {task.parent ? (
-            <button
-              type="button"
-              onClick={() => onOpenTask(task.parent!.id)}
-              className="cursor-pointer text-left text-primary hover:underline"
-            >
-              <span className="font-mono text-xs">{task.parent.code}</span>
-              <span className="mt-0.5 block">{task.parent.title}</span>
-            </button>
-          ) : (
-            <span className="text-slate-400">{empty}</span>
           )}
         </SideRow>
         <SideRow label={t("pages.projects.tasks.form.startDate")}>

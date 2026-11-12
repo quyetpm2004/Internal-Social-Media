@@ -1309,8 +1309,6 @@
         "clearFilters": "Clear filters",
         "retry": "Try again",
         "taskCount": "{{count}} tasks",
-        "parentCode": "Parent {{code}}",
-        "childCount": "{{count}} subtasks",
         "notMember": "Only project members can create tasks",
         "created": "Task created",
         "updated": "Task updated",
@@ -1340,14 +1338,8 @@
           "createTitle": "Create task",
           "editTitle": "Edit task",
           "viewTitle": "Task details",
-          "parent": "Parent task",
-          "parentPlaceholder": "Search by code or name",
-          "parentEmpty": "No matching task",
           "title": "Task name",
           "titlePlaceholder": "Task name",
-          "addChild": "Add subtask",
-          "childTitle": "Subtask name",
-          "existingChildren": "Subtasks",
           "roles": "Responsible roles",
           "rolesHint": "Pick a role to quickly find people in the project, then choose who is responsible.",
           "addRole": "Add role",
@@ -1389,9 +1381,7 @@
           "assigneePersonRequired": "Choose a person for each responsible role",
           "reporterRequired": "Choose a reporter",
           "dateOrder": "The due date cannot be before the start date",
-          "estimateInvalid": "Estimate must be a whole number of minutes from 0 to 1000000",
-          "childTitleRequired": "Enter a subtask name",
-          "childLimit": "You can add at most 20 subtasks at once"
+          "estimateInvalid": "Estimate must be a whole number of minutes from 0 to 1000000"
         },
         "detail": {
           "back": "Task list",
@@ -1405,7 +1395,7 @@
             "comments": "Comments",
             "activity": "Activity",
             "history": "History",
-            "children": "Subtasks",
+            "dependencies": "Dependencies",
             "attachments": "Attachments"
           },
           "commentsEmpty": "No comments yet",
@@ -1428,7 +1418,6 @@
           "historyCreated": "Task created",
           "historyUpdated": "Task updated",
           "historyHint": "Only the created and updated times are recorded. Field-by-field history is not stored.",
-          "childrenEmpty": "No subtasks",
           "attachmentsEmpty": "No attachments",
           "attachmentTabs": {
             "images": "Images",
@@ -1436,6 +1425,79 @@
           },
           "imagesEmpty": "No images in the description",
           "filesEmpty": "No files attached"
+        },
+        "dependencies": {
+          "predecessors": "Predecessors",
+          "successors": "Tasks depending on this one",
+          "successorsEmpty": "No task depends on this one",
+          "empty": "No dependencies yet",
+          "add": "Add dependency",
+          "edit": "Edit",
+          "delete": "Delete",
+          "mergeGroup": "Group",
+          "groupSettings": "Group settings",
+          "groupName": "Group {{index}}",
+          "selected": "Selected",
+          "noSelection": "No dependency selected",
+          "createTitle": "Add dependency",
+          "editTitle": "Edit dependency",
+          "predecessor": "Predecessor task",
+          "searchTask": "Search by code or name",
+          "pickPredecessor": "Pick a task",
+          "predecessorRequired": "Pick a predecessor task",
+          "type": "Relationship",
+          "types": {
+            "FS": "Finish → Start",
+            "SS": "Start → Start",
+            "FF": "Finish → Finish",
+            "SF": "Start → Finish"
+          },
+          "typeHints": {
+            "FS": "This task starts only after the predecessor finishes",
+            "SS": "This task starts only after the predecessor starts",
+            "FF": "This task finishes only after the predecessor finishes",
+            "SF": "This task finishes only after the predecessor starts"
+          },
+          "lag": "Lag",
+          "lagHint": "Positive: wait longer. Negative: allow overlap",
+          "lagUnit": "Unit",
+          "lagInvalid": "Lag must be between -1000 and 1000 with at most 2 decimals",
+          "units": {
+            "DAY": "days",
+            "HOUR": "hours"
+          },
+          "group": "Condition group",
+          "newGroup": "New group (All)",
+          "logicLabel": "Condition",
+          "logic": {
+            "AND": "All (AND)",
+            "OR": "Any one (OR)"
+          },
+          "modeLabel": "Selection",
+          "mode": {
+            "MANUAL": "Manual",
+            "AUTO": "Automatic"
+          },
+          "groupCreateTitle": "Group dependencies",
+          "groupEditTitle": "Group settings",
+          "groupHint": "Groups of the same task are always combined with AND",
+          "groupMembers": "Dependencies in group",
+          "groupPickRequired": "Pick at least one dependency",
+          "selectedLabel": "Dependency in use",
+          "created": "Dependency added",
+          "updated": "Dependency updated",
+          "deleted": "Dependency deleted",
+          "groupCreated": "Group created",
+          "groupUpdated": "Group updated",
+          "deleteTitle": "Delete dependency",
+          "deleteDescription": "Remove the dependency on {{code}}?",
+          "sectionTitle": "Dependencies",
+          "sectionHint": "Tasks that must happen before this one",
+          "draftErrors": {
+            "predecessorRequired": "Pick a predecessor task for every dependency row",
+            "lagInvalid": "Lag must be between -1000 and 1000 with at most 2 decimals",
+            "duplicate": "Each predecessor task can only be picked once"
+          }
         }
       },
       "membersPanel": {

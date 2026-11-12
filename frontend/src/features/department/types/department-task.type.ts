@@ -4,9 +4,7 @@ import type {
 } from "@/features/department/types/department.type";
 import type {
   TaskAttachment,
-  TaskChild,
   TaskPerson,
-  TaskRef,
   TaskStatusInfo,
 } from "@/features/project/types/task.type";
 
@@ -42,8 +40,6 @@ export type DepartmentTaskItem = {
   startDate: string | null;
   dueDate: string | null;
   estimatedMinutes: number | null;
-  parentTaskId: number | null;
-  childCount: number;
   assignee: { id: number; name: string } | null;
 };
 
@@ -62,8 +58,6 @@ export type DepartmentTaskDetail = {
   estimatedMinutes: number | null;
   createdAt: string;
   updatedAt: string;
-  parent: TaskRef | null;
-  children: TaskChild[];
   assignee: TaskPerson | null;
   reporter: TaskPerson | null;
   attachments: TaskAttachment[];
@@ -89,9 +83,7 @@ export type SaveDepartmentTaskPayload = {
   startDate: string | null;
   dueDate: string | null;
   estimatedMinutes: number | null;
-  parentTaskId: number | null;
   assigneeId: number | null;
-  children: { title: string; estimatedMinutes: number | null }[];
   attachmentIds: number[];
 };
 

@@ -1,8 +1,5 @@
 import { z } from "zod";
-import {
-  taskChildSchema,
-  taskDateSchema,
-} from "@/modules/project/project.schema";
+import { taskDateSchema } from "@/modules/project/project.schema";
 
 export const departmentTaskParamsSchema = z.object({
   taskId: z.coerce.number().int().positive("ID công việc không hợp lệ"),
@@ -25,12 +22,7 @@ export const saveDepartmentTaskSchema = z.object({
   startDate: taskDateSchema.nullable(),
   dueDate: taskDateSchema.nullable(),
   estimatedMinutes: z.number().int().min(0).max(1_000_000).nullable(),
-  parentTaskId: z.number().int().positive().nullable(),
   assigneeId: z.number().int().positive().nullable(),
-  children: z
-    .array(taskChildSchema)
-    .max(20, "Tối đa 20 việc con mỗi lần")
-    .default([]),
   attachmentIds: z
     .array(z.number().int().positive())
     .max(20, "Tối đa 20 tệp đính kèm")

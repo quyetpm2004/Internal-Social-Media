@@ -21,8 +21,6 @@ export function mapDepartmentTaskListItem(task: DepartmentTaskListRow) {
     startDate: toIsoDate(task.startDate),
     dueDate: toIsoDate(task.dueDate),
     estimatedMinutes: task.estimatedMinutes,
-    parentTaskId: task.parentTaskId,
-    childCount: task._count.children,
     completedAt: task.completedAt,
     createdAt: task.createdAt,
     assignee: assignee ? { id: assignee.id, name: assignee.fullName } : null,
@@ -60,8 +58,6 @@ export function mapDepartmentTaskDetail(
     completedAt: task.completedAt,
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
-    parent: task.parent,
-    children: task.children,
     assignee: person(TemplateTaskRole.ASSIGNEE),
     reporter: person(TemplateTaskRole.REPORTER),
   };

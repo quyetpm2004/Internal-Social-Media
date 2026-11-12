@@ -16,7 +16,6 @@ import {
   mapStoredFile,
   mapTaskComment,
   isCalendarDate,
-  isForeignKeyError,
   presentDescription,
   resolveCompletedAt,
   storedDescription,
@@ -25,8 +24,10 @@ import {
 import * as projectRepository from "@/modules/project/project.repository";
 import * as projectTaskRepository from "@/modules/project/project-task.repository";
 import type { TaskMemberWrite } from "@/modules/project/project-task.repository";
+import { createInitialDependencies } from "@/modules/project/services/project-dependency.service";
 import type {
   CreateProjectTaskCommentInput,
+  CreateProjectTaskInput,
   ProjectTaskListQuery,
   SaveProjectTaskInput,
   UpdateProjectTaskStatusInput,
@@ -41,8 +42,6 @@ function taskTypeBelongsToWorkflow(
   if (taskTypeWorkflowId === workflow.id) return true;
   return taskTypeWorkflowId == null && workflow.isDefault;
 }
-
-const TASK_IN_USE_BY_PARENT = "Hãy xóa hoặc chuyển các việc con trước";
 
 /**
  * Check xem assignees, reviewerIds có hợp lệ hay k
@@ -199,56 +198,12 @@ async function assertAssigneesAndUsers(
 }
 
 /**
- * Kiểm tra xem công việc cha có hợp lệ hay k
- * - Công việc cha không được tự thân tạo thành vòng lặp
- * - Công việc cha phải thuộc dự án
- * - Công việc cha phải là công việc cha của công việc hiện tại
- */
-async function assertParentTask(
-  tx: Prisma.TransactionClient,
-  projectId: number,
-  parentTaskId: number | null,
-  taskId?: number,
-) {
-  if (parentTaskId == null) return;
-  if (taskId != null && parentTaskId === taskId) {
-    throw new AppError(400, "Công việc cha tạo thành vòng lặp");
-  }
-
-  const parent = await projectTaskRepository.findTaskParent(
-    tx,
-    projectId,
-    parentTaskId,
-  );
-  if (!parent) {
-    throw new AppError(400, "Công việc cha không hợp lệ");
-  }
-  if (taskId == null) return;
-
-  const seen = new Set<number>([parent.id]);
-  let currentParentId = parent.parentTaskId;
-  while (currentParentId != null) {
-    if (currentParentId === taskId || seen.has(currentParentId)) {
-      throw new AppError(400, "Công việc cha tạo thành vòng lặp");
-    }
-    seen.add(currentParentId);
-    const ancestor = await projectTaskRepository.findTaskParent(
-      tx,
-      projectId,
-      currentParentId,
-    );
-    currentParentId = ancestor?.parentTaskId ?? null;
-  }
-}
-
-/**
  * Kiểm tra xem quy trình, loại công việc, trạng thái có hợp lệ hay k
  */
 async function resolveTaskWrite(
   tx: Prisma.TransactionClient,
   projectId: number,
   input: SaveProjectTaskInput,
-  taskId?: number,
 ) {
   const workflow = await projectTaskRepository.findActiveWorkflow(
     tx,
@@ -270,7 +225,6 @@ async function resolveTaskWrite(
 
   const status = await resolveStatusId(tx, input.workflowId, input.statusId);
   await assertAssigneesAndUsers(tx, projectId, input);
-  await assertParentTask(tx, projectId, input.parentTaskId, taskId);
   if (input.phaseId != null) {
     const phase = await tx.projectPhase.findFirst({
       where: { id: input.phaseId, projectId },
@@ -475,64 +429,10 @@ async function statusSummary(
   };
 }
 
-/**
- * Tạo child task
- * - Tạo child tasks
- * - Update quyền phụ trách của child tasks
- */
-async function writeChildren(
-  tx: Prisma.TransactionClient,
-  projectId: number,
-  parentTaskId: number,
-  userId: number,
-  input: SaveProjectTaskInput,
-  statusId: number,
-  childCodes: string[],
-  completedAt: Date | null,
-) {
-  if (input.children.length === 0) return;
-
-  await projectTaskRepository.createProjectTasks(
-    tx,
-    input.children.map((child, index) => ({
-      projectId,
-      code: childCodes[index],
-      title: child.title,
-      description: null,
-      workflowId: input.workflowId,
-      taskTypeId: input.taskTypeId,
-      statusId,
-      priority: input.priority as ProjectPriority,
-      startDate: null,
-      dueDate: null,
-      estimatedMinutes: child.estimatedMinutes,
-      parentTaskId,
-      phaseId: input.phaseId ?? null,
-      createdById: userId,
-      completedAt,
-    })),
-  );
-
-  const children = await projectTaskRepository.findTaskIdsByCodes(
-    tx,
-    projectId,
-    childCodes,
-  );
-  await projectTaskRepository.createTaskMembers(
-    tx,
-    children.map((child) => ({
-      taskId: child.id,
-      userId: input.reporterId,
-      taskRole: TemplateTaskRole.REPORTER,
-      projectRoleId: null,
-    })),
-  );
-}
-
 export async function createProjectTask(
   projectId: number,
   userId: number,
-  input: SaveProjectTaskInput,
+  input: CreateProjectTaskInput,
 ) {
   await assertCanView(projectId, userId);
   await assertMember(projectId, userId);
@@ -559,7 +459,7 @@ export async function createProjectTask(
         const codes = await projectTaskRepository.allocateTaskCodes(
           tx,
           projectId,
-          1 + input.children.length,
+          1,
         );
         const task = await projectTaskRepository.createProjectTask(tx, {
           projectId,
@@ -573,7 +473,6 @@ export async function createProjectTask(
           startDate: toDate(input.startDate),
           dueDate: toDate(input.dueDate),
           estimatedMinutes: input.estimatedMinutes,
-          parentTaskId: input.parentTaskId,
           phaseId: input.phaseId ?? null,
           createdById: userId,
           completedAt,
@@ -596,15 +495,11 @@ export async function createProjectTask(
           tx,
           memberRows(task.id, input),
         );
-        await writeChildren(
+        await createInitialDependencies(
           tx,
           projectId,
           task.id,
-          userId,
-          input,
-          statusId,
-          codes.slice(1),
-          completedAt,
+          input.dependencies,
         );
         return task.id;
       },
@@ -654,7 +549,6 @@ export async function updateProjectTask(
           tx,
           projectId,
           input,
-          taskId,
         );
         if (input.workflowId === current.workflowId) {
           assertStatusMove(current.workflow, current.statusId, statusId);
@@ -680,7 +574,6 @@ export async function updateProjectTask(
           startDate: toDate(input.startDate),
           dueDate: toDate(input.dueDate),
           estimatedMinutes: input.estimatedMinutes,
-          parentTaskId: input.parentTaskId,
           ...(input.phaseId !== undefined ? { phaseId: input.phaseId } : {}),
           updatedById: userId,
           completedAt,
@@ -706,26 +599,9 @@ export async function updateProjectTask(
           taskId,
           memberRows(taskId, input),
         );
-      if (input.children.length > 0) {
-        const codes = await projectTaskRepository.allocateTaskCodes(
-          tx,
-          projectId,
-          input.children.length,
-        );
-        await writeChildren(
-          tx,
-          projectId,
-          taskId,
-          userId,
-          input,
-          statusId,
-          codes,
-          statusCategory === WorkflowStatusCategory.DONE ? new Date() : null,
-        );
-      }
-    },
-    { timeout: 15000 },
-  );
+      },
+      { timeout: 15000 },
+    );
   } catch (error) {
     attachmentFailure(error);
   }
@@ -819,25 +695,9 @@ export async function deleteProjectTask(
     throw new AppError(403, "Bạn không có quyền thực hiện thao tác này");
   }
 
-  try {
-    await prisma.$transaction(async (tx) => {
-      const childCount = await projectTaskRepository.countChildTasks(
-        tx,
-        projectId,
-        taskId,
-      );
-      if (childCount > 0) {
-        throw new AppError(400, TASK_IN_USE_BY_PARENT);
-      }
-      await projectTaskRepository.deleteProjectTask(tx, taskId);
-    });
-  } catch (error) {
-    if (error instanceof AppError) throw error;
-    if (isForeignKeyError(error)) {
-      throw new AppError(400, TASK_IN_USE_BY_PARENT);
-    }
-    throw error;
-  }
+  await prisma.$transaction((tx) =>
+    projectTaskRepository.deleteProjectTask(tx, taskId),
+  );
 
   return { id: taskId };
 }

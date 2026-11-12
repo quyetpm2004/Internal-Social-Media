@@ -23,7 +23,6 @@ import {
   assertDates,
   attachmentFailure,
   avatarUrlMap,
-  isForeignKeyError,
   mapStoredFile,
   mapTaskComment,
   presentDescription,
@@ -34,7 +33,6 @@ import {
 import { AppError } from "@/shared/errors/app-error";
 import prisma from "@/shared/utils/prisma";
 
-const TASK_IN_USE_BY_PARENT = "Hãy xóa hoặc chuyển các việc con trước";
 const STATUS_IN_USE = "Trạng thái đang có công việc, không thể xóa";
 const STATUS_NAME_TAKEN = "Tên trạng thái bị trùng";
 const MAX_STATUS_KEY_LENGTH = 40;
@@ -102,41 +100,6 @@ async function assertAssignee(
   }
 }
 
-async function assertParentTask(
-  tx: Prisma.TransactionClient,
-  departmentId: number,
-  parentTaskId: number | null,
-  taskId?: number,
-) {
-  if (parentTaskId == null) return;
-  if (taskId != null && parentTaskId === taskId) {
-    throw new AppError(400, "Công việc cha tạo thành vòng lặp");
-  }
-
-  const parent = await taskRepository.findTaskParent(
-    tx,
-    departmentId,
-    parentTaskId,
-  );
-  if (!parent) throw new AppError(400, "Công việc cha không hợp lệ");
-  if (taskId == null) return;
-
-  const seen = new Set<number>([parent.id]);
-  let currentParentId = parent.parentTaskId;
-  while (currentParentId != null) {
-    if (currentParentId === taskId || seen.has(currentParentId)) {
-      throw new AppError(400, "Công việc cha tạo thành vòng lặp");
-    }
-    seen.add(currentParentId);
-    const ancestor = await taskRepository.findTaskParent(
-      tx,
-      departmentId,
-      currentParentId,
-    );
-    currentParentId = ancestor?.parentTaskId ?? null;
-  }
-}
-
 function memberRows(
   taskId: number,
   assigneeId: number | null,
@@ -160,54 +123,6 @@ function memberRows(
       projectRoleId: null,
     },
   ];
-}
-
-async function writeChildren(
-  tx: Prisma.TransactionClient,
-  departmentId: number,
-  workflowId: number,
-  parentTaskId: number,
-  userId: number,
-  input: SaveDepartmentTaskInput,
-  statusId: number,
-  childCodes: string[],
-  completedAt: Date | null,
-) {
-  if (input.children.length === 0) return;
-
-  await taskRepository.createDepartmentTasks(
-    tx,
-    input.children.map((child, index) => ({
-      departmentId,
-      code: childCodes[index],
-      title: child.title,
-      description: null,
-      workflowId,
-      statusId,
-      priority: input.priority as ProjectPriority,
-      startDate: null,
-      dueDate: null,
-      estimatedMinutes: child.estimatedMinutes,
-      parentTaskId,
-      createdById: userId,
-      completedAt,
-    })),
-  );
-
-  const children = await taskRepository.findTaskIdsByCodes(
-    tx,
-    departmentId,
-    childCodes,
-  );
-  await projectTaskRepository.createTaskMembers(
-    tx,
-    children.map((child) => ({
-      taskId: child.id,
-      userId,
-      taskRole: TemplateTaskRole.REPORTER,
-      projectRoleId: null,
-    })),
-  );
 }
 
 async function loadDetail(departmentId: number, taskId: number) {
@@ -270,7 +185,6 @@ export async function createTask(
       async (tx) => {
         const status = await resolveStatus(tx, workflow.id, input.statusId);
         await assertAssignee(tx, department.id, input.assigneeId);
-        await assertParentTask(tx, department.id, input.parentTaskId);
 
         const completedAt =
           status.category === WorkflowStatusCategory.DONE ? new Date() : null;
@@ -283,7 +197,7 @@ export async function createTask(
         const codes = await taskRepository.allocateTaskCodes(
           tx,
           department.id,
-          1 + input.children.length,
+          1,
         );
         const task = await taskRepository.createDepartmentTask(tx, {
           departmentId: department.id,
@@ -296,7 +210,6 @@ export async function createTask(
           startDate: toDate(input.startDate),
           dueDate: toDate(input.dueDate),
           estimatedMinutes: input.estimatedMinutes,
-          parentTaskId: input.parentTaskId,
           createdById: managerId,
           completedAt,
         });
@@ -317,17 +230,6 @@ export async function createTask(
         await projectTaskRepository.createTaskMembers(
           tx,
           memberRows(task.id, input.assigneeId, managerId),
-        );
-        await writeChildren(
-          tx,
-          department.id,
-          workflow.id,
-          task.id,
-          managerId,
-          input,
-          status.id,
-          codes.slice(1),
-          completedAt,
         );
         return task.id;
       },
@@ -366,7 +268,6 @@ export async function updateTask(
           input.statusId ?? current.statusId,
         );
         await assertAssignee(tx, department.id, input.assigneeId);
-        await assertParentTask(tx, department.id, input.parentTaskId, taskId);
 
         const completedAt = resolveCompletedAt(
           status.category,
@@ -387,7 +288,6 @@ export async function updateTask(
           startDate: toDate(input.startDate),
           dueDate: toDate(input.dueDate),
           estimatedMinutes: input.estimatedMinutes,
-          parentTaskId: input.parentTaskId,
           updatedById: managerId,
           completedAt,
         });
@@ -412,24 +312,6 @@ export async function updateTask(
           taskId,
           memberRows(taskId, input.assigneeId, reporterId),
         );
-        if (input.children.length > 0) {
-          const codes = await taskRepository.allocateTaskCodes(
-            tx,
-            department.id,
-            input.children.length,
-          );
-          await writeChildren(
-            tx,
-            department.id,
-            workflow.id,
-            taskId,
-            managerId,
-            input,
-            status.id,
-            codes,
-            status.category === WorkflowStatusCategory.DONE ? new Date() : null,
-          );
-        }
       },
       { timeout: 15000 },
     );
@@ -483,23 +365,9 @@ export async function deleteTask(managerId: number, taskId: number) {
   );
   if (!current) throw new AppError(404, "Không tìm thấy công việc");
 
-  try {
-    await prisma.$transaction(async (tx) => {
-      const childCount = await taskRepository.countChildTasks(
-        tx,
-        department.id,
-        taskId,
-      );
-      if (childCount > 0) throw new AppError(400, TASK_IN_USE_BY_PARENT);
-      await taskRepository.deleteDepartmentTask(tx, taskId);
-    });
-  } catch (error) {
-    if (error instanceof AppError) throw error;
-    if (isForeignKeyError(error)) {
-      throw new AppError(400, TASK_IN_USE_BY_PARENT);
-    }
-    throw error;
-  }
+  await prisma.$transaction((tx) =>
+    taskRepository.deleteDepartmentTask(tx, taskId),
+  );
 
   return { id: taskId };
 }

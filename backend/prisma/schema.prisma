@@ -1155,7 +1155,6 @@ model Task {
   startDate        DateTime?       @map("start_date") @db.Date
   dueDate          DateTime?       @map("due_date") @db.Date
   estimatedMinutes Int?            @map("estimated_minutes")
-  parentTaskId     Int?            @map("parent_task_id")
   phaseId          Int?            @map("phase_id")
   createdById      Int             @map("created_by_id")
   updatedById      Int?            @map("updated_by_id")
@@ -1166,13 +1165,14 @@ model Task {
   workflow  Workflow       @relation(fields: [workflowId], references: [id], onDelete: Restrict)
   taskType  ProjectTaskType?      @relation(fields: [taskTypeId], references: [id], onDelete: Restrict)
   status    WorkflowStatus @relation(fields: [statusId], references: [id], onDelete: Restrict)
-  parent    Task?          @relation("TaskTree", fields: [parentTaskId], references: [id], onDelete: Restrict)
-  children  Task[]         @relation("TaskTree")
-  phase     ProjectPhase?         @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+  phase    ProjectPhase?         @relation(fields: [phaseId], references: [id], onDelete: SetNull)
   members     TaskMember[]
   milestoneTasks ProjectMilestoneTask[]
   comments    TaskComment[]
   attachments TaskAttachment[]
+  incomingDependencies TaskDependency[]      @relation("TaskDependencySuccessor")
+  outgoingDependencies TaskDependency[]      @relation("TaskDependencyPredecessor")
+  dependencyGroups     TaskDependencyGroup[]
   createdBy User                  @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Restrict)
   updatedBy User?                 @relation("TaskUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
 
@@ -1186,13 +1186,75 @@ model Task {
   @@index([workflowId])
   @@index([taskTypeId])
   @@index([statusId])
-  @@index([parentTaskId])
   @@index([phaseId])
   @@index([createdById])
   @@index([updatedById])
   @@index([projectId, completedAt])
   @@index([departmentId, completedAt])
   @@map("tasks")
+}
+
+enum TaskDependencyType {
+  FS
+  SS
+  FF
+  SF
+}
+
+enum TaskDependencyLogic {
+  AND
+  OR
+}
+
+enum TaskDependencySelectionMode {
+  MANUAL
+  AUTO
+}
+
+enum TaskDependencyLagUnit {
+  DAY
+  HOUR
+}
+
+model TaskDependencyGroup {
+  id                   Int                         @id @default(autoincrement())
+  taskId               Int                         @map("task_id")
+  logicType            TaskDependencyLogic         @default(AND) @map("logic_type")
+  selectionMode        TaskDependencySelectionMode @default(MANUAL) @map("selection_mode")
+  selectedDependencyId Int?                        @unique @map("selected_dependency_id")
+
+  task               Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  selectedDependency TaskDependency?  @relation("TaskDependencyGroupSelection", fields: [selectedDependencyId], references: [id], onDelete: SetNull)
+  dependencies       TaskDependency[] @relation("TaskDependencyGroupItems")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([taskId])
+  @@map("task_dependency_groups")
+}
+
+model TaskDependency {
+  id                Int                   @id @default(autoincrement())
+  groupId           Int                   @map("group_id")
+  predecessorTaskId Int                   @map("predecessor_task_id")
+  successorTaskId   Int                   @map("successor_task_id")
+  relationshipType  TaskDependencyType    @default(FS) @map("relationship_type")
+  lag               Decimal               @default(0) @db.Decimal(8, 2)
+  lagUnit           TaskDependencyLagUnit @default(DAY) @map("lag_unit")
+
+  group       TaskDependencyGroup  @relation("TaskDependencyGroupItems", fields: [groupId], references: [id], onDelete: Cascade)
+  predecessor Task                 @relation("TaskDependencyPredecessor", fields: [predecessorTaskId], references: [id], onDelete: Cascade)
+  successor   Task                 @relation("TaskDependencySuccessor", fields: [successorTaskId], references: [id], onDelete: Cascade)
+  selectedBy  TaskDependencyGroup? @relation("TaskDependencyGroupSelection")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([predecessorTaskId, successorTaskId])
+  @@index([groupId])
+  @@index([successorTaskId])
+  @@map("task_dependencies")
 }
 
 model ProjectPhase {

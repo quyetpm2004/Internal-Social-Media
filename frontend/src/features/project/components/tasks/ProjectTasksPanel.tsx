@@ -429,12 +429,6 @@ export default function ProjectTasksPanel({
           setReloadKey((value) => value + 1);
           setDetailVersion((value) => value + 1);
         }}
-        onReloadDetail={async () => {
-          const taskId = typeof editor === "number" ? editor : viewingId;
-          if (taskId == null) return;
-          const response = await projectApi.getTask(projectId, taskId);
-          setDetail(response.data);
-        }}
       />
     </section>
   );

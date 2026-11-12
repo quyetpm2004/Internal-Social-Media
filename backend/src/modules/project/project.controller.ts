@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import * as projectService from "@/modules/project/services/project.service";
+import * as projectDependencyService from "@/modules/project/services/project-dependency.service";
 import * as projectMemberService from "@/modules/project/services/project-member.service";
 import * as projectOverviewService from "@/modules/project/services/project-overview.service";
 import * as projectPlanningService from "@/modules/project/services/project-planning.service";
@@ -531,6 +532,96 @@ export async function deleteProjectTask(req: Request, res: Response) {
   );
   res.status(200).json({
     message: "Xóa công việc thành công",
+    data,
+  });
+}
+
+export async function getProjectDependencies(req: Request, res: Response) {
+  const data = await projectDependencyService.getProjectDependencies(
+    Number(req.params.id),
+    requireUserId(req),
+  );
+  res.status(200).json({
+    message: "Lấy quan hệ phụ thuộc thành công",
+    data,
+  });
+}
+
+export async function getTaskDependencies(req: Request, res: Response) {
+  const data = await projectDependencyService.getTaskDependencies(
+    Number(req.params.id),
+    Number(req.params.taskId),
+    requireUserId(req),
+  );
+  res.status(200).json({
+    message: "Lấy quan hệ phụ thuộc thành công",
+    data,
+  });
+}
+
+export async function createTaskDependency(req: Request, res: Response) {
+  const data = await projectDependencyService.createTaskDependency(
+    Number(req.params.id),
+    Number(req.params.taskId),
+    requireUserId(req),
+    req.validated,
+  );
+  res.status(201).json({
+    message: "Tạo quan hệ phụ thuộc thành công",
+    data,
+  });
+}
+
+export async function updateTaskDependency(req: Request, res: Response) {
+  const data = await projectDependencyService.updateTaskDependency(
+    Number(req.params.id),
+    Number(req.params.taskId),
+    Number(req.params.dependencyId),
+    requireUserId(req),
+    req.validated,
+  );
+  res.status(200).json({
+    message: "Cập nhật quan hệ phụ thuộc thành công",
+    data,
+  });
+}
+
+export async function deleteTaskDependency(req: Request, res: Response) {
+  const data = await projectDependencyService.deleteTaskDependency(
+    Number(req.params.id),
+    Number(req.params.taskId),
+    Number(req.params.dependencyId),
+    requireUserId(req),
+  );
+  res.status(200).json({
+    message: "Xóa quan hệ phụ thuộc thành công",
+    data,
+  });
+}
+
+export async function createDependencyGroup(req: Request, res: Response) {
+  const data = await projectDependencyService.createDependencyGroup(
+    Number(req.params.id),
+    Number(req.params.taskId),
+    requireUserId(req),
+    req.validated,
+  );
+  res.status(201).json({
+    message: "Tạo nhóm điều kiện thành công",
+    data,
+  });
+}
+
+export async function updateDependencyGroup(req: Request, res: Response) {
+  const data = await projectDependencyService.updateDependencyGroup(
+    Number(req.params.id),
+    Number(req.params.taskId),
+    Number(req.params.groupId),
+    requireUserId(req),
+    req.validated,
+  );
+  res.status(200).json({
+    message: "Cập nhật nhóm điều kiện thành công",
     data,
   });
 }

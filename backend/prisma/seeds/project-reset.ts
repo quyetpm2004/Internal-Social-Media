@@ -8,7 +8,7 @@ export async function clearProjects(prisma: PrismaClient) {
   await prisma.$transaction(
     async (tx) => {
       await tx.task.updateMany({
-        data: { parentTaskId: null, phaseId: null },
+        data: { phaseId: null },
       });
       await tx.projectMilestoneTask.deleteMany();
       await tx.taskCommentAttachment.deleteMany();

@@ -373,8 +373,6 @@ export function mapProjectTaskListItem(
     dueDate: Date | null;
     createdAt: Date;
     estimatedMinutes: number | null;
-    parent: { id: number; code: string; title: string } | null;
-    _count: { children: number };
   },
   avatarUrls: Map<string, string>,
 ) {
@@ -391,8 +389,6 @@ export function mapProjectTaskListItem(
     dueDate: formatDateOnly(task.dueDate),
     createdAt: task.createdAt,
     estimatedMinutes: task.estimatedMinutes,
-    parent: task.parent,
-    childCount: task._count.children,
   };
 }
 
@@ -439,15 +435,6 @@ export function mapProjectTaskDetail(
     dueDate: Date | null;
     estimatedMinutes: number | null;
     phaseId: number | null;
-    parent: { id: number; code: string; title: string } | null;
-    children: Array<{
-      id: number;
-      code: string;
-      title: string;
-      estimatedMinutes: number | null;
-      priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
-      status: TaskStatusRow;
-    }>;
     members: TaskMemberRow[];
     createdAt: Date;
     updatedAt: Date;
@@ -481,15 +468,6 @@ export function mapProjectTaskDetail(
     dueDate: formatDateOnly(task.dueDate),
     estimatedMinutes: task.estimatedMinutes,
     phaseId: task.phaseId,
-    parent: task.parent,
-    children: task.children.map((child) => ({
-      id: child.id,
-      code: child.code,
-      title: child.title,
-      estimatedMinutes: child.estimatedMinutes,
-      priority: child.priority,
-      status: mapTaskStatus(child.status),
-    })),
     assignees,
     reporter: reporter ? mapTaskPerson(reporter, avatarUrls) : null,
     reviewers,
@@ -497,5 +475,73 @@ export function mapProjectTaskDetail(
     updatedAt: task.updatedAt,
     canEdit: access.canEdit,
     canChangeStatus: access.canChangeStatus,
+  };
+}
+
+type DependencyTaskRow = {
+  id: number;
+  code: string;
+  title: string;
+  status: TaskStatusRow;
+};
+
+type DependencyFieldsRow = {
+  id: number;
+  relationshipType: "FS" | "SS" | "FF" | "SF";
+  lag: { toNumber(): number };
+  lagUnit: "DAY" | "HOUR";
+};
+
+function mapDependencyTask(task: DependencyTaskRow) {
+  return {
+    id: task.id,
+    code: task.code,
+    title: task.title,
+    status: mapTaskStatus(task.status),
+  };
+}
+
+function mapDependencyFields(dependency: DependencyFieldsRow) {
+  return {
+    id: dependency.id,
+    relationshipType: dependency.relationshipType,
+    lag: dependency.lag.toNumber(),
+    lagUnit: dependency.lagUnit,
+  };
+}
+
+export function mapDependencyGroup(group: {
+  id: number;
+  taskId: number;
+  logicType: "AND" | "OR";
+  selectionMode: "MANUAL" | "AUTO";
+  selectedDependencyId: number | null;
+  dependencies: Array<DependencyFieldsRow & { predecessor: DependencyTaskRow }>;
+}) {
+  return {
+    id: group.id,
+    taskId: group.taskId,
+    logicType: group.logicType,
+    selectionMode: group.selectionMode,
+    selectedDependencyId: group.selectedDependencyId,
+    dependencies: group.dependencies.map((dependency) => ({
+      ...mapDependencyFields(dependency),
+      predecessor: mapDependencyTask(dependency.predecessor),
+    })),
+  };
+}
+
+export function mapTaskDependencies(data: {
+  canEdit: boolean;
+  groups: Parameters<typeof mapDependencyGroup>[0][];
+  successors: Array<DependencyFieldsRow & { successor: DependencyTaskRow }>;
+}) {
+  return {
+    canEdit: data.canEdit,
+    groups: data.groups.map(mapDependencyGroup),
+    successors: data.successors.map((dependency) => ({
+      ...mapDependencyFields(dependency),
+      successor: mapDependencyTask(dependency.successor),
+    })),
   };
 }

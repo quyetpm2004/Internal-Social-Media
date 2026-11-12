@@ -56,8 +56,6 @@ export type TaskListItem = {
   dueDate: string | null;
   createdAt: string;
   estimatedMinutes: number | null;
-  parent: TaskRef | null;
-  childCount: number;
   canEdit: boolean;
 };
 
@@ -104,11 +102,6 @@ export type TaskListParams = {
   date?: string;
 };
 
-export type TaskChildPayload = {
-  title: string;
-  estimatedMinutes: number | null;
-};
-
 export type SaveTaskPayload = {
   title: string;
   description: string | null;
@@ -119,22 +112,11 @@ export type SaveTaskPayload = {
   startDate: string | null;
   dueDate: string | null;
   estimatedMinutes: number | null;
-  parentTaskId: number | null;
   assignees: Array<{ projectRoleId: number; userId: number }>;
   reporterId: number;
   reviewerIds: number[];
-  children: TaskChildPayload[];
   attachmentIds: number[];
   phaseId: number | null;
-};
-
-export type TaskChild = {
-  id: number;
-  code: string;
-  title: string;
-  estimatedMinutes: number | null;
-  status: TaskStatusInfo;
-  priority: ProjectPriority;
 };
 
 export type TaskAttachmentType = "IMAGE" | "VIDEO" | "FILE";
@@ -178,8 +160,6 @@ export type TaskDetail = {
   dueDate: string | null;
   estimatedMinutes: number | null;
   phaseId: number | null;
-  parent: TaskRef | null;
-  children: TaskChild[];
   assignees: TaskAssignee[];
   reporter: TaskPerson | null;
   reviewers: TaskPerson[];

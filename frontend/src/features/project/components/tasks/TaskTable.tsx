@@ -49,13 +49,6 @@ export default function TaskTable({
               <td className="px-4 py-3">
                 <p className="font-semibold text-slate-900">{task.title}</p>
                 <p className="mt-0.5 text-xs text-slate-500">{task.code}</p>
-                {task.parent && (
-                  <p className="mt-0.5 text-xs text-slate-400">
-                    {t("pages.projects.tasks.parentCode", {
-                      code: task.parent.code,
-                    })}
-                  </p>
-                )}
               </td>
               <td className="px-3 py-3 text-slate-700">{task.taskType.name}</td>
               <td className="px-3 py-3 text-slate-700">{task.workflow.name}</td>

@@ -27,6 +27,13 @@ import type {
 } from "@/features/project/types/project.type";
 import type { ProjectOverviewData } from "@/features/project/types/overview.type";
 import type {
+  CreateDependencyGroupPayload,
+  NewDependencyPayload,
+  SaveDependencyPayload,
+  TaskDependencyView,
+  UpdateDependencyGroupPayload,
+} from "@/features/project/types/dependency.type";
+import type {
   MilestoneList,
   PhaseList,
   PlanningTaskList,
@@ -335,7 +342,10 @@ export const projectApi = {
     );
   },
 
-  createTask(projectId: number, data: SaveTaskPayload) {
+  createTask(
+    projectId: number,
+    data: SaveTaskPayload & { dependencies?: NewDependencyPayload[] },
+  ) {
     return axiosClient.post<ApiResponse<TaskDetail>>(
       `/projects/${projectId}/tasks`,
       data,
@@ -381,6 +391,64 @@ export const projectApi = {
   ) {
     return axiosClient.post<ApiResponse<TaskComment>>(
       `/projects/${projectId}/tasks/${taskId}/comments`,
+      data,
+    );
+  },
+
+  getTaskDependencies(projectId: number, taskId: number) {
+    return axiosClient.get<ApiResponse<TaskDependencyView>>(
+      `/projects/${projectId}/tasks/${taskId}/dependencies`,
+    );
+  },
+
+  createTaskDependency(
+    projectId: number,
+    taskId: number,
+    data: SaveDependencyPayload,
+  ) {
+    return axiosClient.post<ApiResponse<TaskDependencyView>>(
+      `/projects/${projectId}/tasks/${taskId}/dependencies`,
+      data,
+    );
+  },
+
+  updateTaskDependency(
+    projectId: number,
+    taskId: number,
+    dependencyId: number,
+    data: SaveDependencyPayload,
+  ) {
+    return axiosClient.patch<ApiResponse<TaskDependencyView>>(
+      `/projects/${projectId}/tasks/${taskId}/dependencies/${dependencyId}`,
+      data,
+    );
+  },
+
+  deleteTaskDependency(projectId: number, taskId: number, dependencyId: number) {
+    return axiosClient.delete<ApiResponse<TaskDependencyView>>(
+      `/projects/${projectId}/tasks/${taskId}/dependencies/${dependencyId}`,
+    );
+  },
+
+  createDependencyGroup(
+    projectId: number,
+    taskId: number,
+    data: CreateDependencyGroupPayload,
+  ) {
+    return axiosClient.post<ApiResponse<TaskDependencyView>>(
+      `/projects/${projectId}/tasks/${taskId}/dependency-groups`,
+      data,
+    );
+  },
+
+  updateDependencyGroup(
+    projectId: number,
+    taskId: number,
+    groupId: number,
+    data: UpdateDependencyGroupPayload,
+  ) {
+    return axiosClient.patch<ApiResponse<TaskDependencyView>>(
+      `/projects/${projectId}/tasks/${taskId}/dependency-groups/${groupId}`,
       data,
     );
   },

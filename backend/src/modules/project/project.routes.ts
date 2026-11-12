@@ -17,7 +17,13 @@ import {
   createProjectWorkflowSchema,
   createProjectWorkflowStatusSchema,
   createProjectWorkflowTransitionSchema,
+  createDependencyGroupSchema,
+  createProjectTaskSchema,
+  dependencyGroupParamsSchema,
   getProjectListSchema,
+  saveTaskDependencySchema,
+  taskDependencyParamsSchema,
+  updateDependencyGroupSchema,
   projectOverviewQuerySchema,
   memberCandidateQuerySchema,
   projectIdParamsSchema,
@@ -324,7 +330,7 @@ router.get(
 router.post(
   "/:id/tasks",
   validateParams(projectIdParamsSchema),
-  validateBody(saveProjectTaskSchema),
+  validateBody(createProjectTaskSchema),
   asyncHandler(projectController.createProjectTask),
 );
 
@@ -358,6 +364,52 @@ router.patch(
   validateParams(projectTaskParamsSchema),
   validateBody(updateProjectTaskStatusSchema),
   asyncHandler(projectController.updateProjectTaskStatus),
+);
+
+router.get(
+  "/:id/dependencies",
+  validateParams(projectIdParamsSchema),
+  asyncHandler(projectController.getProjectDependencies),
+);
+
+router.get(
+  "/:id/tasks/:taskId/dependencies",
+  validateParams(projectTaskParamsSchema),
+  asyncHandler(projectController.getTaskDependencies),
+);
+
+router.post(
+  "/:id/tasks/:taskId/dependencies",
+  validateParams(projectTaskParamsSchema),
+  validateBody(saveTaskDependencySchema),
+  asyncHandler(projectController.createTaskDependency),
+);
+
+router.patch(
+  "/:id/tasks/:taskId/dependencies/:dependencyId",
+  validateParams(taskDependencyParamsSchema),
+  validateBody(saveTaskDependencySchema),
+  asyncHandler(projectController.updateTaskDependency),
+);
+
+router.delete(
+  "/:id/tasks/:taskId/dependencies/:dependencyId",
+  validateParams(taskDependencyParamsSchema),
+  asyncHandler(projectController.deleteTaskDependency),
+);
+
+router.post(
+  "/:id/tasks/:taskId/dependency-groups",
+  validateParams(projectTaskParamsSchema),
+  validateBody(createDependencyGroupSchema),
+  asyncHandler(projectController.createDependencyGroup),
+);
+
+router.patch(
+  "/:id/tasks/:taskId/dependency-groups/:groupId",
+  validateParams(dependencyGroupParamsSchema),
+  validateBody(updateDependencyGroupSchema),
+  asyncHandler(projectController.updateDependencyGroup),
 );
 
 router.patch(

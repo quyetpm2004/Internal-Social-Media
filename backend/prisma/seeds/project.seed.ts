@@ -1618,7 +1618,6 @@ async function createProject(
       const insertTask = async (
         item: ChildWork,
         phaseId: number,
-        parentTaskId: number | null,
         reporterEmail: string,
       ) => {
         const taskType = typeByKey.get(item.typeKey);
@@ -1652,7 +1651,6 @@ async function createProject(
             startDate: startKeyOfTask ? dateOnly(startKeyOfTask) : null,
             dueDate: dueKey ? dateOnly(dueKey) : null,
             estimatedMinutes: item.estimate,
-            parentTaskId,
             phaseId,
             createdById: reporterId,
             completedAt: done
@@ -1694,9 +1692,9 @@ async function createProject(
         if (!phaseId) {
           throw new Error(`${plan.name}: việc "${task.title}" chưa có giai đoạn`);
         }
-        const parentId = await insertTask(task, phaseId, null, task.reporter);
+        await insertTask(task, phaseId, task.reporter);
         for (const child of task.children ?? []) {
-          await insertTask(child, phaseId, parentId, task.reporter);
+          await insertTask(child, phaseId, task.reporter);
         }
       }
 

@@ -201,7 +201,6 @@ export default function DepartmentTasksPage() {
           loading={detailLoading}
           onBack={closeDetail}
           onEdit={() => setEditing(true)}
-          onOpenTask={openTask}
           onDeleted={closeDetail}
           onUpdated={setDetail}
         />

@@ -81,12 +81,6 @@ export default function TaskGrid({ tasks, language, onOpen }: TaskGridProps) {
               </dd>
             </div>
           </dl>
-
-          {task.childCount > 0 && (
-            <p className="mt-3 text-xs font-medium text-slate-500">
-              {t("pages.projects.tasks.childCount", { count: task.childCount })}
-            </p>
-          )}
         </button>
       ))}
     </div>
