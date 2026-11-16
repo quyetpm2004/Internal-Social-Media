@@ -1,24 +1,22 @@
 import { PrismaClient, Role } from "@prisma/client";
 import bcrypt from "bcrypt";
+import { getPositionIdsByKey } from "./position.seed";
 
 export async function seedUsers(prisma: PrismaClient) {
   console.log("--- Seeding Users & Profiles ---");
 
-  const [itDept, hrDept, mktDept, boardDept] = await Promise.all([
+  const [itDept, hrDept, mktDept] = await Promise.all([
     prisma.department.findFirst({ where: { name: { contains: "Công nghệ" } } }),
     prisma.department.findFirst({ where: { name: { contains: "Nhân sự" } } }),
     prisma.department.findFirst({ where: { name: { contains: "Marketing" } } }),
-    prisma.department.findFirst({ where: { name: { contains: "Giám đốc" } } }),
   ]);
 
-  const [directorPos, managerPos, seniorPos, staffPos, internPos] =
-    await Promise.all([
-      prisma.position.findFirst({ where: { name: "Giám đốc" } }),
-      prisma.position.findFirst({ where: { name: "Trưởng phòng" } }),
-      prisma.position.findFirst({ where: { name: "Chuyên viên cao cấp" } }),
-      prisma.position.findFirst({ where: { name: "Nhân viên" } }),
-      prisma.position.findFirst({ where: { name: "Thực tập sinh" } }),
-    ]);
+  const positionIds = await getPositionIdsByKey(prisma);
+  const directorPos = { id: positionIds.DIRECTOR };
+  const managerPos = { id: positionIds.MANAGER };
+  const seniorPos = { id: positionIds.SENIOR };
+  const staffPos = { id: positionIds.STAFF };
+  const internPos = { id: positionIds.INTERN };
 
   const hashPassword = await bcrypt.hash("123456", 10);
 
@@ -39,10 +37,9 @@ export async function seedUsers(prisma: PrismaClient) {
     {
       email: "director@company.com",
       fullName: "Phạm Văn Hải",
-      role: Role.MANAGER,
+      role: Role.DIRECTOR,
       password: hashPassword,
-      departmentId: boardDept?.id,
-      positionId: directorPos?.id,
+      positionId: directorPos.id,
       profile: {
         create: {
           bio: "Giám đốc điều hành",
@@ -57,7 +54,7 @@ export async function seedUsers(prisma: PrismaClient) {
       role: Role.MANAGER,
       password: hashPassword,
       departmentId: itDept?.id,
-      positionId: managerPos?.id,
+      positionId: managerPos.id,
       profile: {
         create: {
           bio: "Trưởng phòng IT với 10 năm kinh nghiệm",
@@ -72,7 +69,7 @@ export async function seedUsers(prisma: PrismaClient) {
       role: Role.MANAGER,
       password: hashPassword,
       departmentId: hrDept?.id,
-      positionId: managerPos?.id,
+      positionId: managerPos.id,
       profile: {
         create: {
           bio: "Trưởng phòng Nhân sự",
@@ -87,7 +84,7 @@ export async function seedUsers(prisma: PrismaClient) {
       role: Role.MANAGER,
       password: hashPassword,
       departmentId: mktDept?.id,
-      positionId: managerPos?.id,
+      positionId: managerPos.id,
       profile: {
         create: {
           bio: "Trưởng phòng Marketing",
@@ -102,7 +99,7 @@ export async function seedUsers(prisma: PrismaClient) {
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: itDept?.id,
-      positionId: staffPos?.id,
+      positionId: staffPos.id,
       profile: { create: { bio: "Fullstack Developer", gender: "Nữ" } },
     },
     {
@@ -111,7 +108,7 @@ export async function seedUsers(prisma: PrismaClient) {
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: itDept?.id,
-      positionId: staffPos?.id,
+      positionId: staffPos.id,
       profile: { create: { bio: "Backend Node.js", gender: "Nam" } },
     },
     {
@@ -120,7 +117,7 @@ export async function seedUsers(prisma: PrismaClient) {
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: itDept?.id,
-      positionId: staffPos?.id,
+      positionId: staffPos.id,
       profile: { create: { bio: "React & TypeScript", gender: "Nữ" } },
     },
     {
@@ -129,7 +126,7 @@ export async function seedUsers(prisma: PrismaClient) {
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: itDept?.id,
-      positionId: seniorPos?.id,
+      positionId: seniorPos.id,
       profile: { create: { bio: "CI/CD & Cloud", gender: "Nam" } },
     },
     {
@@ -138,7 +135,7 @@ export async function seedUsers(prisma: PrismaClient) {
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: itDept?.id,
-      positionId: staffPos?.id,
+      positionId: staffPos.id,
       profile: { create: { bio: "Kiểm thử phần mềm", gender: "Nữ" } },
     },
     {
@@ -147,7 +144,7 @@ export async function seedUsers(prisma: PrismaClient) {
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: itDept?.id,
-      positionId: internPos?.id,
+      positionId: internPos.id,
       profile: { create: { bio: "Flutter intern", gender: "Nam" } },
     },
     {
@@ -156,7 +153,7 @@ export async function seedUsers(prisma: PrismaClient) {
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: hrDept?.id,
-      positionId: staffPos?.id,
+      positionId: staffPos.id,
       profile: { create: { bio: "Tuyển dụng & onboarding", gender: "Nữ" } },
     },
     {
@@ -165,7 +162,7 @@ export async function seedUsers(prisma: PrismaClient) {
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: hrDept?.id,
-      positionId: staffPos?.id,
+      positionId: staffPos.id,
       profile: { create: { bio: "Đào tạo nội bộ", gender: "Nam" } },
     },
     {
@@ -174,7 +171,7 @@ export async function seedUsers(prisma: PrismaClient) {
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: hrDept?.id,
-      positionId: seniorPos?.id,
+      positionId: seniorPos.id,
       profile: { create: { bio: "Chính sách lương thưởng", gender: "Nữ" } },
     },
     {
@@ -183,7 +180,7 @@ export async function seedUsers(prisma: PrismaClient) {
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: mktDept?.id,
-      positionId: staffPos?.id,
+      positionId: staffPos.id,
       profile: { create: { bio: "Content marketing", gender: "Nam" } },
     },
     {
@@ -192,7 +189,7 @@ export async function seedUsers(prisma: PrismaClient) {
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: mktDept?.id,
-      positionId: staffPos?.id,
+      positionId: staffPos.id,
       profile: { create: { bio: "Social media", gender: "Nữ" } },
     },
     {
@@ -201,7 +198,7 @@ export async function seedUsers(prisma: PrismaClient) {
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: mktDept?.id,
-      positionId: seniorPos?.id,
+      positionId: seniorPos.id,
       profile: { create: { bio: "Thương hiệu doanh nghiệp", gender: "Nam" } },
     },
     {
@@ -210,7 +207,7 @@ export async function seedUsers(prisma: PrismaClient) {
       role: Role.EMPLOYEE,
       password: hashPassword,
       departmentId: mktDept?.id,
-      positionId: staffPos?.id,
+      positionId: staffPos.id,
       profile: { create: { bio: "Thiết kế đồ họa", gender: "Nữ" } },
     },
     {
@@ -218,8 +215,8 @@ export async function seedUsers(prisma: PrismaClient) {
       fullName: "Tạ Quốc Bảo",
       role: Role.EMPLOYEE,
       password: hashPassword,
-      departmentId: boardDept?.id,
-      positionId: staffPos?.id,
+      departmentId: hrDept?.id,
+      positionId: staffPos.id,
       profile: { create: { bio: "Kế toán tổng hợp", gender: "Nam" } },
     },
     {
@@ -227,8 +224,8 @@ export async function seedUsers(prisma: PrismaClient) {
       fullName: "Phan Ngọc Trâm",
       role: Role.EMPLOYEE,
       password: hashPassword,
-      departmentId: boardDept?.id,
-      positionId: staffPos?.id,
+      departmentId: hrDept?.id,
+      positionId: staffPos.id,
       profile: { create: { bio: "Hành chính văn phòng", gender: "Nữ" } },
     },
   ];

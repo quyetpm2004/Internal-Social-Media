@@ -9,6 +9,7 @@ datasource db {
 enum Role {
   EMPLOYEE
   MANAGER
+  DIRECTOR
   ADMIN
 }
 
@@ -192,6 +193,8 @@ model User {
   email    String @unique
   password String
   role     Role   @default(EMPLOYEE)
+  // Tăng khi đổi role/khóa tài khoản để vô hiệu hóa access token đã cấp.
+  tokenVersion Int @default(0) @map("token_version")
 
   refreshTokens RefreshToken[]
   passwordResetTokens PasswordResetToken[]
@@ -319,6 +322,7 @@ model Department {
 
   workflow Workflow?
   tasks    Task[]
+  projects Project[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -327,6 +331,8 @@ model Department {
 
 model Position {
   id        Int      @id @default(autoincrement())
+  // Khóa ổn định (DIRECTOR, MANAGER, SENIOR, STAFF, INTERN); code nghiệp vụ tra theo key, không tra theo name.
+  key       String   @unique @db.VarChar(30)
   name      String
   level     Int
   user      User[]
@@ -958,9 +964,12 @@ model Project {
   templateVersion Int               @map("template_version")
   createdById     Int               @map("created_by_id")
   updatedById     Int?              @map("updated_by_id")
+  // Phòng ban sở hữu dự án; null = dự án liên phòng ban.
+  departmentId    Int?              @map("department_id")
   nextTaskNumber  Int               @default(0) @map("next_task_number")
 
   template  ProjectTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  department Department?    @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   createdBy User            @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: Restrict)
   updatedBy User?           @relation("ProjectUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
 
@@ -979,6 +988,7 @@ model Project {
   @@index([status])
   @@index([templateId])
   @@index([createdById])
+  @@index([departmentId])
   @@map("projects")
 }
 

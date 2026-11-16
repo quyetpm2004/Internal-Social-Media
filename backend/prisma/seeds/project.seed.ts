@@ -1374,6 +1374,12 @@ async function createProject(
     }
   }
 
+  // Dự án thuộc phòng của người tạo; người tạo không có phòng (Giám đốc) -> liên phòng ban.
+  const creator = await prisma.user.findUnique({
+    where: { id: creatorId },
+    select: { departmentId: true },
+  });
+
   return prisma.$transaction(
     async (tx) => {
       const startKey = shiftKey(today, plan.startOffset);
@@ -1391,6 +1397,7 @@ async function createProject(
           templateVersion: template.version,
           createdById: creatorId,
           updatedById: creatorId,
+          departmentId: creator?.departmentId ?? null,
         },
       });
 

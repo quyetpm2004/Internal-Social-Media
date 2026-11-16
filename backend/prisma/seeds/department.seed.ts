@@ -13,7 +13,6 @@ export async function seedDepartments(prisma: PrismaClient) {
       name: "Phòng Marketing",
       description: "Truyền thông và quảng bá thương hiệu",
     },
-    { name: "Ban Giám đốc", description: "Quản lý cấp cao" },
   ];
 
   for (const dept of departments) {
