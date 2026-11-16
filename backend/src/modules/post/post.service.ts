@@ -8,7 +8,6 @@ import {
   PostVisibility,
   Prisma,
   ReactionType,
-  Role,
 } from "@prisma/client";
 import { PostContentFormat } from "@/shared/constants/post-content-format";
 import type { PostContentFormat as PostContentFormatType } from "@/shared/constants/post-content-format";
@@ -39,6 +38,7 @@ import {
 } from "@/modules/poll/poll.service";
 import type { PollUpdateInput } from "@/modules/poll/poll.schema";
 import * as postRepo from "@/modules/post/post.repository";
+import { can } from "@/shared/permissions";
 
 type EventInput = {
   title: string;
@@ -863,7 +863,7 @@ export const pinPostByUserId = async (
   if (groupId === null) {
     const currentUser = await postRepo.getUser(userId);
 
-    if (!currentUser || currentUser.role !== Role.ADMIN) {
+    if (!currentUser || !can(currentUser.role, "post.pin_global")) {
       throw new AppError(403, "Bạn không có quyền thực hiện thao tác này");
     }
   } else {

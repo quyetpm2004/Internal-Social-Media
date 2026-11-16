@@ -1,4 +1,4 @@
-import { verifyAccessToken } from "@/shared/utils/jwt";
+import { authenticateAccessToken } from "@/shared/utils/authenticate";
 import type { AppSocket } from "@/socket/types";
 
 export const extractToken = (socket: AppSocket): string | null => {
@@ -18,18 +18,17 @@ export const extractToken = (socket: AppSocket): string | null => {
   return null;
 };
 
-export const socketAuthMiddleware = (
+export const socketAuthMiddleware = async (
   socket: AppSocket,
   next: (err?: Error) => void,
-): void => {
+): Promise<void> => {
   try {
     const token = extractToken(socket);
     if (!token) {
       return next(new Error("Unauthorized: missing token"));
     }
 
-    const decoded = verifyAccessToken(token);
-    socket.data.user = decoded;
+    socket.data.user = await authenticateAccessToken(token);
     return next();
   } catch (error) {
     console.warn(

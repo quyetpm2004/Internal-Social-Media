@@ -87,6 +87,7 @@ export async function login(email: string, password: string) {
     email: user.email,
     role: user.role,
     fullName: user.fullName,
+    tokenVersion: user.tokenVersion,
   };
 
   const tokens = generateTokens(payload);
@@ -135,11 +136,18 @@ export async function refresh(refreshToken: string) {
 
   assertUserCanAuthenticate(storedToken.user);
 
+  if (decoded.tokenVersion !== storedToken.user.tokenVersion) {
+    await authRepo.deleteRefreshTokenById(storedToken.id);
+    throw new AppError(401, "Phiên đăng nhập đã bị thu hồi");
+  }
+
+  // Dựng payload từ DB, không dùng lại role cũ trong token.
   const payload: JwtPayload = {
-    id: decoded.id,
-    email: decoded.email,
-    role: decoded.role,
-    fullName: decoded.fullName,
+    id: storedToken.user.id,
+    email: storedToken.user.email,
+    role: storedToken.user.role,
+    fullName: storedToken.user.fullName,
+    tokenVersion: storedToken.user.tokenVersion,
   };
 
   const tokens = generateTokens(payload);

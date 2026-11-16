@@ -194,18 +194,27 @@ export const findUsers = (
 export const findUserById = (userId: number) =>
   prisma.user.findUnique({ where: { id: userId } });
 
+// Đổi status/role phải thu hồi phiên: tăng tokenVersion (vô hiệu access token) và xóa refresh token.
 export const updateUserStatus = (userId: number, status: Status) =>
-  prisma.user.update({
-    where: { id: userId },
-    data: { status },
-    select: adminUserUpdateSelect,
+  prisma.$transaction(async (tx) => {
+    const user = await tx.user.update({
+      where: { id: userId },
+      data: { status, tokenVersion: { increment: 1 } },
+      select: adminUserUpdateSelect,
+    });
+    await tx.refreshToken.deleteMany({ where: { userId } });
+    return user;
   });
 
 export const updateUserRole = (userId: number, role: Role) =>
-  prisma.user.update({
-    where: { id: userId },
-    data: { role },
-    select: adminUserUpdateSelect,
+  prisma.$transaction(async (tx) => {
+    const user = await tx.user.update({
+      where: { id: userId },
+      data: { role, tokenVersion: { increment: 1 } },
+      select: adminUserUpdateSelect,
+    });
+    await tx.refreshToken.deleteMany({ where: { userId } });
+    return user;
   });
 
 // ─── Posts ───────────────────────────────────────────────────────────────────

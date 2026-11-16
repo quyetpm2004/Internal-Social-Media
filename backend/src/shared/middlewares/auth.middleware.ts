@@ -1,11 +1,11 @@
 import { NextFunction, Request, Response } from "express";
-import { verifyAccessToken } from "@/shared/utils/jwt";
+import { authenticateAccessToken } from "@/shared/utils/authenticate";
 
-export const authMiddleware = (
+export const authMiddleware = async (
   req: Request,
   res: Response,
   next: NextFunction,
-): void => {
+): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -15,9 +15,7 @@ export const authMiddleware = (
     }
 
     const token = authHeader.split(" ")[1];
-    const decoded = verifyAccessToken(token);
-
-    req.user = decoded;
+    req.user = await authenticateAccessToken(token);
     next();
   } catch (error) {
     res.status(401).json({

@@ -1,6 +1,6 @@
 import type { Socket } from "socket.io";
 import type { Server as IOServer } from "socket.io";
-import type { JwtPayload } from "@/shared/utils/jwt";
+import type { AuthUser } from "@/shared/utils/jwt";
 
 export interface SocketChatMessage {
   id: number;
@@ -144,7 +144,7 @@ export interface InterServerEvents {
 }
 
 export interface SocketData {
-  user: JwtPayload;
+  user: AuthUser;
 }
 
 export type AppIOServer = IOServer<

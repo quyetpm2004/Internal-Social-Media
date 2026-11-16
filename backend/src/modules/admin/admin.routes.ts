@@ -1,4 +1,3 @@
-import { Role } from "@prisma/client";
 import { Router } from "express";
 import * as adminController from "@/modules/admin/admin.controller";
 import {
@@ -18,7 +17,7 @@ import {
 } from "@/modules/admin/admin.schema";
 import { asyncHandler } from "@/shared/middlewares/async-handler.middleware";
 import { authMiddleware } from "@/shared/middlewares/auth.middleware";
-import { requireRoles } from "@/shared/middlewares/role.middleware";
+import { requirePermission } from "@/shared/middlewares/role.middleware";
 import {
   validateBody,
   validateParams,
@@ -27,7 +26,7 @@ import {
 
 const router = Router();
 
-router.use(authMiddleware, requireRoles(Role.ADMIN));
+router.use(authMiddleware, requirePermission("admin.access"));
 
 router.get("/dashboard", asyncHandler(adminController.getDashboard));
 

@@ -2,7 +2,6 @@ import {
   ReactionType,
   GroupMemberRole,
   GroupMemberStatus,
-  Role,
 } from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
 import { getFileUrl } from "@/modules/file/file.service";
@@ -22,6 +21,7 @@ import {
   resolveMentionTargets,
 } from "@/shared/utils/mentions";
 import * as commentRepo from "@/modules/comment/comment.repository";
+import { can } from "@/shared/permissions";
 
 type GetPostCommentsParams = {
   userId: number;
@@ -105,7 +105,7 @@ const assertCanPinComment = async (postId: number, userId: number) => {
   } else {
     const user = await commentRepo.getUserRole(userId);
 
-    if (user?.role === Role.ADMIN) {
+    if (user && can(user.role, "post.pin_global")) {
       return;
     }
   }

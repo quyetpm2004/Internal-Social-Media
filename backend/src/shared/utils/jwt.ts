@@ -6,6 +6,13 @@ export interface JwtPayload {
   email: string;
   role: string;
   fullName: string;
+  /** Phải khớp User.tokenVersion; tăng khi đổi role/khóa tài khoản để vô hiệu hóa token cũ. */
+  tokenVersion: number;
+}
+
+/** Người dùng đã xác thực: role/status lấy từ DB ở mỗi request, không tin claim trong JWT. */
+export interface AuthUser extends JwtPayload {
+  departmentId: number | null;
 }
 
 export const signAccessToken = (payload: JwtPayload): string => {

@@ -1,4 +1,3 @@
-import { Role } from "@prisma/client";
 import { Router } from "express";
 import * as departmentController from "@/modules/department/department.controller";
 import {
@@ -18,7 +17,7 @@ import {
 import { createProjectTaskCommentSchema } from "@/modules/project/project.schema";
 import { asyncHandler } from "@/shared/middlewares/async-handler.middleware";
 import { authMiddleware } from "@/shared/middlewares/auth.middleware";
-import { requireRoles } from "@/shared/middlewares/role.middleware";
+import { requirePermission } from "@/shared/middlewares/role.middleware";
 import {
   validateBody,
   validateParams,
@@ -33,7 +32,7 @@ router.get(
   asyncHandler(departmentController.getAllDepartments),
 );
 
-router.use("/me", authMiddleware, requireRoles(Role.MANAGER));
+router.use("/me", authMiddleware, requirePermission("department.own_workspace"));
 
 router.get(
   "/me/members",
