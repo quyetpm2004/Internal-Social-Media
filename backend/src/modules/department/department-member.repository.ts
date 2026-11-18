@@ -1,5 +1,6 @@
 import {
   Prisma,
+  Role,
   Status,
   TemplateTaskRole,
   WorkflowStatusCategory,
@@ -22,6 +23,13 @@ const memberSelect = {
 export function findManagedDepartment(managerId: number) {
   return prisma.department.findUnique({
     where: { managerId },
+    select: { id: true, name: true, managerId: true },
+  });
+}
+
+export function findDepartmentById(departmentId: number) {
+  return prisma.department.findUnique({
+    where: { id: departmentId },
     select: { id: true, name: true, managerId: true },
   });
 }
@@ -65,12 +73,22 @@ export function findMemberInDepartment(departmentId: number, userId: number) {
 export function findUserByEmail(email: string) {
   return prisma.user.findUnique({
     where: { email },
-    select: { id: true, status: true, departmentId: true },
+    select: { id: true, status: true, departmentId: true, role: true },
   });
 }
 
 export function findPositionById(id: number) {
-  return prisma.position.findUnique({ where: { id }, select: { id: true } });
+  return prisma.position.findUnique({
+    where: { id },
+    select: { id: true, key: true },
+  });
+}
+
+export function findMemberRole(userId: number) {
+  return prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true },
+  });
 }
 
 export function assignUserToDepartment(
@@ -109,8 +127,10 @@ export async function findCandidates(
   skip: number,
   take: number,
 ) {
+  // Chỉ nhân viên thường: Admin/Giám đốc không thuộc phòng ban, Manager luôn có phòng.
   const where: Prisma.UserWhereInput = {
     departmentId: null,
+    role: Role.EMPLOYEE,
     status: Status.ACTIVE,
     ...(search
       ? {

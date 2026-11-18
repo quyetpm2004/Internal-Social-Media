@@ -20,6 +20,7 @@ export const PERMISSION_MATRIX = {
   "organization.dashboard.view": { DIRECTOR: "ALL" },
 
   "department.members.manage": { DIRECTOR: "ALL", MANAGER: "OWN" },
+  "department.members.transfer": { DIRECTOR: "ALL" },
   "department.members.view": {
     DIRECTOR: "ALL",
     MANAGER: "OWN",

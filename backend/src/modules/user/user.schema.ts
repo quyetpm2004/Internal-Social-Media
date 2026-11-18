@@ -12,8 +12,6 @@ export const updateProfileSchema = z.object({
   gender: z.string().nullish(),
   address: z.string().nullish(),
   birthdate: z.union([z.string(), z.date()]).nullish(),
-  departmentId: z.union([z.string(), z.number()]).nullish(),
-  positionId: z.union([z.string(), z.number()]).nullish(),
 });
 
 export type UserIdParams = z.infer<typeof userIdParamsSchema>;

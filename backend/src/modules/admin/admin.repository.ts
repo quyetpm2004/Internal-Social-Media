@@ -7,6 +7,7 @@ import {
   Role,
   Status,
 } from "@prisma/client";
+import { getPositionIdByKey } from "@/modules/position/position.repository";
 import prisma from "@/shared/utils/prisma";
 
 export const recentPostSelect = {
@@ -194,23 +195,59 @@ export const findUsers = (
 export const findUserById = (userId: number) =>
   prisma.user.findUnique({ where: { id: userId } });
 
-// Đổi status/role phải thu hồi phiên: tăng tokenVersion (vô hiệu access token) và xóa refresh token.
+// Đổi status/role thu hồi phiên: tăng tokenVersion (vô hiệu access token) và xóa refresh token.
 export const updateUserStatus = (userId: number, status: Status) =>
   prisma.$transaction(async (tx) => {
+    const data: Prisma.UserUncheckedUpdateInput = {
+      status,
+      tokenVersion: { increment: 1 },
+    };
+
+    // Khóa Manager: gỡ managerId (phòng chờ bổ nhiệm) và hạ về nhân viên,
+    // để không còn Manager không quản lý phòng nào khi mở khóa lại.
+    if (status === Status.INACTIVE) {
+      const current = await tx.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+      });
+      if (current?.role === Role.MANAGER) {
+        await tx.department.updateMany({
+          where: { managerId: userId },
+          data: { managerId: null },
+        });
+        data.role = Role.EMPLOYEE;
+        data.positionId = await getPositionIdByKey("STAFF", tx);
+      }
+    }
+
     const user = await tx.user.update({
       where: { id: userId },
-      data: { status, tokenVersion: { increment: 1 } },
+      data,
       select: adminUserUpdateSelect,
     });
     await tx.refreshToken.deleteMany({ where: { userId } });
     return user;
   });
 
-export const updateUserRole = (userId: number, role: Role) =>
+/**
+ * Admin chỉ chuyển giữa EMPLOYEE và DIRECTOR, kèm đổi chức danh theo role:
+ * - DIRECTOR: chức danh Giám đốc, không thuộc phòng ban nào.
+ * - EMPLOYEE: chức danh nhân viên.
+ */
+export const updateUserRole = (userId: number, role: "EMPLOYEE" | "DIRECTOR") =>
   prisma.$transaction(async (tx) => {
+    const data: Prisma.UserUncheckedUpdateInput =
+      role === Role.DIRECTOR
+        ? {
+            role,
+            departmentId: null,
+            positionId: await getPositionIdByKey("DIRECTOR", tx),
+          }
+        : { role, positionId: await getPositionIdByKey("STAFF", tx) };
+
     const user = await tx.user.update({
       where: { id: userId },
-      data: { role, tokenVersion: { increment: 1 } },
+      data: { ...data, tokenVersion: { increment: 1 } },
       select: adminUserUpdateSelect,
     });
     await tx.refreshToken.deleteMany({ where: { userId } });
@@ -300,10 +337,7 @@ export const findCommentById = (commentId: number) =>
     select: { id: true, status: true },
   });
 
-export const updateCommentStatus = (
-  commentId: number,
-  status: CommentStatus,
-) =>
+export const updateCommentStatus = (commentId: number, status: CommentStatus) =>
   prisma.comment.update({
     where: { id: commentId },
     data: { status },
@@ -344,11 +378,7 @@ export const updateGroupStatus = (groupId: number, status: GroupStatus) =>
     data: { status },
   });
 
-export const findGroupMembers = (
-  groupId: number,
-  skip: number,
-  take: number,
-) =>
+export const findGroupMembers = (groupId: number, skip: number, take: number) =>
   prisma.groupMember.findMany({
     where: { groupId },
     skip,

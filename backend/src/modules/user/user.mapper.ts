@@ -73,9 +73,6 @@ export function mapUpdateProfileData(
   return {
     fullName: data.fullName,
     email: data.email,
-    departmentId:
-      data.departmentId != null ? Number(data.departmentId) : undefined,
-    positionId: data.positionId != null ? Number(data.positionId) : undefined,
     profile: {
       bio: data.bio,
       phone: data.phone,

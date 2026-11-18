@@ -1,4 +1,4 @@
-import { GroupStatus, PostStatus, Status } from "@prisma/client";
+import { GroupStatus, PostStatus, Role, Status } from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
 import { getFileUrl } from "@/modules/file/file.service";
 import {
@@ -208,6 +208,22 @@ export const updateUserRole = async (
   const user = await adminRepo.findUserById(userId);
   if (!user) {
     throw new AppError(404, "Người dùng không tồn tại");
+  }
+
+  if (user.role === Role.ADMIN) {
+    throw new AppError(400, "Không thể thay đổi vai trò của quản trị viên");
+  }
+  if (user.role === Role.MANAGER) {
+    throw new AppError(
+      400,
+      "Trưởng phòng do Giám đốc miễn nhiệm trước, sau đó mới đổi vai trò được",
+    );
+  }
+  if (user.role === data.role) {
+    throw new AppError(400, "Người dùng đã có vai trò này");
+  }
+  if (user.status !== Status.ACTIVE) {
+    throw new AppError(400, "Chỉ đổi vai trò cho tài khoản đang hoạt động");
   }
 
   return adminRepo.updateUserRole(userId, data.role);

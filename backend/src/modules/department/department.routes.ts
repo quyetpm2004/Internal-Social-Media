@@ -2,9 +2,15 @@ import { Router } from "express";
 import * as departmentController from "@/modules/department/department.controller";
 import {
   addMemberSchema,
+  appointManagerSchema,
   candidateListQuerySchema,
+  createDepartmentSchema,
+  departmentIdParamsSchema,
   memberListQuerySchema,
+  memberParamsSchema,
   memberTaskListQuerySchema,
+  transferMemberSchema,
+  updateDepartmentSchema,
   updateMemberSchema,
 } from "@/modules/department/department.schema";
 import * as taskController from "@/modules/department/department-task.controller";
@@ -32,7 +38,29 @@ router.get(
   asyncHandler(departmentController.getAllDepartments),
 );
 
-router.use("/me", authMiddleware, requirePermission("department.own_workspace"));
+// ─── Cơ cấu tổ chức: chỉ Giám đốc ────────────────────────────────────────────
+
+router.post(
+  "/",
+  authMiddleware,
+  requirePermission("department.manage"),
+  validateBody(createDepartmentSchema),
+  asyncHandler(departmentController.createDepartment),
+);
+
+router.get(
+  "/appointees",
+  authMiddleware,
+  requirePermission("department.appoint_manager"),
+  validateQuery(candidateListQuerySchema),
+  asyncHandler(departmentController.listAppointees),
+);
+
+router.use(
+  "/me",
+  authMiddleware,
+  requirePermission("department.own_workspace"),
+);
 
 router.get(
   "/me/members",
@@ -130,6 +158,113 @@ router.get(
   "/me/candidates",
   validateQuery(candidateListQuerySchema),
   asyncHandler(departmentController.listCandidates),
+);
+
+// ─── Theo :departmentId ──────────────────────────────────────────────────────
+// Giám đốc truy cập mọi phòng; Manager/Employee chỉ phòng mình.
+
+router.patch(
+  "/:departmentId",
+  authMiddleware,
+  requirePermission("department.manage"),
+  validateParams(departmentIdParamsSchema),
+  validateBody(updateDepartmentSchema),
+  asyncHandler(departmentController.updateDepartment),
+);
+
+router.delete(
+  "/:departmentId",
+  authMiddleware,
+  requirePermission("department.manage"),
+  validateParams(departmentIdParamsSchema),
+  asyncHandler(departmentController.deleteDepartment),
+);
+
+router.put(
+  "/:departmentId/manager",
+  authMiddleware,
+  requirePermission("department.appoint_manager"),
+  validateParams(departmentIdParamsSchema),
+  validateBody(appointManagerSchema),
+  asyncHandler(departmentController.appointManager),
+);
+
+router.delete(
+  "/:departmentId/manager",
+  authMiddleware,
+  requirePermission("department.appoint_manager"),
+  validateParams(departmentIdParamsSchema),
+  asyncHandler(departmentController.dismissManager),
+);
+
+router.get(
+  "/:departmentId/members",
+  authMiddleware,
+  requirePermission("department.members.view"),
+  validateParams(departmentIdParamsSchema),
+  validateQuery(memberListQuerySchema),
+  asyncHandler(departmentController.listMembers),
+);
+
+router.post(
+  "/:departmentId/members",
+  authMiddleware,
+  requirePermission("department.members.manage"),
+  validateParams(departmentIdParamsSchema),
+  validateBody(addMemberSchema),
+  asyncHandler(departmentController.addMember),
+);
+
+router.get(
+  "/:departmentId/members/:userId/tasks",
+  authMiddleware,
+  requirePermission("department.dashboard.view"),
+  validateParams(memberParamsSchema),
+  validateQuery(memberTaskListQuerySchema),
+  asyncHandler(departmentController.listMemberTasks),
+);
+
+router.patch(
+  "/:departmentId/members/:userId",
+  authMiddleware,
+  requirePermission("department.members.manage"),
+  validateParams(memberParamsSchema),
+  validateBody(updateMemberSchema),
+  asyncHandler(departmentController.updateMember),
+);
+
+router.delete(
+  "/:departmentId/members/:userId",
+  authMiddleware,
+  requirePermission("department.members.manage"),
+  validateParams(memberParamsSchema),
+  asyncHandler(departmentController.removeMember),
+);
+
+router.post(
+  "/:departmentId/members/:userId/transfer",
+  authMiddleware,
+  requirePermission("department.members.transfer"),
+  validateParams(memberParamsSchema),
+  validateBody(transferMemberSchema),
+  asyncHandler(departmentController.transferMember),
+);
+
+router.get(
+  "/:departmentId/candidates",
+  authMiddleware,
+  requirePermission("department.members.manage"),
+  validateParams(departmentIdParamsSchema),
+  validateQuery(candidateListQuerySchema),
+  asyncHandler(departmentController.listCandidates),
+);
+
+router.get(
+  "/:departmentId/projects",
+  authMiddleware,
+  requirePermission("department.dashboard.view"),
+  validateParams(departmentIdParamsSchema),
+  asyncHandler(departmentController.listProjects),
 );
 
 export default router;

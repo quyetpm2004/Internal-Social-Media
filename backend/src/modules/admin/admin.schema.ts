@@ -8,7 +8,7 @@ export const paginationQuerySchema = z.object({
 export const adminUserListQuerySchema = paginationQuerySchema.extend({
   search: z.string().optional().default(""),
   status: z.enum(["ACTIVE", "INACTIVE", "PENDING"]).optional(),
-  role: z.enum(["EMPLOYEE", "MANAGER", "ADMIN"]).optional(),
+  role: z.enum(["EMPLOYEE", "MANAGER", "DIRECTOR", "ADMIN"]).optional(),
 });
 
 export const adminPostListQuerySchema = paginationQuerySchema.extend({
@@ -50,8 +50,10 @@ export const updateUserStatusSchema = z.object({
   status: z.enum(["ACTIVE", "INACTIVE"]),
 });
 
+// Admin chỉ chuyển user giữa EMPLOYEE và DIRECTOR. MANAGER do Giám đốc bổ nhiệm/miễn nhiệm,
+// ADMIN không cấp qua API.
 export const updateUserRoleSchema = z.object({
-  role: z.enum(["EMPLOYEE", "MANAGER", "ADMIN"]),
+  role: z.enum(["EMPLOYEE", "DIRECTOR"]),
 });
 
 export const reviewPostSchema = z.object({

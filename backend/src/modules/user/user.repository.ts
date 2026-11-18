@@ -22,8 +22,6 @@ const profileWithUserSelect = {
 export type UpdateUserProfileData = {
   fullName?: string;
   email?: string;
-  departmentId?: number | null;
-  positionId?: number | null;
   profile: {
     bio?: string | null;
     phone?: string | null;
@@ -57,8 +55,6 @@ export const updateUserWithProfile = (
     data: {
       fullName: data.fullName,
       email: data.email,
-      departmentId: data.departmentId,
-      positionId: data.positionId,
       profile: {
         upsert: {
           create: {

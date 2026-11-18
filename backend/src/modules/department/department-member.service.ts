@@ -1,5 +1,13 @@
-import { Status } from "@prisma/client";
+import { Role, Status } from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
+import {
+  assertDepartmentInScope,
+  can,
+  resolveDepartmentScope,
+  type Permission,
+  type PermissionActor,
+} from "@/shared/permissions";
+import { ROLE_BOUND_POSITION_KEYS } from "@/modules/position/position.repository";
 import { buildPagination, paginate } from "@/shared/utils/pagination";
 import * as kpiRepository from "@/modules/kpi/kpi.repository";
 import type { DepartmentTaskRow } from "@/modules/kpi/kpi.repository";
@@ -17,6 +25,7 @@ import type {
   CandidateListQuery,
   MemberListQuery,
   MemberTaskListQuery,
+  TransferMemberInput,
   UpdateMemberInput,
 } from "@/modules/department/department.schema";
 import * as memberRepository from "@/modules/department/department-member.repository";
@@ -42,10 +51,17 @@ function toMember(member: MemberRow, managerId: number | null) {
   };
 }
 
-async function requireDepartment(managerId: number) {
-  const department = await memberRepository.findManagedDepartment(managerId);
+async function requireDepartment(
+  actor: PermissionActor,
+  departmentId: number,
+  permission: Permission,
+) {
+  const scope = resolveDepartmentScope(actor, permission);
+  assertDepartmentInScope(scope, departmentId);
+
+  const department = await memberRepository.findDepartmentById(departmentId);
   if (!department) {
-    throw new AppError(404, "Bạn chưa quản lý phòng ban nào");
+    throw new AppError(404, "Phòng ban không tồn tại");
   }
   return department;
 }
@@ -56,7 +72,7 @@ async function requireMember(departmentId: number, userId: number) {
     userId,
   );
   if (!member) {
-    throw new AppError(404, "Nhân viên không thuộc phòng ban của bạn");
+    throw new AppError(404, "Nhân viên không thuộc phòng ban này");
   }
   return member;
 }
@@ -65,6 +81,12 @@ async function requirePosition(positionId: number | null | undefined) {
   if (!positionId) return;
   const position = await memberRepository.findPositionById(positionId);
   if (!position) throw new AppError(404, "Chức vụ không tồn tại");
+  if (ROLE_BOUND_POSITION_KEYS.includes(position.key)) {
+    throw new AppError(
+      400,
+      "Chức danh này gắn với vai trò và không thể gán thủ công",
+    );
+  }
 }
 
 function workloadOf(tasks: OpenTaskRow[], memberId: number, todayIso: string) {
@@ -112,12 +134,34 @@ function workloadOf(tasks: OpenTaskRow[], memberId: number, todayIso: string) {
   };
 }
 
-export async function listMembers(managerId: number, query: MemberListQuery) {
-  const department = await requireDepartment(managerId);
+export async function listMembers(
+  actor: PermissionActor,
+  departmentId: number,
+  query: MemberListQuery,
+) {
+  const department = await requireDepartment(
+    actor,
+    departmentId,
+    "department.members.view",
+  );
   const members = await memberRepository.findMembers(
     department.id,
     query.search,
   );
+
+  // Nhân viên chỉ xem danh sách (chỉ đọc), không xem KPI/khối lượng việc của đồng nghiệp.
+  if (!can(actor.role, "department.dashboard.view")) {
+    const { skip, take } = paginate(query.page, query.limit);
+    return {
+      department: { id: department.id, name: department.name },
+      range: null,
+      items: members
+        .slice(skip, skip + take)
+        .map((member) => toMember(member, department.managerId)),
+      pagination: buildPagination(query.page, take, members.length),
+    };
+  }
+
   const memberIds = members.map((member) => member.id);
 
   const todayIso = vietnamIso(new Date());
@@ -178,11 +222,16 @@ export async function listMembers(managerId: number, query: MemberListQuery) {
 }
 
 export async function listMemberTasks(
-  managerId: number,
+  actor: PermissionActor,
+  departmentId: number,
   userId: number,
   query: MemberTaskListQuery,
 ) {
-  const department = await requireDepartment(managerId);
+  const department = await requireDepartment(
+    actor,
+    departmentId,
+    "department.dashboard.view",
+  );
   await requireMember(department.id, userId);
 
   const todayIso = vietnamIso(new Date());
@@ -213,8 +262,15 @@ export async function listMemberTasks(
   };
 }
 
-export async function listProjects(managerId: number) {
-  const department = await requireDepartment(managerId);
+export async function listProjects(
+  actor: PermissionActor,
+  departmentId: number,
+) {
+  const department = await requireDepartment(
+    actor,
+    departmentId,
+    "department.dashboard.view",
+  );
   const members = await memberRepository.findMembers(department.id);
   if (members.length === 0) return [];
 
@@ -224,10 +280,11 @@ export async function listProjects(managerId: number) {
 }
 
 export async function listCandidates(
-  managerId: number,
+  actor: PermissionActor,
+  departmentId: number,
   query: CandidateListQuery,
 ) {
-  await requireDepartment(managerId);
+  await requireDepartment(actor, departmentId, "department.members.manage");
 
   const { skip, take } = paginate(query.page, query.limit);
   const { items, total } = await memberRepository.findCandidates(
@@ -242,8 +299,16 @@ export async function listCandidates(
   };
 }
 
-export async function addMember(managerId: number, input: AddMemberInput) {
-  const department = await requireDepartment(managerId);
+export async function addMember(
+  actor: PermissionActor,
+  departmentId: number,
+  input: AddMemberInput,
+) {
+  const department = await requireDepartment(
+    actor,
+    departmentId,
+    "department.members.manage",
+  );
   await requirePosition(input.positionId);
 
   const user = await memberRepository.findUserByEmail(input.email);
@@ -251,9 +316,13 @@ export async function addMember(managerId: number, input: AddMemberInput) {
   if (user.status !== Status.ACTIVE) {
     throw new AppError(400, "Tài khoản này chưa được kích hoạt");
   }
-  if (user.departmentId === department.id) {
-    throw new AppError(409, "Người dùng đã thuộc phòng ban của bạn");
+  if (user.role !== Role.EMPLOYEE) {
+    throw new AppError(400, "Chỉ có thể thêm nhân viên vào phòng ban");
   }
+  if (user.departmentId === department.id) {
+    throw new AppError(409, "Người dùng đã thuộc phòng ban này");
+  }
+  // Chuyển người giữa các phòng do Giám đốc làm qua transferMember.
   if (user.departmentId !== null) {
     throw new AppError(409, "Người dùng đang thuộc phòng ban khác");
   }
@@ -267,12 +336,23 @@ export async function addMember(managerId: number, input: AddMemberInput) {
 }
 
 export async function updateMember(
-  managerId: number,
+  actor: PermissionActor,
+  departmentId: number,
   userId: number,
   input: UpdateMemberInput,
 ) {
-  const department = await requireDepartment(managerId);
+  const department = await requireDepartment(
+    actor,
+    departmentId,
+    "department.members.manage",
+  );
   await requireMember(department.id, userId);
+  if (userId === department.managerId) {
+    throw new AppError(
+      400,
+      "Chức danh trưởng phòng do Giám đốc quản lý khi bổ nhiệm/miễn nhiệm",
+    );
+  }
   await requirePosition(input.positionId);
 
   const member = await memberRepository.updateMemberPosition(
@@ -282,11 +362,55 @@ export async function updateMember(
   return toMember(member, department.managerId);
 }
 
-export async function removeMember(managerId: number, userId: number) {
-  const department = await requireDepartment(managerId);
+export async function removeMember(
+  actor: PermissionActor,
+  departmentId: number,
+  userId: number,
+) {
+  const department = await requireDepartment(
+    actor,
+    departmentId,
+    "department.members.manage",
+  );
   if (userId === department.managerId) {
     throw new AppError(400, "Không thể xóa trưởng phòng khỏi phòng ban");
   }
   await requireMember(department.id, userId);
   await memberRepository.removeUserFromDepartment(userId);
+}
+
+/** Giám đốc chuyển nhân viên sang phòng khác. Trưởng phòng phải được miễn nhiệm trước. */
+export async function transferMember(
+  actor: PermissionActor,
+  departmentId: number,
+  userId: number,
+  input: TransferMemberInput,
+) {
+  const source = await requireDepartment(
+    actor,
+    departmentId,
+    "department.members.transfer",
+  );
+  if (input.toDepartmentId === source.id) {
+    throw new AppError(400, "Phòng ban đích trùng phòng ban hiện tại");
+  }
+  await requireMember(source.id, userId);
+  if (userId === source.managerId) {
+    throw new AppError(
+      400,
+      "Hãy miễn nhiệm trưởng phòng trước khi chuyển sang phòng khác",
+    );
+  }
+
+  const target = await memberRepository.findDepartmentById(
+    input.toDepartmentId,
+  );
+  if (!target) throw new AppError(404, "Phòng ban đích không tồn tại");
+
+  const member = await memberRepository.assignUserToDepartment(
+    userId,
+    target.id,
+    undefined,
+  );
+  return toMember(member, target.managerId);
 }
