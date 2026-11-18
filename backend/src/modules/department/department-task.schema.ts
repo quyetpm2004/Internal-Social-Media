@@ -5,6 +5,11 @@ export const departmentTaskParamsSchema = z.object({
   taskId: z.coerce.number().int().positive("ID công việc không hợp lệ"),
 });
 
+export const departmentScopedTaskParamsSchema = z.object({
+  departmentId: z.coerce.number().int().positive("departmentId không hợp lệ"),
+  taskId: z.coerce.number().int().positive("ID công việc không hợp lệ"),
+});
+
 export const saveDepartmentTaskSchema = z.object({
   title: z
     .string()

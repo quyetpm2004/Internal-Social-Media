@@ -35,24 +35,44 @@ export function findAssignedTasks(userId: number, from: Date, to: Date) {
 
 export type KpiTaskRow = Awaited<ReturnType<typeof findAssignedTasks>>[number];
 
+const departmentWithMembersSelect = {
+  id: true,
+  name: true,
+  users: {
+    where: { status: Status.ACTIVE },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      position: { select: { name: true } },
+      profile: { select: { avatarKey: true } },
+    },
+    orderBy: { fullName: "asc" },
+  },
+} as const;
+
 export function findManagedDepartment(managerId: number) {
   return prisma.department.findUnique({
     where: { managerId },
+    select: departmentWithMembersSelect,
+  });
+}
+
+export function findDepartmentWithMembers(departmentId: number) {
+  return prisma.department.findUnique({
+    where: { id: departmentId },
+    select: departmentWithMembersSelect,
+  });
+}
+
+/** Toàn bộ phòng ban kèm thành viên (cho dashboard tổ chức của Giám đốc). */
+export function findAllDepartmentsWithMembers() {
+  return prisma.department.findMany({
     select: {
-      id: true,
-      name: true,
-      users: {
-        where: { status: Status.ACTIVE },
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-          position: { select: { name: true } },
-          profile: { select: { avatarKey: true } },
-        },
-        orderBy: { fullName: "asc" },
-      },
+      ...departmentWithMembersSelect,
+      manager: { select: { id: true, fullName: true } },
     },
+    orderBy: { name: "asc" },
   });
 }
 

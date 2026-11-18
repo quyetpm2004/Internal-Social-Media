@@ -15,6 +15,7 @@ import {
 } from "@/modules/department/department.schema";
 import * as taskController from "@/modules/department/department-task.controller";
 import {
+  departmentScopedTaskParamsSchema,
   departmentTaskParamsSchema,
   saveDepartmentTaskConfigSchema,
   saveDepartmentTaskSchema,
@@ -265,6 +266,103 @@ router.get(
   requirePermission("department.dashboard.view"),
   validateParams(departmentIdParamsSchema),
   asyncHandler(departmentController.listProjects),
+);
+
+// ─── Công việc phòng ban theo :departmentId ──────────────────────────────────
+// Xem: Giám đốc (mọi phòng), Manager/Employee (phòng mình). Quản lý: Manager.
+// Employee chỉ tự đổi trạng thái việc được giao (service kiểm tra người thực hiện).
+
+router.get(
+  "/:departmentId/task-config",
+  authMiddleware,
+  requirePermission("department.tasks.view"),
+  validateParams(departmentIdParamsSchema),
+  asyncHandler(taskController.getTaskConfig),
+);
+
+router.put(
+  "/:departmentId/task-config",
+  authMiddleware,
+  requirePermission("department.tasks.manage"),
+  validateParams(departmentIdParamsSchema),
+  validateBody(saveDepartmentTaskConfigSchema),
+  asyncHandler(taskController.saveTaskConfig),
+);
+
+router.get(
+  "/:departmentId/tasks",
+  authMiddleware,
+  requirePermission("department.tasks.view"),
+  validateParams(departmentIdParamsSchema),
+  asyncHandler(taskController.listTasks),
+);
+
+router.post(
+  "/:departmentId/tasks",
+  authMiddleware,
+  requirePermission("department.tasks.manage"),
+  validateParams(departmentIdParamsSchema),
+  validateBody(saveDepartmentTaskSchema),
+  asyncHandler(taskController.createTask),
+);
+
+router.get(
+  "/:departmentId/tasks/:taskId",
+  authMiddleware,
+  requirePermission("department.tasks.view"),
+  validateParams(departmentScopedTaskParamsSchema),
+  asyncHandler(taskController.getTask),
+);
+
+router.get(
+  "/:departmentId/tasks/:taskId/comments",
+  authMiddleware,
+  requirePermission("department.tasks.view"),
+  validateParams(departmentScopedTaskParamsSchema),
+  asyncHandler(taskController.listTaskComments),
+);
+
+router.post(
+  "/:departmentId/tasks/:taskId/comments",
+  authMiddleware,
+  requirePermission("department.tasks.comment"),
+  validateParams(departmentScopedTaskParamsSchema),
+  validateBody(createProjectTaskCommentSchema),
+  asyncHandler(taskController.createTaskComment),
+);
+
+router.get(
+  "/:departmentId/tasks/:taskId/attachments",
+  authMiddleware,
+  requirePermission("department.tasks.view"),
+  validateParams(departmentScopedTaskParamsSchema),
+  asyncHandler(taskController.listTaskAttachments),
+);
+
+router.patch(
+  "/:departmentId/tasks/:taskId/status",
+  authMiddleware,
+  requirePermission("department.tasks.update_assigned_status"),
+  validateParams(departmentScopedTaskParamsSchema),
+  validateBody(updateDepartmentTaskStatusSchema),
+  asyncHandler(taskController.updateTaskStatus),
+);
+
+router.patch(
+  "/:departmentId/tasks/:taskId",
+  authMiddleware,
+  requirePermission("department.tasks.manage"),
+  validateParams(departmentScopedTaskParamsSchema),
+  validateBody(saveDepartmentTaskSchema),
+  asyncHandler(taskController.updateTask),
+);
+
+router.delete(
+  "/:departmentId/tasks/:taskId",
+  authMiddleware,
+  requirePermission("department.tasks.manage"),
+  validateParams(departmentScopedTaskParamsSchema),
+  asyncHandler(taskController.deleteTask),
 );
 
 export default router;

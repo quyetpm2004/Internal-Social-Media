@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { departmentIdOf } from "@/modules/department/department.controller";
 import * as taskService from "@/modules/department/department-task.service";
 import type { CreateProjectTaskCommentInput } from "@/modules/project/project.schema";
 import type {
@@ -12,7 +13,7 @@ function taskIdOf(req: Request) {
 }
 
 export async function listTasks(req: Request, res: Response) {
-  const data = await taskService.listTasks(req.user!.id);
+  const data = await taskService.listTasks(req.user!, departmentIdOf(req));
   res.status(200).json({
     message: "Lấy danh sách công việc phòng ban thành công",
     data,
@@ -20,13 +21,18 @@ export async function listTasks(req: Request, res: Response) {
 }
 
 export async function getTask(req: Request, res: Response) {
-  const data = await taskService.getTask(req.user!.id, taskIdOf(req));
+  const data = await taskService.getTask(
+    req.user!,
+    departmentIdOf(req),
+    taskIdOf(req),
+  );
   res.status(200).json({ message: "Lấy công việc thành công", data });
 }
 
 export async function createTask(req: Request, res: Response) {
   const data = await taskService.createTask(
-    req.user!.id,
+    req.user!,
+    departmentIdOf(req),
     req.validated as SaveDepartmentTaskInput,
   );
   res.status(201).json({ message: "Tạo công việc thành công", data });
@@ -34,7 +40,8 @@ export async function createTask(req: Request, res: Response) {
 
 export async function updateTask(req: Request, res: Response) {
   const data = await taskService.updateTask(
-    req.user!.id,
+    req.user!,
+    departmentIdOf(req),
     taskIdOf(req),
     req.validated as SaveDepartmentTaskInput,
   );
@@ -43,7 +50,8 @@ export async function updateTask(req: Request, res: Response) {
 
 export async function updateTaskStatus(req: Request, res: Response) {
   const data = await taskService.updateTaskStatus(
-    req.user!.id,
+    req.user!,
+    departmentIdOf(req),
     taskIdOf(req),
     req.validated as UpdateDepartmentTaskStatusInput,
   );
@@ -51,31 +59,41 @@ export async function updateTaskStatus(req: Request, res: Response) {
 }
 
 export async function deleteTask(req: Request, res: Response) {
-  const data = await taskService.deleteTask(req.user!.id, taskIdOf(req));
+  const data = await taskService.deleteTask(
+    req.user!,
+    departmentIdOf(req),
+    taskIdOf(req),
+  );
   res.status(200).json({ message: "Xóa công việc thành công", data });
 }
 
 export async function getTaskConfig(req: Request, res: Response) {
-  const data = await taskService.getTaskConfig(req.user!.id);
+  const data = await taskService.getTaskConfig(req.user!, departmentIdOf(req));
   res.status(200).json({ message: "Lấy cấu hình công việc thành công", data });
 }
 
 export async function saveTaskConfig(req: Request, res: Response) {
   const data = await taskService.saveTaskConfig(
-    req.user!.id,
+    req.user!,
+    departmentIdOf(req),
     req.validated as SaveDepartmentTaskConfigInput,
   );
   res.status(200).json({ message: "Lưu cấu hình công việc thành công", data });
 }
 
 export async function listTaskComments(req: Request, res: Response) {
-  const data = await taskService.listTaskComments(req.user!.id, taskIdOf(req));
+  const data = await taskService.listTaskComments(
+    req.user!,
+    departmentIdOf(req),
+    taskIdOf(req),
+  );
   res.status(200).json({ message: "Lấy bình luận thành công", data });
 }
 
 export async function listTaskAttachments(req: Request, res: Response) {
   const data = await taskService.listTaskAttachments(
-    req.user!.id,
+    req.user!,
+    departmentIdOf(req),
     taskIdOf(req),
   );
   res.status(200).json({ message: "Lấy tệp đính kèm thành công", data });
@@ -83,7 +101,8 @@ export async function listTaskAttachments(req: Request, res: Response) {
 
 export async function createTaskComment(req: Request, res: Response) {
   const data = await taskService.createTaskComment(
-    req.user!.id,
+    req.user!,
+    departmentIdOf(req),
     taskIdOf(req),
     req.validated as CreateProjectTaskCommentInput,
   );

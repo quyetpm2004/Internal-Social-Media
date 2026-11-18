@@ -1,5 +1,11 @@
 import { WorkflowStatusCategory } from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
+import {
+  assertCan,
+  assertDepartmentInScope,
+  resolveDepartmentScope,
+  type PermissionActor,
+} from "@/shared/permissions";
 import type { KpiMemberQuery, KpiPeriod } from "@/modules/kpi/kpi.schema";
 import * as kpiRepository from "@/modules/kpi/kpi.repository";
 import type { DepartmentTaskRow } from "@/modules/kpi/kpi.repository";
@@ -63,14 +69,30 @@ function resolveMemberRanges(query: KpiMemberQuery, todayIso: string) {
   return { range, previousRange, buckets };
 }
 
+/**
+ * Dashboard/KPI phòng ban: Giám đốc xem mọi phòng, Manager chỉ phòng mình
+ * (quyền department.dashboard.view, phạm vi ALL hoặc OWN).
+ */
+async function requireKpiDepartment(
+  actor: PermissionActor,
+  departmentId: number,
+) {
+  const scope = resolveDepartmentScope(actor, "department.dashboard.view");
+  assertDepartmentInScope(scope, departmentId);
+
+  const department = await kpiRepository.findDepartmentWithMembers(departmentId);
+  if (!department) {
+    throw new AppError(404, "Phòng ban không tồn tại");
+  }
+  return department;
+}
+
 export async function getDepartmentKpi(
-  managerId: number,
+  actor: PermissionActor,
+  departmentId: number,
   query: KpiMemberQuery,
 ) {
-  const department = await kpiRepository.findManagedDepartment(managerId);
-  if (!department) {
-    throw new AppError(404, "Bạn chưa quản lý phòng ban nào");
-  }
+  const department = await requireKpiDepartment(actor, departmentId);
 
   const members = department.users;
   const todayIso = vietnamIso(new Date());
@@ -166,14 +188,12 @@ export async function getDepartmentKpi(
 }
 
 export async function getMemberKpi(
-  managerId: number,
+  actor: PermissionActor,
+  departmentId: number,
   userId: number,
   period: KpiPeriod,
 ) {
-  const department = await kpiRepository.findManagedDepartment(managerId);
-  if (!department) {
-    throw new AppError(404, "Bạn chưa quản lý phòng ban nào");
-  }
+  const department = await requireKpiDepartment(actor, departmentId);
 
   const member = department.users.find((user) => user.id === userId);
   if (!member) {
@@ -216,13 +236,11 @@ export async function getMemberKpi(
 }
 
 export async function getDepartmentOverview(
-  managerId: number,
+  actor: PermissionActor,
+  departmentId: number,
   period: KpiPeriod,
 ) {
-  const department = await kpiRepository.findManagedDepartment(managerId);
-  if (!department) {
-    throw new AppError(404, "Bạn chưa quản lý phòng ban nào");
-  }
+  const department = await requireKpiDepartment(actor, departmentId);
 
   const members = department.users;
   const memberIds = members.map((member) => member.id);
@@ -377,5 +395,112 @@ export async function getDepartmentOverview(
     trend,
     priorityTasks,
     priorityTotals: { overdue: overdue.length, dueToday: dueToday.length },
+  };
+}
+
+/**
+ * Dashboard tổng quan tổ chức (chỉ Giám đốc, quyền organization.dashboard.view):
+ * điểm KPI từng phòng và toàn tổ chức. Chỉ tính nhân sự đang hoạt động thuộc một phòng ban.
+ */
+export async function getOrganizationOverview(
+  actor: PermissionActor,
+  period: KpiPeriod,
+) {
+  assertCan(actor.role, "organization.dashboard.view");
+
+  const departments = await kpiRepository.findAllDepartmentsWithMembers();
+  const memberIds = departments.flatMap((department) =>
+    department.users.map((user) => user.id),
+  );
+  const todayIso = vietnamIso(new Date());
+  const range = rangeOf(period, todayIso);
+  const previousRange = rangeOf(period, addDays(range.from, -1));
+
+  const rows = memberIds.length
+    ? await kpiRepository.findDepartmentTasks(
+        memberIds,
+        utcDate(previousRange.from),
+        utcDate(range.to),
+      )
+    : [];
+
+  const all = rows.map((row) => toFacts(row, todayIso)) as DepartmentFacts[];
+  const current = all.filter((item) => item.dueIso >= range.from);
+  const previous = all.filter((item) => item.dueIso < range.from);
+
+  const ofDepartment = (items: DepartmentFacts[], userIds: Set<number>) =>
+    items.filter((item) =>
+      item.row.members.some((member) => userIds.has(member.userId)),
+    );
+
+  const departmentStats = departments.map((department) => {
+    const userIds = new Set(department.users.map((user) => user.id));
+    const stats = summarize(ofDepartment(current, userIds));
+    const previousStats = summarize(ofDepartment(previous, userIds));
+
+    return {
+      id: department.id,
+      name: department.name,
+      manager: department.manager,
+      memberCount: department.users.length,
+      assigned: stats.active.length,
+      done: stats.done.length,
+      late: stats.late.length,
+      completionRate: stats.completionRate,
+      onTimeRate: stats.onTimeRate,
+      score: stats.score,
+      previousScore: previousStats.score,
+    };
+  });
+
+  const ranked = departmentStats
+    .filter((department) => department.score !== null)
+    .sort((a, b) => b.score! - a.score!);
+  const topDepartments = ranked
+    .slice(0, TOP_LIMIT)
+    .map((department) => department.id);
+  const needSupport = [...ranked]
+    .reverse()
+    .filter((department) => department.score! < SUPPORT_THRESHOLD)
+    .map((department) => department.id);
+
+  const now = summarize(current);
+  const before = summarize(previous);
+
+  const trend = bucketsOf(period, range).map((bucket) => {
+    const stats = summarize(
+      current.filter(
+        (item) => item.dueIso >= bucket.from && item.dueIso <= bucket.to,
+      ),
+    );
+    return {
+      from: bucket.from,
+      to: bucket.to,
+      completionRate: stats.completionRate,
+      onTimeRate: stats.onTimeRate,
+      score: stats.score,
+    };
+  });
+
+  return {
+    period,
+    range,
+    previousRange,
+    targets: KPI_TARGETS,
+    summary: {
+      departmentCount: departments.length,
+      memberCount: memberIds.length,
+      assigned: now.active.length,
+      done: now.done.length,
+      late: now.late.length,
+      completionRate: now.completionRate,
+      onTimeRate: now.onTimeRate,
+      score: now.score,
+      previousScore: before.score,
+    },
+    departments: departmentStats,
+    topDepartments,
+    needSupport,
+    trend,
   };
 }

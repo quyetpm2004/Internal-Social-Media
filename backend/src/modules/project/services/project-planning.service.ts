@@ -21,7 +21,6 @@ async function assertCanView(projectId: number, userId: number) {
   await projectRepository.findVisibleProject(projectId, userId);
 }
 
-/** Phase và milestone chỉ PM được thêm, sửa, xóa (trước đây thành viên nào cũng được). */
 async function assertPlanner(projectId: number, userId: number) {
   const isManager = await projectRepository.canManageMembers(projectId, userId);
   if (!isManager) {
@@ -99,7 +98,9 @@ function mapPlanningTask(
   };
 }
 
-function taskProgress(tasks: Array<{ status: { category: WorkflowStatusCategory } }>) {
+function taskProgress(
+  tasks: Array<{ status: { category: WorkflowStatusCategory } }>,
+) {
   const taskCount = tasks.length;
   const doneCount = tasks.filter(
     (task) => task.status.category === WorkflowStatusCategory.DONE,
@@ -293,7 +294,9 @@ export async function getMilestones(projectId: number, userId: number) {
     projectRepository.canManageMembers(projectId, userId),
   ]);
   const today = calendarToday();
-  const tasks = await mapTasks(rows.flatMap((row) => row.tasks.map((link) => link.task)));
+  const tasks = await mapTasks(
+    rows.flatMap((row) => row.tasks.map((link) => link.task)),
+  );
   const tasksById = new Map(tasks.map((task) => [task.id, task]));
 
   const milestones = rows.map((row) => {
@@ -371,7 +374,10 @@ export async function updateMilestone(
 ) {
   await assertCanView(projectId, userId);
   await assertPlanner(projectId, userId);
-  const current = await planningRepository.findMilestone(projectId, milestoneId);
+  const current = await planningRepository.findMilestone(
+    projectId,
+    milestoneId,
+  );
   if (!current) throw new AppError(404, "Không tìm thấy cột mốc");
   const taskIds = uniqueIds(input.taskIds);
   await assertTasksInProject(projectId, taskIds);
@@ -412,7 +418,10 @@ export async function removeMilestone(
 ) {
   await assertCanView(projectId, userId);
   await assertPlanner(projectId, userId);
-  const current = await planningRepository.findMilestone(projectId, milestoneId);
+  const current = await planningRepository.findMilestone(
+    projectId,
+    milestoneId,
+  );
   if (!current) throw new AppError(404, "Không tìm thấy cột mốc");
   await planningRepository.deleteMilestone(milestoneId);
   return { id: milestoneId };

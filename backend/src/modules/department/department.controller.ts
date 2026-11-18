@@ -25,7 +25,7 @@ function positiveParam(req: Request, name: string) {
 
 const memberIdOf = (req: Request) => positiveParam(req, "userId");
 
-function departmentIdOf(req: Request) {
+export function departmentIdOf(req: Request) {
   if (req.params.departmentId !== undefined) {
     return positiveParam(req, "departmentId");
   }

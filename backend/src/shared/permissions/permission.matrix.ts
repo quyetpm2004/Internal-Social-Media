@@ -33,6 +33,7 @@ export const PERMISSION_MATRIX = {
     EMPLOYEE: "OWN",
   },
   "department.tasks.manage": { MANAGER: "OWN" },
+  "department.tasks.comment": { MANAGER: "OWN", EMPLOYEE: "OWN" },
   "department.tasks.update_assigned_status": {
     MANAGER: "OWN",
     EMPLOYEE: "OWN",

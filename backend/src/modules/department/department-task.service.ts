@@ -31,6 +31,13 @@ import {
   toDate,
 } from "@/modules/project/task-common";
 import { AppError } from "@/shared/errors/app-error";
+import {
+  assertDepartmentInScope,
+  can,
+  resolveDepartmentScope,
+  type Permission,
+  type PermissionActor,
+} from "@/shared/permissions";
 import prisma from "@/shared/utils/prisma";
 
 const STATUS_IN_USE = "Trạng thái đang có công việc, không thể xóa";
@@ -44,12 +51,30 @@ function isUniqueError(error: unknown) {
   );
 }
 
-async function requireDepartment(managerId: number) {
-  const department = await memberRepository.findManagedDepartment(managerId);
+async function requireDepartment(
+  actor: PermissionActor,
+  departmentId: number,
+  permission: Permission,
+) {
+  const scope = resolveDepartmentScope(actor, permission);
+  assertDepartmentInScope(scope, departmentId);
+
+  const department = await memberRepository.findDepartmentById(departmentId);
   if (!department) {
-    throw new AppError(404, "Bạn chưa quản lý phòng ban nào");
+    throw new AppError(404, "Phòng ban không tồn tại");
   }
   return department;
+}
+
+function isAssignee(
+  task: { members: Array<{ taskRole: string; user: { id: number } }> },
+  userId: number,
+) {
+  return task.members.some(
+    (member) =>
+      member.taskRole === TemplateTaskRole.ASSIGNEE &&
+      member.user.id === userId,
+  );
 }
 
 async function ensureWorkflow(departmentId: number) {
@@ -125,7 +150,11 @@ function memberRows(
   ];
 }
 
-async function loadDetail(departmentId: number, taskId: number) {
+async function loadDetail(
+  departmentId: number,
+  taskId: number,
+  actor: PermissionActor,
+) {
   const task = await taskRepository.findDepartmentTaskDetail(
     departmentId,
     taskId,
@@ -146,13 +175,21 @@ async function loadDetail(departmentId: number, taskId: number) {
     ...detail,
     description: await presentDescription(detail.description),
     attachments,
-    canEdit: true,
-    canChangeStatus: true,
+    // Manager quản lý mọi việc của phòng; Employee chỉ tự đổi trạng thái việc được giao.
+    canEdit: can(actor.role, "department.tasks.manage"),
+    canChangeStatus:
+      can(actor.role, "department.tasks.manage") ||
+      (can(actor.role, "department.tasks.update_assigned_status") &&
+        isAssignee(task, actor.id)),
   };
 }
 
-export async function listTasks(managerId: number) {
-  const department = await requireDepartment(managerId);
+export async function listTasks(actor: PermissionActor, departmentId: number) {
+  const department = await requireDepartment(
+    actor,
+    departmentId,
+    "department.tasks.view",
+  );
   const [tasks, members] = await Promise.all([
     taskRepository.listDepartmentTasks(department.id),
     memberRepository.findMembers(department.id),
@@ -166,16 +203,29 @@ export async function listTasks(managerId: number) {
   };
 }
 
-export async function getTask(managerId: number, taskId: number) {
-  const department = await requireDepartment(managerId);
-  return loadDetail(department.id, taskId);
+export async function getTask(
+  actor: PermissionActor,
+  departmentId: number,
+  taskId: number,
+) {
+  const department = await requireDepartment(
+    actor,
+    departmentId,
+    "department.tasks.view",
+  );
+  return loadDetail(department.id, taskId, actor);
 }
 
 export async function createTask(
-  managerId: number,
+  actor: PermissionActor,
+  departmentId: number,
   input: SaveDepartmentTaskInput,
 ) {
-  const department = await requireDepartment(managerId);
+  const department = await requireDepartment(
+    actor,
+    departmentId,
+    "department.tasks.manage",
+  );
   assertDates(input.startDate, input.dueDate);
   const workflow = await ensureWorkflow(department.id);
 
@@ -190,7 +240,7 @@ export async function createTask(
           status.category === WorkflowStatusCategory.DONE ? new Date() : null;
         const description = await storedDescription(
           tx,
-          managerId,
+          actor.id,
           null,
           input.description,
         );
@@ -210,26 +260,26 @@ export async function createTask(
           startDate: toDate(input.startDate),
           dueDate: toDate(input.dueDate),
           estimatedMinutes: input.estimatedMinutes,
-          createdById: managerId,
+          createdById: actor.id,
           completedAt,
         });
         await projectTaskRepository.claimTaskAttachments(
           tx,
           task.id,
-          managerId,
+          actor.id,
           "DESCRIPTION",
           description.imageIds,
         );
         await projectTaskRepository.claimTaskAttachments(
           tx,
           task.id,
-          managerId,
+          actor.id,
           "FILE",
           [...new Set(input.attachmentIds ?? [])],
         );
         await projectTaskRepository.createTaskMembers(
           tx,
-          memberRows(task.id, input.assigneeId, managerId),
+          memberRows(task.id, input.assigneeId, actor.id),
         );
         return task.id;
       },
@@ -239,15 +289,20 @@ export async function createTask(
     attachmentFailure(error);
   }
 
-  return loadDetail(department.id, taskId);
+  return loadDetail(department.id, taskId, actor);
 }
 
 export async function updateTask(
-  managerId: number,
+  actor: PermissionActor,
+  departmentId: number,
   taskId: number,
   input: SaveDepartmentTaskInput,
 ) {
-  const department = await requireDepartment(managerId);
+  const department = await requireDepartment(
+    actor,
+    departmentId,
+    "department.tasks.manage",
+  );
   const current = await taskRepository.findDepartmentTaskDetail(
     department.id,
     taskId,
@@ -256,8 +311,9 @@ export async function updateTask(
   assertDates(input.startDate, input.dueDate);
   const workflow = await ensureWorkflow(department.id);
   const reporterId =
-    current.members.find((member) => member.taskRole === TemplateTaskRole.REPORTER)
-      ?.user.id ?? managerId;
+    current.members.find(
+      (member) => member.taskRole === TemplateTaskRole.REPORTER,
+    )?.user.id ?? actor.id;
 
   try {
     await prisma.$transaction(
@@ -276,7 +332,7 @@ export async function updateTask(
         );
         const description = await storedDescription(
           tx,
-          managerId,
+          actor.id,
           taskId,
           input.description,
         );
@@ -288,13 +344,13 @@ export async function updateTask(
           startDate: toDate(input.startDate),
           dueDate: toDate(input.dueDate),
           estimatedMinutes: input.estimatedMinutes,
-          updatedById: managerId,
+          updatedById: actor.id,
           completedAt,
         });
         await projectTaskRepository.claimTaskAttachments(
           tx,
           taskId,
-          managerId,
+          actor.id,
           "DESCRIPTION",
           description.imageIds,
         );
@@ -302,7 +358,7 @@ export async function updateTask(
           await projectTaskRepository.claimTaskAttachments(
             tx,
             taskId,
-            managerId,
+            actor.id,
             "FILE",
             [...new Set(input.attachmentIds)],
           );
@@ -319,22 +375,37 @@ export async function updateTask(
     attachmentFailure(error);
   }
 
-  return loadDetail(department.id, taskId);
+  return loadDetail(department.id, taskId, actor);
 }
 
 export async function updateTaskStatus(
-  managerId: number,
+  actor: PermissionActor,
+  departmentId: number,
   taskId: number,
   input: UpdateDepartmentTaskStatusInput,
 ) {
-  const department = await requireDepartment(managerId);
+  const department = await requireDepartment(
+    actor,
+    departmentId,
+    "department.tasks.update_assigned_status",
+  );
   const current = await taskRepository.findDepartmentTaskDetail(
     department.id,
     taskId,
   );
   if (!current) throw new AppError(404, "Không tìm thấy công việc");
+  // Manager đổi trạng thái mọi việc của phòng; Employee chỉ việc được giao cho mình.
+  if (
+    !can(actor.role, "department.tasks.manage") &&
+    !isAssignee(current, actor.id)
+  ) {
+    throw new AppError(
+      403,
+      "Bạn chỉ được đổi trạng thái công việc được giao cho mình",
+    );
+  }
   if (current.statusId === input.statusId) {
-    return loadDetail(department.id, taskId);
+    return loadDetail(department.id, taskId, actor);
   }
 
   const workflow = await ensureWorkflow(department.id);
@@ -347,18 +418,26 @@ export async function updateTaskStatus(
   await taskRepository.updateTaskStatus(
     taskId,
     status.id,
-    managerId,
+    actor.id,
     resolveCompletedAt(
       status.category,
       current.status.category,
       current.completedAt,
     ),
   );
-  return loadDetail(department.id, taskId);
+  return loadDetail(department.id, taskId, actor);
 }
 
-export async function deleteTask(managerId: number, taskId: number) {
-  const department = await requireDepartment(managerId);
+export async function deleteTask(
+  actor: PermissionActor,
+  departmentId: number,
+  taskId: number,
+) {
+  const department = await requireDepartment(
+    actor,
+    departmentId,
+    "department.tasks.manage",
+  );
   const current = await taskRepository.findDepartmentTaskDetail(
     department.id,
     taskId,
@@ -393,7 +472,9 @@ function statusKey(name: string, taken: Set<string>) {
   return key;
 }
 
-function assertStatusRules(statuses: SaveDepartmentTaskConfigInput["statuses"]) {
+function assertStatusRules(
+  statuses: SaveDepartmentTaskConfigInput["statuses"],
+) {
   for (const status of statuses) {
     const category = status.category as WorkflowStatusCategory;
     if (status.isInitial && status.isFinal) {
@@ -437,16 +518,28 @@ async function loadTaskConfig(departmentId: number) {
   return mapDepartmentTaskConfig(workflow, counts);
 }
 
-export async function getTaskConfig(managerId: number) {
-  const department = await requireDepartment(managerId);
+export async function getTaskConfig(
+  actor: PermissionActor,
+  departmentId: number,
+) {
+  const department = await requireDepartment(
+    actor,
+    departmentId,
+    "department.tasks.view",
+  );
   return loadTaskConfig(department.id);
 }
 
 export async function saveTaskConfig(
-  managerId: number,
+  actor: PermissionActor,
+  departmentId: number,
   input: SaveDepartmentTaskConfigInput,
 ) {
-  const department = await requireDepartment(managerId);
+  const department = await requireDepartment(
+    actor,
+    departmentId,
+    "department.tasks.manage",
+  );
   const workflow = await ensureWorkflow(department.id);
   assertStatusRules(input.statuses);
 
@@ -523,8 +616,13 @@ export async function saveTaskConfig(
   return loadTaskConfig(department.id);
 }
 
-async function assertTaskInDepartment(managerId: number, taskId: number) {
-  const department = await requireDepartment(managerId);
+async function assertTaskInDepartment(
+  actor: PermissionActor,
+  departmentId: number,
+  taskId: number,
+  permission: Permission,
+) {
+  const department = await requireDepartment(actor, departmentId, permission);
   const task = await taskRepository.findDepartmentTaskDetail(
     department.id,
     taskId,
@@ -532,8 +630,17 @@ async function assertTaskInDepartment(managerId: number, taskId: number) {
   if (!task) throw new AppError(404, "Không tìm thấy công việc");
 }
 
-export async function listTaskComments(managerId: number, taskId: number) {
-  await assertTaskInDepartment(managerId, taskId);
+export async function listTaskComments(
+  actor: PermissionActor,
+  departmentId: number,
+  taskId: number,
+) {
+  await assertTaskInDepartment(
+    actor,
+    departmentId,
+    taskId,
+    "department.tasks.view",
+  );
   const comments = await projectTaskRepository.listTaskComments(taskId);
   const [avatarUrls, fileUrls] = await Promise.all([
     avatarUrlMap(comments.map((comment) => comment.user.profile?.avatarKey)),
@@ -548,8 +655,17 @@ export async function listTaskComments(managerId: number, taskId: number) {
   );
 }
 
-export async function listTaskAttachments(managerId: number, taskId: number) {
-  await assertTaskInDepartment(managerId, taskId);
+export async function listTaskAttachments(
+  actor: PermissionActor,
+  departmentId: number,
+  taskId: number,
+) {
+  await assertTaskInDepartment(
+    actor,
+    departmentId,
+    taskId,
+    "department.tasks.view",
+  );
   const rows = await projectTaskRepository.listTaskAttachments(taskId);
   const urls = await avatarUrlMap(rows.map((row) => row.fileKey));
   const images = [];
@@ -563,16 +679,22 @@ export async function listTaskAttachments(managerId: number, taskId: number) {
 }
 
 export async function createTaskComment(
-  managerId: number,
+  actor: PermissionActor,
+  departmentId: number,
   taskId: number,
   input: CreateProjectTaskCommentInput,
 ) {
-  await assertTaskInDepartment(managerId, taskId);
+  await assertTaskInDepartment(
+    actor,
+    departmentId,
+    taskId,
+    "department.tasks.comment",
+  );
   let comment;
   try {
     comment = await projectTaskRepository.createTaskComment(
       taskId,
-      managerId,
+      actor.id,
       input.content,
       [...new Set(input.attachmentIds)],
     );
