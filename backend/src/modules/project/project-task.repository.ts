@@ -93,7 +93,19 @@ export const projectTaskDetailSelect = {
       },
       transitions: {
         where: { isActive: true },
-        select: { fromStatusId: true, toStatusId: true },
+        select: {
+          fromStatusId: true,
+          toStatusId: true,
+          approvalRules: {
+            orderBy: { id: "asc" },
+            select: {
+              approverType: true,
+              projectRoleId: true,
+              taskRole: true,
+              onRejectStatusId: true,
+            },
+          },
+        },
       },
     },
   },
@@ -207,6 +219,38 @@ export function isProjectMember(projectId: number, userId: number) {
     where: { projectId, userId },
     select: { id: true },
   });
+}
+
+/** Các quy tắc duyệt gắn với bước chuyển (from -> to) đang bật của workflow. */
+export function findTransitionApprovalRules(
+  workflowId: number,
+  fromStatusId: number,
+  toStatusId: number,
+) {
+  return prisma.projectApprovalRule.findMany({
+    orderBy: { id: "asc" },
+    where: {
+      transition: { workflowId, fromStatusId, toStatusId, isActive: true },
+    },
+    select: {
+      approverType: true,
+      projectRoleId: true,
+      taskRole: true,
+      minApprovals: true,
+      onRejectStatusId: true,
+    },
+  });
+}
+
+export async function findMemberProjectRoleIds(
+  projectId: number,
+  userId: number,
+) {
+  const rows = await prisma.projectMember.findMany({
+    where: { projectId, userId },
+    select: { projectRoleId: true },
+  });
+  return rows.map((row) => row.projectRoleId);
 }
 
 export function findWorkflowInProject(projectId: number, workflowId: number) {

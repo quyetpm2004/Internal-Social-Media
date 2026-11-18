@@ -24,8 +24,8 @@ function validateApprovalRuleFields(
   toStatusId: number,
   fields: RuleFields,
 ) {
-  if (fields.minApprovals < 1) {
-    throw new AppError(400, "minApprovals phải >= 1");
+  if (fields.minApprovals !== 1) {
+    throw new AppError(400, "Mỗi bước chỉ cần 1 người duyệt");
   }
 
   if (fields.approverType === ApprovalApproverType.PROJECT_ROLE) {

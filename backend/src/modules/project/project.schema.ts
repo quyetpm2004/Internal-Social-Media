@@ -16,7 +16,23 @@ export const createProjectSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   templateId: z.number().min(1, "Template ID không được để trống"),
+  projectManagerId: z.number().int().positive("Chọn quản trị dự án"),
+  departmentId: z.number().int().positive().nullable().optional(),
 });
+
+export const rejectProjectTaskSchema = z.object({
+  toStatusId: z.number().int().positive("Trạng thái không hợp lệ"),
+});
+
+export type RejectProjectTaskInput = z.infer<typeof rejectProjectTaskSchema>;
+
+export const reassignProjectManagerSchema = z.object({
+  userId: z.number().int().positive("Chọn người dùng"),
+});
+
+export type ReassignProjectManagerInput = z.infer<
+  typeof reassignProjectManagerSchema
+>;
 
 export type CreateProjectSchema = z.infer<typeof createProjectSchema>;
 
@@ -168,10 +184,7 @@ export const statusIdParamsSchema = workflowIdParamsSchema.extend({
 });
 
 export const transitionIdParamsSchema = workflowIdParamsSchema.extend({
-  transitionId: z.coerce
-    .number()
-    .int()
-    .positive("ID đường đi không hợp lệ"),
+  transitionId: z.coerce.number().int().positive("ID đường đi không hợp lệ"),
 });
 
 export const approvalRuleIdParamsSchema = transitionIdParamsSchema.extend({
@@ -227,10 +240,13 @@ export const updateProjectWorkflowStatusSchema = z
     message: "Không được đổi key trạng thái",
     path: ["key"],
   })
-  .refine((data) => {
-    const { key: _key, ...rest } = data;
-    return hasAnyField(rest);
-  }, { message: "Cần ít nhất một trường để cập nhật" })
+  .refine(
+    (data) => {
+      const { key: _key, ...rest } = data;
+      return hasAnyField(rest);
+    },
+    { message: "Cần ít nhất một trường để cập nhật" },
+  )
   .transform(({ key: _key, ...rest }) => rest);
 
 export const reorderProjectWorkflowStatusesSchema = z.object({
@@ -264,8 +280,16 @@ export const createProjectApprovalRuleSchema = z.object({
   approverType: approverTypeSchema,
   projectRoleId: z.number().int().positive().nullable(),
   taskRole: taskRoleSchema.nullable(),
-  minApprovals: z.number().int().min(1, "Số người duyệt phải từ 1"),
-  onRejectStatusId: z.number().int().positive("Trạng thái từ chối không hợp lệ"),
+  minApprovals: z
+    .number()
+    .int()
+    .min(1)
+    .max(1, "Mỗi bước chỉ cần 1 người duyệt")
+    .default(1),
+  onRejectStatusId: z
+    .number()
+    .int()
+    .positive("Trạng thái từ chối không hợp lệ"),
 });
 
 export const updateProjectApprovalRuleSchema = z
@@ -273,7 +297,12 @@ export const updateProjectApprovalRuleSchema = z
     approverType: approverTypeSchema.optional(),
     projectRoleId: z.number().int().positive().nullable().optional(),
     taskRole: taskRoleSchema.nullable().optional(),
-    minApprovals: z.number().int().min(1, "Số người duyệt phải từ 1").optional(),
+    minApprovals: z
+      .number()
+      .int()
+      .min(1)
+      .max(1, "Mỗi bước chỉ cần 1 người duyệt")
+      .optional(),
     onRejectStatusId: z
       .number()
       .int()
@@ -328,7 +357,10 @@ export const projectRoleParamsSchema = z.object({
 
 export const projectTaskTypeParamsSchema = z.object({
   id: z.coerce.number().int().positive("ID dự án không hợp lệ"),
-  taskTypeId: z.coerce.number().int().positive("ID loại công việc không hợp lệ"),
+  taskTypeId: z.coerce
+    .number()
+    .int()
+    .positive("ID loại công việc không hợp lệ"),
 });
 
 export const createProjectRoleCatalogSchema = z.object({
@@ -421,7 +453,12 @@ export const saveProjectTaskSchema = z.object({
   description: z.string().max(20000, "Mô tả tối đa 20000 ký tự").nullable(),
   workflowId: z.number().int().positive("Quy trình không hợp lệ"),
   taskTypeId: z.number().int().positive("Loại công việc không hợp lệ"),
-  statusId: z.number().int().positive("Trạng thái không hợp lệ").nullable().optional(),
+  statusId: z
+    .number()
+    .int()
+    .positive("Trạng thái không hợp lệ")
+    .nullable()
+    .optional(),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
   startDate: taskDateSchema.nullable(),
   dueDate: taskDateSchema.nullable(),

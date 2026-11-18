@@ -1,4 +1,5 @@
 import { authMiddleware } from "@/shared/middlewares/auth.middleware";
+import { requirePermission } from "@/shared/middlewares/role.middleware";
 import { Router } from "express";
 import * as projectController from "@/modules/project/project.controller";
 import { asyncHandler } from "@/shared/middlewares/async-handler.middleware";
@@ -33,6 +34,8 @@ import {
   projectTaskListQuerySchema,
   projectTaskParamsSchema,
   projectTaskTypeParamsSchema,
+  reassignProjectManagerSchema,
+  rejectProjectTaskSchema,
   reorderProjectWorkflowStatusesSchema,
   createProjectTaskCommentSchema,
   projectMilestoneParamsSchema,
@@ -65,6 +68,7 @@ router.get(
 
 router.post(
   "/",
+  requirePermission("project.create"),
   validateBody(createProjectSchema),
   asyncHandler(projectController.createProjectFromTemplate),
 );
@@ -93,6 +97,13 @@ router.patch(
   validateParams(projectIdParamsSchema),
   validateBody(updateProjectSchema),
   asyncHandler(projectController.updateProject),
+);
+
+router.put(
+  "/:id/manager",
+  validateParams(projectIdParamsSchema),
+  validateBody(reassignProjectManagerSchema),
+  asyncHandler(projectController.reassignProjectManager),
 );
 
 router.get(
@@ -364,6 +375,13 @@ router.patch(
   validateParams(projectTaskParamsSchema),
   validateBody(updateProjectTaskStatusSchema),
   asyncHandler(projectController.updateProjectTaskStatus),
+);
+
+router.post(
+  "/:id/tasks/:taskId/reject",
+  validateParams(projectTaskParamsSchema),
+  validateBody(rejectProjectTaskSchema),
+  asyncHandler(projectController.rejectProjectTask),
 );
 
 router.get(

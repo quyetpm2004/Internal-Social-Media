@@ -211,7 +211,8 @@ export const createApprovalRuleSchema = z.object({
   approverType: approverTypeSchema,
   projectRoleId: z.coerce.number().int().positive().nullable().optional(),
   taskRole: taskRoleSchema.nullable().optional(),
-  minApprovals: z.coerce.number().int().min(1),
+  // Mỗi quy tắc chỉ cần 1 người duyệt (hệ thống không hỗ trợ nhiều người duyệt).
+  minApprovals: z.coerce.number().int().min(1).max(1, "Mỗi bước chỉ cần 1 người duyệt").default(1),
   onRejectStatusId: z.coerce.number().int().positive(),
 });
 
@@ -220,7 +221,7 @@ export const updateApprovalRuleSchema = z
     approverType: approverTypeSchema.optional(),
     projectRoleId: z.coerce.number().int().positive().nullable().optional(),
     taskRole: taskRoleSchema.nullable().optional(),
-    minApprovals: z.coerce.number().int().min(1).optional(),
+    minApprovals: z.coerce.number().int().min(1).max(1, "Mỗi bước chỉ cần 1 người duyệt").optional(),
     onRejectStatusId: z.coerce.number().int().positive().optional(),
   })
   .refine((data) => Object.values(data).some((v) => v !== undefined), {

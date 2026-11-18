@@ -25,6 +25,7 @@ import {
   taskStatusColor,
 } from "@/features/project/components/tasks/task-display";
 import type {
+  TaskApprovalAction,
   TaskAttachment,
   TaskAttachmentGroups,
   TaskComment,
@@ -252,6 +253,10 @@ export default function TaskDetailView({
   const [deleting, setDeleting] = useState(false);
   const [statusId, setStatusId] = useState<number | null>(null);
   const [statusSaving, setStatusSaving] = useState(false);
+  const [rejectTarget, setRejectTarget] = useState<TaskApprovalAction | null>(
+    null,
+  );
+  const [rejecting, setRejecting] = useState(false);
   const [dependencyCount, setDependencyCount] = useState<number | null>(null);
 
   useEffect(() => {
@@ -389,6 +394,25 @@ export default function TaskDetailView({
       toastApiError(error);
     } finally {
       setStatusSaving(false);
+    }
+  };
+
+  const rejectApproval = async () => {
+    if (!task || !rejectTarget || rejecting) return;
+    setRejecting(true);
+    try {
+      const response = await projectApi.rejectTask(
+        projectId,
+        task.id,
+        rejectTarget.toStatus.id,
+      );
+      setRejectTarget(null);
+      onUpdated(response.data);
+      toast.success(t("pages.projects.tasks.detail.rejected"));
+    } catch (error) {
+      toastApiError(error);
+    } finally {
+      setRejecting(false);
     }
   };
 
@@ -890,6 +914,33 @@ export default function TaskDetailView({
             onChange={(nextStatusId) => void changeStatus(nextStatusId)}
           />
         </SideRow>
+        {(task.approvalActions ?? []).length > 0 && (
+          <div className="my-2 space-y-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm">
+            <p className="font-medium text-amber-900">
+              {t("pages.projects.tasks.detail.approvalTitle")}
+            </p>
+            {(task.approvalActions ?? []).map((action) => (
+              <div
+                key={action.toStatus.id}
+                className="flex flex-wrap items-center justify-between gap-2"
+              >
+                <span className="min-w-0 text-amber-800">
+                  {t("pages.projects.tasks.detail.approvalHint", {
+                    name: action.toStatus.name,
+                  })}
+                </span>
+                <button
+                  type="button"
+                  disabled={rejecting}
+                  onClick={() => setRejectTarget(action)}
+                  className="cursor-pointer rounded-lg border border-rose-200 bg-white px-2.5 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:cursor-wait disabled:opacity-60"
+                >
+                  {t("pages.projects.tasks.detail.reject")}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <SideRow label={t("pages.projects.tasks.form.priority")}>
           <span
             className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${priorityBadgeClass[task.priority]}`}
@@ -961,6 +1012,23 @@ export default function TaskDetailView({
           </button>
         )}
       </aside>
+
+      <ConfirmModal
+        open={rejectTarget !== null}
+        title={t("pages.projects.tasks.detail.rejectTitle")}
+        description={
+          rejectTarget
+            ? t("pages.projects.tasks.detail.rejectDescription", {
+                to: rejectTarget.toStatus.name,
+                back: rejectTarget.rejectStatus.name,
+              })
+            : undefined
+        }
+        confirmText={t("pages.projects.tasks.detail.reject")}
+        loading={rejecting}
+        onCancel={() => setRejectTarget(null)}
+        onConfirm={() => void rejectApproval()}
+      />
 
       <ConfirmModal
         open={confirmDelete}

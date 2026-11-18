@@ -366,6 +366,13 @@ export const projectApi = {
     );
   },
 
+  rejectTask(projectId: number, taskId: number, toStatusId: number) {
+    return axiosClient.post<ApiResponse<TaskDetail>>(
+      `/projects/${projectId}/tasks/${taskId}/reject`,
+      { toStatusId },
+    );
+  },
+
   deleteTask(projectId: number, taskId: number) {
     return axiosClient.delete<ApiResponse<{ id: number }>>(
       `/projects/${projectId}/tasks/${taskId}`,

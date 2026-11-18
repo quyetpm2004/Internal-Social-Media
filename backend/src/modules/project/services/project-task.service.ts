@@ -1,4 +1,5 @@
 import {
+  ApprovalApproverType,
   Prisma,
   ProjectPriority,
   TemplateTaskRole,
@@ -29,6 +30,7 @@ import type {
   CreateProjectTaskCommentInput,
   CreateProjectTaskInput,
   ProjectTaskListQuery,
+  RejectProjectTaskInput,
   SaveProjectTaskInput,
   UpdateProjectTaskStatusInput,
 } from "@/modules/project/project.schema";
@@ -101,8 +103,10 @@ async function assertMember(projectId: number, userId: number) {
 }
 
 /**
- * Người tạo task được sửa và xóa.
+ * PM được sửa, xóa và chuyển trạng thái mọi task trong dự án.
+ * Người tạo task được sửa và xóa task của mình.
  * Người phụ trách và người giám sát chỉ được chuyển trạng thái.
+ * Người không là thành viên (kể cả Giám đốc/Manager chỉ xem) không có quyền nào.
  */
 async function taskAccess(
   projectId: number,
@@ -112,14 +116,14 @@ async function taskAccess(
     members: Array<{ userId: number; taskRole: string }>;
   },
 ) {
-  const membership = await projectTaskRepository.isProjectMember(
-    projectId,
-    userId,
-  );
+  const [membership, isProjectManager] = await Promise.all([
+    projectTaskRepository.isProjectMember(projectId, userId),
+    projectRepository.canManageMembers(projectId, userId),
+  ]);
   if (!membership) {
     return { canEdit: false, canChangeStatus: false };
   }
-  const canEdit = task.createdById === userId;
+  const canEdit = isProjectManager || task.createdById === userId;
   const canChangeStatus =
     canEdit ||
     task.members.some(
@@ -323,11 +327,15 @@ async function loadDetail(projectId: number, taskId: number, userId: number) {
   if (!task) {
     throw new AppError(404, "Không tìm thấy công việc");
   }
-  const [access, avatarUrls] = await Promise.all([
+  const [access, approval, avatarUrls] = await Promise.all([
     taskAccess(projectId, userId, task),
+    approvalView(projectId, userId, task),
     avatarUrlMap(task.members.map((member) => member.user.profile?.avatarKey)),
   ]);
-  const detail = mapProjectTaskDetail(task, avatarUrls, access);
+  const detail = mapProjectTaskDetail(task, avatarUrls, {
+    ...access,
+    ...approval,
+  });
   detail.description = await presentDescription(detail.description);
   return detail;
 }
@@ -407,10 +415,7 @@ async function workflowSummary(
 /**
  Trả về list statuses và số lượng công việc theo status
  */
-async function statusSummary(
-  workflowId: number,
-  where: Prisma.TaskWhereInput,
-) {
+async function statusSummary(workflowId: number, where: Prisma.TaskWhereInput) {
   const [statuses, grouped] = await Promise.all([
     projectTaskRepository.listStatusSummaries(workflowId),
     projectTaskRepository.groupTaskCountsByStatus(where),
@@ -609,6 +614,140 @@ export async function updateProjectTask(
   return loadDetail(projectId, taskId, userId);
 }
 
+type ApprovalRuleLike = {
+  approverType: ApprovalApproverType;
+  projectRoleId: number | null;
+  taskRole: TemplateTaskRole | null;
+  onRejectStatusId: number;
+};
+
+type ApprovalTask = {
+  workflowId: number;
+  statusId: number;
+  members: Array<{ userId: number; taskRole: string }>;
+};
+
+/** Ngữ cảnh để xét tư cách người duyệt của một người trên một task. */
+async function approverContext(
+  projectId: number,
+  userId: number,
+  task: ApprovalTask,
+) {
+  const [member, projectRoleIds] = await Promise.all([
+    projectTaskRepository.isProjectMember(projectId, userId),
+    projectTaskRepository.findMemberProjectRoleIds(projectId, userId),
+  ]);
+  return {
+    isMember: Boolean(member),
+    projectRoleIds,
+    taskRoles: task.members
+      .filter((m) => m.userId === userId)
+      .map((m) => m.taskRole),
+  };
+}
+
+type ApproverContext = Awaited<ReturnType<typeof approverContext>>;
+
+/** Các quy tắc mà người này thỏa (phải là thành viên dự án). */
+function matchingApprovalRules<T extends ApprovalRuleLike>(
+  rules: T[],
+  ctx: ApproverContext,
+): T[] {
+  if (!ctx.isMember) return [];
+  return rules.filter((rule) =>
+    rule.approverType === ApprovalApproverType.PROJECT_ROLE
+      ? rule.projectRoleId !== null &&
+        ctx.projectRoleIds.includes(rule.projectRoleId)
+      : rule.taskRole !== null && ctx.taskRoles.includes(rule.taskRole),
+  );
+}
+
+/**
+ * Bước chuyển có quy tắc duyệt thì chỉ người duyệt hợp lệ mới được duyệt hoặc từ chối:
+ * - PROJECT_ROLE: có đúng vai trò dự án được chỉ định.
+ * - TASK_ROLE: giữ đúng vai trò trong task (người phụ trách / giám sát / người tạo).
+ * Khớp bất kỳ quy tắc nào của bước chuyển là đủ điều kiện.
+ * Mỗi quy tắc chỉ cần 1 người duyệt (minApprovals luôn = 1), nên không cần lưu ai đã duyệt.
+ * Duyệt = chuyển sang trạng thái đích. Từ chối = về onRejectStatus (rejectProjectTask).
+ */
+async function assertTransitionApprover(
+  projectId: number,
+  userId: number,
+  task: ApprovalTask,
+  toStatusId: number,
+) {
+  const rules = await projectTaskRepository.findTransitionApprovalRules(
+    task.workflowId,
+    task.statusId,
+    toStatusId,
+  );
+  if (rules.length === 0) return;
+
+  const ctx = await approverContext(projectId, userId, task);
+  if (matchingApprovalRules(rules, ctx).length === 0) {
+    throw new AppError(
+      403,
+      "Bạn không thuộc nhóm được duyệt bước chuyển trạng thái này",
+    );
+  }
+}
+
+async function isTransitionApprover(
+  projectId: number,
+  userId: number,
+  task: ApprovalTask,
+  toStatusId: number,
+) {
+  const rules = await projectTaskRepository.findTransitionApprovalRules(
+    task.workflowId,
+    task.statusId,
+    toStatusId,
+  );
+  if (rules.length === 0) return false;
+  const ctx = await approverContext(projectId, userId, task);
+  return matchingApprovalRules(rules, ctx).length > 0;
+}
+
+async function approvalView(
+  projectId: number,
+  userId: number,
+  task: ApprovalTask & {
+    workflow: {
+      transitions: Array<{
+        fromStatusId: number;
+        toStatusId: number;
+        approvalRules: ApprovalRuleLike[];
+      }>;
+    };
+  },
+) {
+  const guarded = task.workflow.transitions.filter(
+    (transition) =>
+      transition.fromStatusId === task.statusId &&
+      transition.approvalRules.length > 0,
+  );
+  if (guarded.length === 0) {
+    return { approvalActions: [], blockedStatusIds: [] as number[] };
+  }
+
+  const ctx = await approverContext(projectId, userId, task);
+  const approvalActions: Array<{ toStatusId: number; rejectStatusId: number }> =
+    [];
+  const blockedStatusIds: number[] = [];
+  for (const transition of guarded) {
+    const matched = matchingApprovalRules(transition.approvalRules, ctx);
+    if (matched.length > 0) {
+      approvalActions.push({
+        toStatusId: transition.toStatusId,
+        rejectStatusId: matched[0].onRejectStatusId,
+      });
+    } else {
+      blockedStatusIds.push(transition.toStatusId);
+    }
+  }
+  return { approvalActions, blockedStatusIds };
+}
+
 function assertStatusMove(
   workflow: {
     transitionMode: WorkflowTransitionMode;
@@ -648,11 +787,25 @@ export async function updateProjectTaskStatus(
   if (!current) {
     throw new AppError(404, "Không tìm thấy công việc");
   }
-  if (!(await taskAccess(projectId, userId, current)).canChangeStatus) {
-    throw new AppError(403, "Bạn không có quyền thực hiện thao tác này");
-  }
   if (current.statusId === input.statusId) {
+    if (!(await taskAccess(projectId, userId, current)).canChangeStatus) {
+      throw new AppError(403, "Bạn không có quyền thực hiện thao tác này");
+    }
     return loadDetail(projectId, taskId, userId);
+  }
+  // Người duyệt hợp lệ của đúng bước chuyển này được chuyển dù không liên quan tới task;
+  // người khác phải là PM, người tạo, người phụ trách hoặc giám sát.
+  const isApprover = await isTransitionApprover(
+    projectId,
+    userId,
+    current,
+    input.statusId,
+  );
+  if (
+    !isApprover &&
+    !(await taskAccess(projectId, userId, current)).canChangeStatus
+  ) {
+    throw new AppError(403, "Bạn không có quyền thực hiện thao tác này");
   }
 
   const status = await projectTaskRepository.findStatusInWorkflow(
@@ -664,6 +817,7 @@ export async function updateProjectTaskStatus(
   }
 
   assertStatusMove(current.workflow, current.statusId, input.statusId);
+  await assertTransitionApprover(projectId, userId, current, input.statusId);
 
   await projectTaskRepository.updateProjectTaskStatus(
     taskId,
@@ -728,7 +882,9 @@ export async function listTaskComments(
       ),
     ),
   ]);
-  return comments.map((comment) => mapTaskComment(comment, avatarUrls, fileUrls));
+  return comments.map((comment) =>
+    mapTaskComment(comment, avatarUrls, fileUrls),
+  );
 }
 
 export async function listTaskAttachments(
@@ -775,4 +931,69 @@ export async function createTaskComment(
     avatarUrlMap(comment.attachments.map((file) => file.fileKey)),
   ]);
   return mapTaskComment(comment, avatarUrls, fileUrls);
+}
+
+/**
+ * Người duyệt từ chối bước chuyển (current -> toStatusId): task về trạng thái onRejectStatus
+ * của quy tắc mà người đó thỏa. Chỉ người duyệt hợp lệ của đúng bước chuyển đó được từ chối.
+ */
+export async function rejectProjectTask(
+  projectId: number,
+  taskId: number,
+  userId: number,
+  input: RejectProjectTaskInput,
+) {
+  await assertCanView(projectId, userId);
+  const current = await projectTaskRepository.findProjectTaskDetail(
+    projectId,
+    taskId,
+  );
+  if (!current) {
+    throw new AppError(404, "Không tìm thấy công việc");
+  }
+
+  const rules = await projectTaskRepository.findTransitionApprovalRules(
+    current.workflowId,
+    current.statusId,
+    input.toStatusId,
+  );
+  if (rules.length === 0) {
+    throw new AppError(
+      400,
+      "Bước chuyển này không có quy tắc duyệt để từ chối",
+    );
+  }
+
+  const ctx = await approverContext(projectId, userId, current);
+  const matched = matchingApprovalRules(rules, ctx);
+  if (matched.length === 0) {
+    throw new AppError(
+      403,
+      "Bạn không thuộc nhóm được duyệt bước chuyển trạng thái này",
+    );
+  }
+
+  const rejectStatusId = matched[0].onRejectStatusId;
+  if (rejectStatusId === current.statusId) {
+    return loadDetail(projectId, taskId, userId);
+  }
+  const status = await projectTaskRepository.findStatusInWorkflow(
+    current.workflowId,
+    rejectStatusId,
+  );
+  if (!status) {
+    throw new AppError(400, "Trạng thái từ chối không hợp lệ");
+  }
+
+  await projectTaskRepository.updateProjectTaskStatus(
+    taskId,
+    rejectStatusId,
+    userId,
+    resolveCompletedAt(
+      status.category,
+      current.status.category,
+      current.completedAt,
+    ),
+  );
+  return loadDetail(projectId, taskId, userId);
 }

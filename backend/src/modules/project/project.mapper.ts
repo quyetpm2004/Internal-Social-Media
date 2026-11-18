@@ -10,7 +10,11 @@ export function mapTemplateOptions(templates: any) {
   }));
 }
 
-export function mapProjectDetail(project: any, currentUserId: number) {
+export function mapProjectDetail(
+  project: any,
+  currentUserId: number,
+  access: { canEdit: boolean; canReassignManager: boolean },
+) {
   const workflow = project.workflows?.[0];
 
   return {
@@ -32,7 +36,9 @@ export function mapProjectDetail(project: any, currentUserId: number) {
       project.members?.map((member: { userId: number }) => member.userId) ?? [],
     ).size,
     createdBy: project.createdBy,
-    canEdit: project.createdById === currentUserId,
+    canEdit: access.canEdit,
+    canReassignManager: access.canReassignManager,
+    departmentId: project.departmentId ?? null,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
   };
@@ -440,8 +446,18 @@ export function mapProjectTaskDetail(
     updatedAt: Date;
   },
   avatarUrls: Map<string, string>,
-  access: { canEdit: boolean; canChangeStatus: boolean },
+  access: {
+    canEdit: boolean;
+    canChangeStatus: boolean;
+    approvalActions?: Array<{ toStatusId: number; rejectStatusId: number }>;
+    blockedStatusIds?: number[];
+  },
 ) {
+  const approvalActions = access.approvalActions ?? [];
+  const blocked = new Set(access.blockedStatusIds ?? []);
+  const statusById = new Map(
+    task.workflow.statuses.map((status) => [status.id, status]),
+  );
   const assignees = mapAssignees(
     task.members.filter((member) => member.taskRole === "ASSIGNEE"),
     avatarUrls,
@@ -462,7 +478,22 @@ export function mapProjectTaskDetail(
     taskType: task.taskType,
     workflow: { id: task.workflow.id, name: task.workflow.name },
     status: mapTaskStatus(task.status),
-    statusOptions: selectableTaskStatuses(task),
+    // Bước chuyển cần duyệt mà người xem không đủ tư cách thì không đưa vào danh sách chọn.
+    statusOptions: selectableTaskStatuses(task).filter(
+      (status) => status.id === task.statusId || !blocked.has(status.id),
+    ),
+    // Các bước duyệt mà người xem là người duyệt (duyệt = chuyển sang toStatus; từ chối = về rejectStatus).
+    approvalActions: approvalActions.flatMap((action) => {
+      const toStatus = statusById.get(action.toStatusId);
+      const rejectStatus = statusById.get(action.rejectStatusId);
+      if (!toStatus || !rejectStatus) return [];
+      return [
+        {
+          toStatus: mapTaskStatus(toStatus),
+          rejectStatus: mapTaskStatus(rejectStatus),
+        },
+      ];
+    }),
     priority: task.priority,
     startDate: formatDateOnly(task.startDate),
     dueDate: formatDateOnly(task.dueDate),
@@ -474,7 +505,7 @@ export function mapProjectTaskDetail(
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
     canEdit: access.canEdit,
-    canChangeStatus: access.canChangeStatus,
+    canChangeStatus: access.canChangeStatus || approvalActions.length > 0,
   };
 }
 

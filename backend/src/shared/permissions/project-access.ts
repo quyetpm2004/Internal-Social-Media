@@ -1,4 +1,4 @@
-import { ProjectVisibility, Role } from "@prisma/client";
+import { Prisma, ProjectVisibility, Role } from "@prisma/client";
 import { AppError } from "@/shared/errors/app-error";
 import prisma from "@/shared/utils/prisma";
 import {
@@ -8,6 +8,55 @@ import {
 } from "./permission.service";
 
 export const PROJECT_MANAGER_ROLE_KEY = "PROJECT_MANAGER";
+
+export type ProjectMembershipFilter = "all" | "joined" | "view";
+
+export async function loadActor(userId: number): Promise<PermissionActor> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true, departmentId: true },
+  });
+  if (!user) {
+    throw new AppError(401, "Tài khoản không khả dụng");
+  }
+  return user;
+}
+
+export function buildProjectVisibilityWhere(
+  actor: PermissionActor,
+  membership: ProjectMembershipFilter = "all",
+): Prisma.ProjectWhereInput {
+  if (actor.role === Role.ADMIN) {
+    return { id: { in: [] } };
+  }
+
+  const member: Prisma.ProjectWhereInput = {
+    members: { some: { userId: actor.id } },
+  };
+  if (membership === "joined") return member;
+
+  // Dự án thấy được mà không cần là thành viên.
+  const open: Prisma.ProjectWhereInput[] = [];
+  if (getPermissionScope(actor.role, "project.view_public") !== null) {
+    open.push({ visibility: ProjectVisibility.PUBLIC });
+  }
+  const privateScope = getPermissionScope(actor.role, "project.view_private");
+  if (privateScope === "ALL") {
+    open.push({ id: { gt: 0 } });
+  } else if (privateScope === "OWN" && actor.departmentId !== null) {
+    open.push({ departmentId: actor.departmentId });
+  }
+
+  if (membership === "view") {
+    return {
+      AND: [
+        { OR: open.length ? open : [{ id: { in: [] } }] },
+        { members: { none: { userId: actor.id } } },
+      ],
+    };
+  }
+  return { OR: [member, ...open] };
+}
 
 export interface ProjectAccess {
   projectId: number;

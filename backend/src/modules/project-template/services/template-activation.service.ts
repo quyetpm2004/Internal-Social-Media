@@ -96,10 +96,10 @@ function validateApprovalRuleFields(
   template: ActivationTemplate,
   errors: ActivationError[],
 ) {
-  if (rule.minApprovals < 1) {
+  if (rule.minApprovals !== 1) {
     errors.push({
       field: "approval",
-      message: `Quy tắc duyệt trên transition "${transition.name}" trong workflow "${workflow.name}" cần minApprovals >= 1`,
+      message: `Quy tắc duyệt trên transition "${transition.name}" trong workflow "${workflow.name}" chỉ được cần 1 người duyệt (minApprovals = 1)`,
     });
   }
 

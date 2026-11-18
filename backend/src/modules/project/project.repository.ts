@@ -8,6 +8,11 @@ import {
 import { mapTemplateOptions } from "@/modules/project/project.mapper";
 import { CreateProjectSchema, UpdateProjectSchema } from "./project.schema";
 import { AppError } from "@/shared/errors/app-error";
+import {
+  buildProjectVisibilityWhere,
+  loadActor,
+  type ProjectMembershipFilter,
+} from "@/shared/permissions/project-access";
 
 // Helper functions
 function getMappedId(
@@ -24,33 +29,18 @@ function getMappedId(
   return targetId;
 }
 
-// Get visible where clause
-type ProjectMembershipFilter = "all" | "joined" | "view";
-
-function visibleWhere(
+// Điều kiện "dự án người này nhìn thấy" theo role hệ thống (ma trận quyền) và thành viên.
+async function visibleWhere(
   userId: number,
   keyword?: string,
   membership: ProjectMembershipFilter = "all",
 ) {
-  const access =
-    membership === "joined"
-      ? { members: { some: { userId } } }
-      : membership === "view"
-        ? {
-            AND: [
-              { visibility: "PUBLIC" as const },
-              { members: { none: { userId } } },
-            ],
-          }
-        : {
-            OR: [
-              { visibility: "PUBLIC" as const },
-              { members: { some: { userId } } },
-            ],
-          };
-
+  const actor = await loadActor(userId);
   return {
-    AND: [keyword ? { name: { contains: keyword } } : {}, access],
+    AND: [
+      keyword ? { name: { contains: keyword } } : {},
+      buildProjectVisibilityWhere(actor, membership),
+    ],
   };
 }
 
@@ -159,6 +149,7 @@ export async function createProjectFromTemplate(
   input: CreateProjectSchema,
   userId: number,
   template: NonNullable<Awaited<ReturnType<typeof findTemplateForClone>>>,
+  options: { departmentId: number | null; projectManagerId: number },
 ) {
   const project = await tx.project.create({
     data: {
@@ -177,6 +168,7 @@ export async function createProjectFromTemplate(
       templateVersion: template?.version ?? 1,
       createdById: userId,
       updatedById: userId,
+      departmentId: options.departmentId,
       status: ProjectStatus.IN_PROGRESS,
     },
   });
@@ -314,10 +306,12 @@ export async function createProjectFromTemplate(
     projectManagerRoleId = createdRole.id;
   }
 
+  // Người tạo (Giám đốc/Manager) chỉ là người xem; PM do người tạo chỉ định
+  // (có thể chính họ) mới là thành viên và quản lý dự án.
   await tx.projectMember.create({
     data: {
       projectId: project.id,
-      userId,
+      userId: options.projectManagerId,
       projectRoleId: projectManagerRoleId,
       joinedAt: new Date(),
     },
@@ -326,7 +320,7 @@ export async function createProjectFromTemplate(
   return project.id;
 }
 
-export function getProjectList(params: {
+export async function getProjectList(params: {
   userId: number;
   keyword?: string;
   membership?: "all" | "joined" | "view";
@@ -334,7 +328,7 @@ export function getProjectList(params: {
   take: number;
 }) {
   return prisma.project.findMany({
-    where: visibleWhere(params.userId, params.keyword, params.membership),
+    where: await visibleWhere(params.userId, params.keyword, params.membership),
     orderBy: { createdAt: "desc" },
     skip: params.skip,
     take: params.take,
@@ -359,13 +353,13 @@ export function getProjectList(params: {
   });
 }
 
-export function countVisibleProjects(
+export async function countVisibleProjects(
   userId: number,
   keyword?: string,
   membership?: "all" | "joined" | "view",
 ) {
   return prisma.project.count({
-    where: visibleWhere(userId, keyword, membership),
+    where: await visibleWhere(userId, keyword, membership),
   });
 }
 
@@ -382,6 +376,7 @@ const projectDetailSelect = {
   templateId: true,
   templateVersion: true,
   createdById: true,
+  departmentId: true,
   createdAt: true,
   updatedAt: true,
   template: { select: { name: true } },
@@ -408,9 +403,9 @@ const projectDetailSelect = {
   members: { select: { userId: true } },
 } satisfies Prisma.ProjectSelect;
 
-export function getProjectDetail(id: number, userId: number) {
+export async function getProjectDetail(id: number, userId: number) {
   return prisma.project.findFirst({
-    where: { id, ...visibleWhere(userId) },
+    where: { id, ...(await visibleWhere(userId)) },
     select: projectDetailSelect,
   });
 }
@@ -454,7 +449,7 @@ export function updateProject(
 // Kiểm tra xem dự án này user có xem được kh
 export async function findVisibleProject(projectId: number, userId: number) {
   const project = await prisma.project.findFirst({
-    where: { id: projectId, ...visibleWhere(userId) },
+    where: { id: projectId, ...(await visibleWhere(userId)) },
     select: { id: true },
   });
   if (!project) {
@@ -1319,4 +1314,100 @@ export function updateProjectTaskType(
 
 export function deleteProjectTaskType(taskTypeId: number) {
   return prisma.projectTaskType.delete({ where: { id: taskTypeId } });
+}
+
+export function findDepartmentExists(departmentId: number) {
+  return prisma.department.findUnique({
+    where: { id: departmentId },
+    select: { id: true },
+  });
+}
+
+export function findProjectAccessInfo(projectId: number) {
+  return prisma.project.findUnique({
+    where: { id: projectId },
+    select: { id: true, departmentId: true },
+  });
+}
+
+/**
+ * Chỉ định lại PM trong một transaction, dự án luôn còn ít nhất một PM:
+ * thêm quyền PM cho người mới (vào dự án nếu chưa có) rồi gỡ quyền PM của các PM cũ.
+ * PM cũ không còn vai trò nào thì chuyển sang `fallbackRoleId` để vẫn là thành viên.
+ */
+export async function reassignProjectManager(
+  projectId: number,
+  newManagerId: number,
+  fallbackRoleId: number,
+) {
+  return prisma.$transaction(async (tx) => {
+    const managerRole = await tx.projectRole.findFirst({
+      where: { projectId, key: "PROJECT_MANAGER" },
+      select: { id: true },
+    });
+    if (!managerRole) {
+      throw new AppError(500, "Dự án chưa có vai trò Quản trị dự án");
+    }
+
+    const previous = await tx.projectMember.findMany({
+      where: { projectId, projectRoleId: managerRole.id },
+      select: { userId: true },
+    });
+    const previousIds = [...new Set(previous.map((row) => row.userId))].filter(
+      (id) => id !== newManagerId,
+    );
+
+    const existing = await tx.projectMember.findFirst({
+      where: { projectId, userId: newManagerId },
+      orderBy: { joinedAt: "asc" },
+      select: { joinedAt: true },
+    });
+    await tx.projectMember.upsert({
+      where: {
+        projectId_userId_projectRoleId: {
+          projectId,
+          userId: newManagerId,
+          projectRoleId: managerRole.id,
+        },
+      },
+      update: {},
+      create: {
+        projectId,
+        userId: newManagerId,
+        projectRoleId: managerRole.id,
+        joinedAt: existing?.joinedAt ?? new Date(),
+      },
+    });
+
+    for (const userId of previousIds) {
+      await tx.projectMember.deleteMany({
+        where: { projectId, userId, projectRoleId: managerRole.id },
+      });
+      const remaining = await tx.projectMember.count({
+        where: { projectId, userId },
+      });
+      if (remaining === 0) {
+        await tx.projectMember.create({
+          data: { projectId, userId, projectRoleId: fallbackRoleId },
+        });
+      }
+    }
+
+    // Bất biến: dự án luôn còn ít nhất một PM.
+    const managers = await tx.projectMember.count({
+      where: { projectId, projectRoleId: managerRole.id },
+    });
+    if (managers < 1) {
+      throw new AppError(500, "Dự án phải còn ít nhất một Quản trị");
+    }
+  });
+}
+
+/** Vai trò thường dùng làm vai trò dự phòng cho PM cũ: vai trò đầu tiên không phải PM. */
+export function findFallbackProjectRole(projectId: number) {
+  return prisma.projectRole.findFirst({
+    where: { projectId, key: { not: "PROJECT_MANAGER" } },
+    orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    select: { id: true },
+  });
 }

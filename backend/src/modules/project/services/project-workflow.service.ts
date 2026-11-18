@@ -147,8 +147,8 @@ function sameStatusIds(left: number[], right: number[]) {
 }
 
 function assertApprovalRuleShape(fields: ApprovalRuleFields) {
-  if (fields.minApprovals < 1) {
-    throw new AppError(400, "Số người duyệt phải từ 1");
+  if (fields.minApprovals !== 1) {
+    throw new AppError(400, "Mỗi bước chỉ cần 1 người duyệt");
   }
 
   if (fields.approverType === "PROJECT_ROLE") {

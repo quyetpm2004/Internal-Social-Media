@@ -21,10 +21,11 @@ async function assertCanView(projectId: number, userId: number) {
   await projectRepository.findVisibleProject(projectId, userId);
 }
 
-async function assertMember(projectId: number, userId: number) {
-  const member = await projectTaskRepository.isProjectMember(projectId, userId);
-  if (!member) {
-    throw new AppError(403, "Bạn không có quyền thực hiện thao tác này");
+/** Phase và milestone chỉ PM được thêm, sửa, xóa (trước đây thành viên nào cũng được). */
+async function assertPlanner(projectId: number, userId: number) {
+  const isManager = await projectRepository.canManageMembers(projectId, userId);
+  if (!isManager) {
+    throw new AppError(403, "Chỉ quản trị dự án mới được chỉnh sửa kế hoạch");
   }
 }
 
@@ -132,9 +133,9 @@ async function assertTasksInProject(projectId: number, taskIds: number[]) {
 
 export async function getPhases(projectId: number, userId: number) {
   await assertCanView(projectId, userId);
-  const [rows, member] = await Promise.all([
+  const [rows, canManage] = await Promise.all([
     planningRepository.listPhases(projectId),
-    projectTaskRepository.isProjectMember(projectId, userId),
+    projectRepository.canManageMembers(projectId, userId),
   ]);
   const today = calendarToday();
   const tasks = await mapTasks(rows.flatMap((phase) => phase.tasks));
@@ -174,7 +175,7 @@ export async function getPhases(projectId: number, userId: number) {
       );
     });
 
-  return { canManage: Boolean(member), phases };
+  return { canManage, phases };
 }
 
 export async function getPlanningTasks(projectId: number, userId: number) {
@@ -189,7 +190,7 @@ export async function createPhase(
   input: SaveProjectPhaseInput,
 ) {
   await assertCanView(projectId, userId);
-  await assertMember(projectId, userId);
+  await assertPlanner(projectId, userId);
   const taskIds = uniqueIds(input.taskIds);
   const found = await assertTasksInProject(projectId, taskIds);
   const taken = found.find((task) => task.phaseId != null);
@@ -230,7 +231,7 @@ export async function updatePhase(
   input: SaveProjectPhaseInput,
 ) {
   await assertCanView(projectId, userId);
-  await assertMember(projectId, userId);
+  await assertPlanner(projectId, userId);
   const current = await planningRepository.findPhase(projectId, phaseId);
   if (!current) throw new AppError(404, "Không tìm thấy giai đoạn");
 
@@ -278,7 +279,7 @@ export async function removePhase(
   userId: number,
 ) {
   await assertCanView(projectId, userId);
-  await assertMember(projectId, userId);
+  await assertPlanner(projectId, userId);
   const current = await planningRepository.findPhase(projectId, phaseId);
   if (!current) throw new AppError(404, "Không tìm thấy giai đoạn");
   await planningRepository.deletePhase(phaseId);
@@ -287,9 +288,9 @@ export async function removePhase(
 
 export async function getMilestones(projectId: number, userId: number) {
   await assertCanView(projectId, userId);
-  const [rows, member] = await Promise.all([
+  const [rows, canManage] = await Promise.all([
     planningRepository.listMilestones(projectId),
-    projectTaskRepository.isProjectMember(projectId, userId),
+    projectRepository.canManageMembers(projectId, userId),
   ]);
   const today = calendarToday();
   const tasks = await mapTasks(rows.flatMap((row) => row.tasks.map((link) => link.task)));
@@ -322,7 +323,7 @@ export async function getMilestones(projectId: number, userId: number) {
     };
   });
 
-  return { canManage: Boolean(member), milestones };
+  return { canManage, milestones };
 }
 
 export async function createMilestone(
@@ -331,7 +332,7 @@ export async function createMilestone(
   input: SaveProjectMilestoneInput,
 ) {
   await assertCanView(projectId, userId);
-  await assertMember(projectId, userId);
+  await assertPlanner(projectId, userId);
   const taskIds = uniqueIds(input.taskIds);
   await assertTasksInProject(projectId, taskIds);
   if (input.phaseId != null) {
@@ -369,7 +370,7 @@ export async function updateMilestone(
   input: SaveProjectMilestoneInput,
 ) {
   await assertCanView(projectId, userId);
-  await assertMember(projectId, userId);
+  await assertPlanner(projectId, userId);
   const current = await planningRepository.findMilestone(projectId, milestoneId);
   if (!current) throw new AppError(404, "Không tìm thấy cột mốc");
   const taskIds = uniqueIds(input.taskIds);
@@ -410,7 +411,7 @@ export async function removeMilestone(
   userId: number,
 ) {
   await assertCanView(projectId, userId);
-  await assertMember(projectId, userId);
+  await assertPlanner(projectId, userId);
   const current = await planningRepository.findMilestone(projectId, milestoneId);
   if (!current) throw new AppError(404, "Không tìm thấy cột mốc");
   await planningRepository.deleteMilestone(milestoneId);

@@ -143,6 +143,12 @@ export type TaskComment = {
   attachments: TaskAttachment[];
 };
 
+/** Một bước duyệt mà người xem là người duyệt: duyệt = chuyển sang toStatus, từ chối = về rejectStatus. */
+export type TaskApprovalAction = {
+  toStatus: TaskStatusInfo;
+  rejectStatus: TaskStatusInfo;
+};
+
 export type TaskDetail = {
   id: number;
   code: string;
@@ -155,6 +161,7 @@ export type TaskDetail = {
   workflow: TaskWorkflowInfo;
   status: TaskStatusInfo;
   statusOptions: TaskStatusInfo[];
+  approvalActions?: TaskApprovalAction[];
   priority: ProjectPriority;
   startDate: string | null;
   dueDate: string | null;

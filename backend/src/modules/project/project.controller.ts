@@ -29,7 +29,10 @@ export async function createProjectFromTemplate(req: Request, res: Response) {
   if (!userId) {
     throw new AppError(401, "Bạn không có quyền tạo dự án");
   }
-  const data = await projectService.createProjectFromTemplate(req.body, userId);
+  const data = await projectService.createProjectFromTemplate(
+    req.validated,
+    req.user!,
+  );
   res.status(200).json({
     message: "Tạo dự án từ template thành công",
     data,
@@ -84,6 +87,31 @@ export async function updateProject(req: Request, res: Response) {
   );
   res.status(200).json({
     message: "Cập nhật dự án thành công",
+    data,
+  });
+}
+
+export async function reassignProjectManager(req: Request, res: Response) {
+  const data = await projectService.reassignProjectManager(
+    Number(req.params.id),
+    requireUserId(req),
+    req.validated,
+  );
+  res.status(200).json({
+    message: "Chỉ định quản trị dự án thành công",
+    data,
+  });
+}
+
+export async function rejectProjectTask(req: Request, res: Response) {
+  const data = await projectTaskService.rejectProjectTask(
+    Number(req.params.id),
+    Number(req.params.taskId),
+    requireUserId(req),
+    req.validated,
+  );
+  res.status(200).json({
+    message: "Từ chối công việc thành công",
     data,
   });
 }
