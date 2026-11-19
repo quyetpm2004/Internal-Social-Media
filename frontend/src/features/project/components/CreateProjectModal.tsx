@@ -6,7 +6,15 @@ import Input from "@/components/shared/Input";
 import Modal from "@/components/shared/Modal";
 import Select from "@/components/shared/Select";
 import Textarea from "@/components/shared/Textarea";
+import { useAuthStore } from "@/features/auth/store/auth.store";
+import {
+  departmentOrgApi,
+  type OrgDepartment,
+} from "@/features/department/api/department-org.api";
 import { projectApi } from "@/features/project/api/project.api";
+import ProjectManagerPicker, {
+  type PickedManager,
+} from "@/features/project/components/ProjectManagerPicker";
 import {
   UrgentSwitch,
   VisibilityPicker,
@@ -64,12 +72,28 @@ export default function CreateProjectModal({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [templates, setTemplates] = useState<ProjectTemplateOption[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const user = useAuthStore((state) => state.user);
+  const isDirector = user?.role === "DIRECTOR";
+  const self: PickedManager | null = user
+    ? { id: user.id, fullName: user.fullName, email: user.email }
+    : null;
+  const [manager, setManager] = useState<PickedManager | null>(null);
+  const [departmentId, setDepartmentId] = useState("");
+  const [departments, setDepartments] = useState<OrgDepartment[]>([]);
 
   useEffect(() => {
     if (!open) return;
 
     setForm(initialForm());
     setErrors({});
+    setManager(self);
+    setDepartmentId("");
+    if (isDirector) {
+      departmentOrgApi
+        .list()
+        .then((response) => setDepartments(response.data))
+        .catch((error: unknown) => toastApiError(error));
+    }
     let cancelled = false;
 
     const loadTemplates = async () => {
@@ -96,6 +120,8 @@ export default function CreateProjectModal({
     return () => {
       cancelled = true;
     };
+    // Chỉ khởi tạo lại khi mở modal; role và thông tin người dùng không đổi trong lúc mở.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const priorityLabel = (priority: ProjectPriority) =>
@@ -111,6 +137,7 @@ export default function CreateProjectModal({
     }
     if (!form.templateId)
       next.templateId = t("pages.projects.templateRequired");
+    if (!manager) next.manager = t("pages.projects.managerRequired");
     return next;
   };
 
@@ -118,7 +145,9 @@ export default function CreateProjectModal({
     event.preventDefault();
     const nextErrors = validate();
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0 || !form.templateId) return;
+    if (Object.keys(nextErrors).length > 0 || !form.templateId || !manager) {
+      return;
+    }
 
     await onSubmit({
       name: form.name.trim(),
@@ -129,6 +158,11 @@ export default function CreateProjectModal({
       startDate: form.startDate,
       endDate: form.endDate,
       templateId: form.templateId,
+      projectManagerId: manager.id,
+      // Giám đốc chọn phòng (trống = liên phòng ban); Manager do backend tự gán phòng mình.
+      ...(isDirector
+        ? { departmentId: departmentId ? Number(departmentId) : null }
+        : {}),
     });
   };
 
@@ -202,6 +236,40 @@ export default function CreateProjectModal({
               }
             />
           </Field>
+
+          <Field
+            label={t("pages.projects.manager")}
+            hint={t("pages.projects.managerHint")}
+            required
+            error={errors.manager}
+          >
+            <ProjectManagerPicker value={manager} onChange={setManager} self={self} />
+          </Field>
+
+          {isDirector ? (
+            <Field
+              label={t("pages.projects.department")}
+              htmlFor="project-department"
+              hint={t("pages.projects.departmentHint")}
+            >
+              <Select
+                id="project-department"
+                value={departmentId}
+                onChange={(event) => setDepartmentId(event.target.value)}
+              >
+                <option value="">{t("pages.projects.crossDepartment")}</option>
+                {departments.map((department) => (
+                  <option key={department.id} value={department.id}>
+                    {department.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          ) : (
+            <p className="self-end rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
+              {t("pages.projects.ownDepartmentNote")}
+            </p>
+          )}
 
           <Field
             label={t("pages.projects.startDate")}

@@ -18,6 +18,7 @@ import ShareBars from "@/components/shared/dashboard/ShareBars";
 import StatCard from "@/components/shared/dashboard/StatCard";
 import TrendChart from "@/features/work/components/TrendChart";
 import { departmentOverviewApi } from "@/features/department/api/department-overview.api";
+import { useDepartmentScope } from "@/features/department/context/department-scope";
 import DepartmentTaskFormModal from "@/features/department/components/DepartmentTaskFormModal";
 import DepartmentPageHeader from "@/features/department/components/DepartmentPageHeader";
 import MemberAvatar from "@/features/department/components/MemberAvatar";
@@ -58,6 +59,7 @@ function trendLabel(period: OverviewPeriod, from: string) {
 
 export default function DepartmentDashboardPage() {
   const { t } = useTranslation();
+  const { basePath, readOnly } = useDepartmentScope();
   const [creating, setCreating] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [period, setPeriod] = useState<OverviewPeriod>("month");
@@ -103,14 +105,16 @@ export default function DepartmentDashboardPage() {
             }))}
             onChange={setPeriod}
           />
-          <button
-            type="button"
-            onClick={() => setCreating(true)}
-            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-white hover:bg-primary/90"
-          >
-            <Plus className="size-4" />
-            {t("department.createTask.button")}
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-white hover:bg-primary/90"
+            >
+              <Plus className="size-4" />
+              {t("department.createTask.button")}
+            </button>
+          )}
         </>
       }
     />
@@ -249,7 +253,7 @@ export default function DepartmentDashboardPage() {
           title={t("department.dashboard.workload")}
           extra={
             <Link
-              to="/work/department/members"
+              to={`${basePath}/members`}
               className="text-xs font-medium text-primary hover:underline"
             >
               {t("department.dashboard.viewAll")}
@@ -320,7 +324,7 @@ export default function DepartmentDashboardPage() {
           title={t("department.dashboard.kpiOverview")}
           extra={
             <Link
-              to="/work/department/kpi"
+              to={`${basePath}/kpi`}
               className="text-xs font-medium text-primary hover:underline"
             >
               {t("department.dashboard.viewAll")}

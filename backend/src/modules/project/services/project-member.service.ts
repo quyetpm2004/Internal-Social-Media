@@ -195,6 +195,19 @@ export async function removeProjectMember(
   await projectRepository.removeProjectMember(projectId, memberUserId);
 }
 
+/** Tìm người để chọn làm PM khi tạo dự án hoặc chỉ định lại PM (route đã chặn bằng project.create). */
+export async function searchProjectManagerCandidates(
+  query: MemberCandidateQuery,
+) {
+  const candidates = await projectRepository.searchProjectManagerCandidates(
+    query.keyword,
+  );
+  const avatarUrls = await avatarUrlMap(
+    candidates.map((candidate) => candidate.avatarKey),
+  );
+  return projectMapper.mapMemberCandidates(candidates, avatarUrls);
+}
+
 export async function searchMemberCandidates(
   projectId: number,
   userId: number,

@@ -677,6 +677,35 @@ export async function removeProjectMember(projectId: number, userId: number) {
   });
 }
 
+/** Tìm người có thể làm PM (tài khoản hoạt động, không phải Admin). */
+export async function searchProjectManagerCandidates(keyword: string) {
+  const users = await prisma.user.findMany({
+    where: {
+      status: "ACTIVE",
+      role: { not: "ADMIN" },
+      OR: [
+        { fullName: { contains: keyword } },
+        { email: { contains: keyword } },
+      ],
+    },
+    orderBy: { fullName: "asc" },
+    take: 10,
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      profile: { select: { avatarKey: true } },
+    },
+  });
+
+  return users.map((user) => ({
+    id: user.id,
+    fullName: user.fullName,
+    email: user.email,
+    avatarKey: user.profile?.avatarKey ?? null,
+  }));
+}
+
 export async function searchMemberCandidates(
   projectId: number,
   keyword: string,

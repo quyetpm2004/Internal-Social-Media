@@ -115,6 +115,7 @@ async function loadProjectDetail(projectId: number, actor: PermissionActor) {
   return mapProjectDetail(project, actor.id, {
     canEdit: access.isProjectManager,
     canReassignManager: access.canReassignManager,
+    isMember: access.isMember,
   });
 }
 

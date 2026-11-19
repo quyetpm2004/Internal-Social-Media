@@ -34,7 +34,11 @@ function getErrorMessage(error: unknown): string {
   return "Unexpected error";
 }
 
-type RoleFilter = "" | "EMPLOYEE" | "MANAGER" | "ADMIN";
+type RoleFilter = "" | "EMPLOYEE" | "MANAGER" | "DIRECTOR" | "ADMIN";
+
+// Admin chỉ chuyển giữa Nhân viên và Giám đốc. Trưởng phòng do Giám đốc bổ nhiệm/miễn nhiệm.
+const isRoleChangeable = (role: AdminUser["role"]) =>
+  role === "EMPLOYEE" || role === "DIRECTOR";
 type StatusFilter = "" | "ACTIVE" | "INACTIVE" | "PENDING";
 
 export default function AdminUsersPage() {
@@ -153,7 +157,9 @@ export default function AdminUsersPage() {
   };
 
   const handleConfirmRoleChange = async () => {
-    if (!roleUser) return;
+    if (!roleUser || (nextRole !== "EMPLOYEE" && nextRole !== "DIRECTOR")) {
+      return;
+    }
 
     setActionId(roleUser.id);
     try {
@@ -170,6 +176,7 @@ export default function AdminUsersPage() {
 
   const getRoleLabel = (role: AdminUser["role"]) => {
     if (role === "ADMIN") return t("common.roles.admin");
+    if (role === "DIRECTOR") return t("common.roles.director");
     if (role === "MANAGER") return t("common.roles.manager");
     return t("common.roles.employee");
   };
@@ -226,6 +233,7 @@ export default function AdminUsersPage() {
             <option value="">{t("pages.admin.allRoles")}</option>
             <option value="EMPLOYEE">{t("common.roles.employee")}</option>
             <option value="MANAGER">{t("common.roles.manager")}</option>
+            <option value="DIRECTOR">{t("common.roles.director")}</option>
             <option value="ADMIN">{t("common.roles.admin")}</option>
           </FilterSelect>
         </div>
@@ -290,7 +298,15 @@ export default function AdminUsersPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            disabled={user.id === currentUser?.id}
+                            disabled={
+                              user.id === currentUser?.id ||
+                              !isRoleChangeable(user.role)
+                            }
+                            title={
+                              isRoleChangeable(user.role)
+                                ? undefined
+                                : t("pages.admin.roleLockedHint")
+                            }
                             onClick={() => openRoleModal(user)}
                           >
                             {t("pages.admin.changeRole")}
@@ -392,8 +408,7 @@ export default function AdminUsersPage() {
             }
           >
             <option value="EMPLOYEE">{t("common.roles.employee")}</option>
-            <option value="MANAGER">{t("common.roles.manager")}</option>
-            <option value="ADMIN">{t("common.roles.admin")}</option>
+            <option value="DIRECTOR">{t("common.roles.director")}</option>
           </Select>
         </Field>
       </Modal>

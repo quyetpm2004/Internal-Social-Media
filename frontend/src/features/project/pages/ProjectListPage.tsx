@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FolderKanban, Plus, Search } from "lucide-react";
+import { FolderKanban, FolderOpenDot, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { FilterPills } from "@/components/shared/SearchFilter";
 import Input from "@/components/shared/Input";
 import Pagination from "@/components/shared/Pagination";
+import { useAuthStore } from "@/features/auth/store/auth.store";
+import { can } from "@/features/auth/utils/role-access";
 import { projectApi } from "@/features/project/api/project.api";
 import CreateProjectModal from "@/features/project/components/CreateProjectModal";
 import ProjectCard from "@/features/project/components/ProjectCard";
@@ -20,6 +22,7 @@ import { toastApiError } from "@/features/project-template/utils/api-error";
 export default function ProjectListPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const canCreate = useAuthStore((state) => can(state.user?.role, "createProject"));
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
   const [pagination, setPagination] = useState<PaginationData | null>(null);
   const [page, setPage] = useState(1);
@@ -95,22 +98,29 @@ export default function ProjectListPage() {
     <>
       <main className="min-h-[calc(100svh-3.5rem)] w-full px-4 py-6 sm:px-6 md:min-h-svh md:py-8">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              {t("pages.projects.title")}
-            </h1>
-            <p className="mt-1 max-w-xl text-sm text-slate-500">
-              {t("pages.projects.description")}
-            </p>
+          <div className="flex gap-3">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <FolderOpenDot className="size-5" />
+            </span>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight text-slate-900">
+                {t("pages.projects.title")}
+              </h1>
+              <p className="mt-1 max-w-xl text-sm text-slate-500">
+                {t("pages.projects.description")}
+              </p>
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setCreateOpen(true)}
-            className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
-          >
-            <Plus size={16} />
-            {t("pages.projects.create")}
-          </button>
+          {canCreate && (
+            <button
+              type="button"
+              onClick={() => setCreateOpen(true)}
+              className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
+            >
+              <Plus size={16} />
+              {t("pages.projects.create")}
+            </button>
+          )}
         </div>
 
         <div className="mb-6 flex flex-col gap-3">

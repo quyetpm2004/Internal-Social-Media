@@ -24,7 +24,7 @@ import SearchPage from "@/features/search/pages/SearchPage";
 import ChatLayout from "@/features/chat/pages/ChatLayout";
 import ChatEmptyPage from "@/features/chat/pages/ChatEmptyPage";
 import ChatConversationPage from "@/features/chat/pages/ChatConversationPage";
-import DepartmentRoute from "@/components/common/DepartmentRoute";
+import RoleRoute from "@/components/common/RoleRoute";
 import AdminRoute from "@/components/common/AdminRoute";
 import AdminLayout from "@/components/layout/admin/AdminLayout";
 import AdminDashboardPage from "@/features/admin/pages/AdminDashboardPage";
@@ -40,10 +40,13 @@ import ProjectTemplateDetailPage from "@/features/project-template/pages/Project
 import ProjectListPage from "@/features/project/pages/ProjectListPage";
 import ProjectDetailPage from "@/features/project/pages/ProjectDetailPage";
 import WorkLayout from "@/components/layout/work/WorkLayout";
-import OrgOverviewDashboardPage from "@/features/work/pages/OrgOverviewDashboardPage";
+import WorkHomePage from "@/features/work/pages/WorkHomePage";
+import DepartmentsManagePage from "@/features/work/pages/DepartmentsManagePage";
+import DepartmentKpiOverviewPage from "@/features/work/pages/DepartmentKpiOverviewPage";
+import DirectorDepartmentLayout from "@/features/work/pages/DirectorDepartmentLayout";
+import MyDepartmentPage from "@/features/work/pages/MyDepartmentPage";
 import OrgOverviewDetailPage from "@/features/work/pages/OrgOverviewDetailPage";
 import MyWorkPage from "@/features/work/pages/MyWorkPage";
-import WorkSpacePage from "@/features/work/pages/WorkSpacePage";
 import KpiPage from "@/features/work/pages/KpiPage";
 import DepartmentDashboardPage from "@/features/department/pages/DepartmentDashboardPage";
 import DepartmentMembersPage from "@/features/department/pages/DepartmentMembersPage";
@@ -180,11 +183,48 @@ export const router = createBrowserRouter([
         children: [
           {
             path: "/work",
-            element: <OrgOverviewDashboardPage />,
+            element: <WorkHomePage />,
           },
           {
-            path: "/work/overview/:section",
-            element: <OrgOverviewDetailPage />,
+            element: <RoleRoute allow={["DIRECTOR"]} />,
+            children: [
+              {
+                path: "/work/overview/:section",
+                element: <OrgOverviewDetailPage />,
+              },
+              {
+                path: "/work/departments",
+                element: <DepartmentsManagePage />,
+              },
+              {
+                path: "/work/departments/kpi",
+                element: <DepartmentKpiOverviewPage />,
+              },
+              {
+                path: "/work/departments/:departmentId",
+                element: <DirectorDepartmentLayout />,
+                children: [
+                  { index: true, element: <DepartmentDashboardPage /> },
+                  { path: "members", element: <DepartmentMembersPage /> },
+                  { path: "tasks", element: <DepartmentTasksPage /> },
+                  { path: "kpi", element: <DepartmentKpiPage /> },
+                  { path: "member-kpi", element: <KpiPage /> },
+                ],
+              },
+            ],
+          },
+          {
+            element: <RoleRoute allow={["EMPLOYEE"]} />,
+            children: [
+              {
+                path: "/work/my-department",
+                element: <MyDepartmentPage view="members" />,
+              },
+              {
+                path: "/work/my-department/tasks",
+                element: <MyDepartmentPage view="tasks" />,
+              },
+            ],
           },
           {
             path: "/work/mine",
@@ -195,7 +235,7 @@ export const router = createBrowserRouter([
             element: <KpiPage />,
           },
           {
-            element: <DepartmentRoute />,
+            element: <RoleRoute allow={["MANAGER"]} />,
             children: [
               {
                 path: "/work/department",
@@ -213,11 +253,11 @@ export const router = createBrowserRouter([
                 path: "/work/department/kpi",
                 element: <DepartmentKpiPage />,
               },
+              {
+                path: "/work/department/member-kpi",
+                element: <KpiPage />,
+              },
             ],
-          },
-          {
-            path: "/work/spaces/:spaceId",
-            element: <WorkSpacePage />,
           },
           {
             path: "/projects",
@@ -244,7 +284,10 @@ export const router = createBrowserRouter([
               { path: "posts/:postId", element: <AdminPostDetailPage /> },
               { path: "groups", element: <AdminGroupsPage /> },
               { path: "groups/:groupId", element: <AdminGroupDetailPage /> },
-              { path: "project-templates", element: <ProjectTemplateListPage /> },
+              {
+                path: "project-templates",
+                element: <ProjectTemplateListPage />,
+              },
               {
                 path: "project-templates/:templateId",
                 element: <ProjectTemplateDetailPage />,

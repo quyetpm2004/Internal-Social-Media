@@ -66,6 +66,13 @@ router.get(
   asyncHandler(projectController.getTemplateOptions),
 );
 
+router.get(
+  "/manager-candidates",
+  requirePermission("project.create"),
+  validateQuery(memberCandidateQuerySchema),
+  asyncHandler(projectController.searchProjectManagerCandidates),
+);
+
 router.post(
   "/",
   requirePermission("project.create"),

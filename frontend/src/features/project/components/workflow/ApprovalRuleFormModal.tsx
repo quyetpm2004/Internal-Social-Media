@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import Field from "@/components/shared/Field";
-import Input from "@/components/shared/Input";
 import Modal from "@/components/shared/Modal";
 import Select from "@/components/shared/Select";
 import type {
@@ -41,7 +40,6 @@ export default function ApprovalRuleFormModal({
     useState<WorkflowApproverType>("PROJECT_ROLE");
   const [projectRoleId, setProjectRoleId] = useState("");
   const [taskRole, setTaskRole] = useState<WorkflowTaskRole>("ASSIGNEE");
-  const [minApprovals, setMinApprovals] = useState("1");
   const [rejectStatusId, setRejectStatusId] = useState("");
   const [error, setError] = useState("");
 
@@ -52,18 +50,12 @@ export default function ApprovalRuleFormModal({
     setApproverType(rule.approverType);
     setProjectRoleId(rule.projectRoleId ? String(rule.projectRoleId) : "");
     setTaskRole(rule.taskRole ?? "ASSIGNEE");
-    setMinApprovals(String(rule.minApprovals));
     setRejectStatusId(String(rule.onRejectStatusId));
     setError("");
   }, [open, rule]);
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    const min = Number(minApprovals);
-    if (!Number.isInteger(min) || min < 1) {
-      setError(t("pages.projects.workflowPanel.minApprovalsInvalid"));
-      return;
-    }
     if (!rejectStatusId) {
       setError(t("pages.projects.workflowPanel.rejectRequired"));
       return;
@@ -77,7 +69,7 @@ export default function ApprovalRuleFormModal({
       projectRoleId:
         approverType === "PROJECT_ROLE" ? Number(projectRoleId) : null,
       taskRole: approverType === "TASK_ROLE" ? taskRole : null,
-      minApprovals: min,
+      minApprovals: 1,
       onRejectStatusId: Number(rejectStatusId),
     });
   };
@@ -148,19 +140,6 @@ export default function ApprovalRuleFormModal({
               </Select>
             </Field>
           )}
-          <Field
-            label={t("pages.projects.workflowPanel.minApprovals")}
-            htmlFor="rule-min"
-          >
-            <Input
-              id="rule-min"
-              type="number"
-              min={1}
-              value={minApprovals}
-              onChange={(event) => setMinApprovals(event.target.value)}
-              required
-            />
-          </Field>
           <Field label={t("pages.projects.workflowPanel.rejectStatus")}>
             <Select
               value={rejectStatusId}

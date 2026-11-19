@@ -58,6 +58,9 @@ export type ProjectDetail = {
     fullName: string;
   };
   canEdit: boolean;
+  canReassignManager: boolean;
+  isMember: boolean;
+  departmentId: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -85,6 +88,10 @@ export type CreateProjectPayload = {
   startDate: string;
   endDate: string;
   templateId: number;
+  /** Bắt buộc: quản trị dự án (có thể là chính người tạo). */
+  projectManagerId: number;
+  /** Chỉ Giám đốc chọn; bỏ trống là dự án liên phòng ban. Manager luôn là phòng của mình. */
+  departmentId?: number | null;
 };
 
 export type UpdateProjectPayload = {

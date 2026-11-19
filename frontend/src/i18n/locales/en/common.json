@@ -144,7 +144,8 @@
       "moderator": "Moderator",
       "admin": "Administrator",
       "employee": "Employee",
-      "manager": "Manager"
+      "manager": "Manager",
+      "director": "Director"
     },
     "time": {
       "justNow": "Just now",
@@ -163,7 +164,8 @@
       "previous": "Previous page",
       "next": "Next page",
       "page": "Page {{page}}"
-    }
+    },
+    "edit": "Edit"
   },
   "nav": {
     "home": "Home",
@@ -195,7 +197,13 @@
     "settings": "Settings",
     "forgotPassword": "Forgot password",
     "changePassword": "Change password",
-    "languageToggle": "Change language"
+    "languageToggle": "Change language",
+    "organization": "Organization",
+    "manageDepartments": "Manage departments",
+    "departmentKpiOverview": "Department KPI",
+    "myDepartment": "My department",
+    "myDepartmentMembers": "Department members",
+    "myDepartmentTasks": "Department tasks"
   },
   "department": {
     "memberStatus": {
@@ -1056,7 +1064,8 @@
       "projectTemplateRejectStatus": "Reject status",
       "projectTemplateAdd": "Add",
       "projectTemplateEdit": "Edit",
-      "projectTemplateInactive": "Inactive"
+      "projectTemplateInactive": "Inactive",
+      "roleLockedHint": "Managers are appointed or dismissed by the Director; admins cannot change their role here"
     },
     "projects": {
       "title": "Projects",
@@ -1672,7 +1681,20 @@
         "workflow": "Workflow",
         "sortOrder": "Order",
         "sortOrderInvalid": "Order must be a whole number of 0 or more"
-      }
+      },
+      "manager": "Project manager (PM)",
+      "managerHint": "The person responsible for running the project. You can pick yourself.",
+      "managerRequired": "Choose a project manager",
+      "managerSearchPlaceholder": "Search by name or email",
+      "managerSelf": "Pick me",
+      "department": "Department",
+      "departmentHint": "Leave empty for a cross-department project.",
+      "crossDepartment": "Cross-department",
+      "ownDepartmentNote": "The project will belong to your department.",
+      "reassignManager": "Reassign manager",
+      "reassignTitle": "Reassign project manager",
+      "reassignDescription": "The selected person becomes PM. The current PM loses the PM role but stays a project member.",
+      "reassignDone": "{{name}} is now the project manager"
     },
     "workOverview": {
       "title": "Organization overview",
@@ -1973,6 +1995,104 @@
       "engineeringSubtitle": "Projects and work for engineering",
       "members": "{{count}} members",
       "unknown": "This space could not be found."
+    }
+  },
+  "director": {
+    "title": "Department management",
+    "subtitle": "Organization structure, managers and staff of each department",
+    "create": "Create department",
+    "edit": "Edit department",
+    "appoint": "Appoint manager",
+    "dismiss": "Dismiss",
+    "appointTitle": "Appoint manager: {{name}}",
+    "appointHint": "The selected person is promoted to Manager and moved to this department, even if they are in another one.",
+    "dismissTitle": "Dismiss manager",
+    "dismissDescription": "Dismiss {{name}} as manager of {{department}}? They become a regular employee and stay in the department.",
+    "deleteTitle": "Delete department",
+    "deleteDescription": "Delete department {{name}}? Only possible when it has no staff and no tasks.",
+    "noManager": "No manager yet",
+    "positionManager": "Manager",
+    "summary": {
+      "departments": "Departments",
+      "employees": "Staff",
+      "managers": "Managers",
+      "departmentsHint": "{{count}} without a manager",
+      "employeesHint": "About {{count}} people per department",
+      "managersHint": "{{count}} of {{total}} departments have a manager"
+    },
+    "form": {
+      "name": "Department name",
+      "description": "Description",
+      "searchCandidate": "Search employees by name or email",
+      "noCandidate": "No matching employees",
+      "noDepartment": "No department"
+    },
+    "transfer": {
+      "open": "Staff and transfers",
+      "title": "Transfer staff from {{name}}",
+      "empty": "This department has no staff yet",
+      "choose": "Move to...",
+      "action": "Move",
+      "leaderHint": "Dismiss the manager before moving"
+    },
+    "detail": {
+      "back": "Back to departments",
+      "notFound": "Department not found."
+    },
+    "kpi": {
+      "title": "Department KPI",
+      "subtitle": "Compare performance across departments",
+      "orgAverage": "Organization KPI score",
+      "outOf": "out of 100",
+      "memberCount": "{{count}} people",
+      "empty": "No departments yet",
+      "period": {
+        "week": "Week",
+        "month": "Month",
+        "quarter": "Quarter"
+      },
+      "summary": {
+        "departments": "Departments",
+        "members": "Staff",
+        "late": "Late tasks",
+        "scoreHint": "Previous period: {{previous}}",
+        "departmentsHint": "Top: {{name}}",
+        "noData": "No data yet",
+        "membersHint": "About {{count}} people per department",
+        "lateHint": "Out of {{count}} tasks assigned this period"
+      },
+      "columns": {
+        "department": "Department",
+        "manager": "Manager",
+        "score": "KPI score",
+        "completion": "Completion rate",
+        "onTime": "On time",
+        "change": "Vs. previous period"
+      }
+    },
+    "toast": {
+      "created": "Department created",
+      "updated": "Department updated",
+      "deleted": "Department deleted",
+      "appointed": "{{name}} appointed as manager",
+      "dismissed": "{{name}} dismissed",
+      "transferred": "{{name}} moved to the new department"
+    }
+  },
+  "myDepartment": {
+    "membersTitle": "Department members",
+    "tasksTitle": "Department tasks",
+    "readOnly": "View only",
+    "canUpdate": "Assigned to you, you can update the status",
+    "statusUpdated": "Status updated",
+    "columns": {
+      "name": "Name",
+      "email": "Email",
+      "position": "Position",
+      "task": "Task",
+      "assignee": "Assignee",
+      "status": "Status",
+      "due": "Due"
     }
   }
 }

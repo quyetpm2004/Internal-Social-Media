@@ -1,6 +1,7 @@
 import { ArrowLeft, Trophy } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useDepartmentScope } from "@/features/department/context/department-scope";
 import MemberAvatar from "@/features/department/components/MemberAvatar";
 import type { KpiViewedMember } from "@/features/department/types/department.type";
 
@@ -16,11 +17,12 @@ export default function MemberKpiBanner({
   total,
 }: MemberKpiBannerProps) {
   const { t } = useTranslation();
+  const { basePath } = useDepartmentScope();
 
   return (
     <div className="space-y-3">
       <Link
-        to="/work/department/kpi"
+        to={`${basePath}/kpi`}
         className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900"
       >
         <ArrowLeft className="size-4" />

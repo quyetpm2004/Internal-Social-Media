@@ -2,7 +2,7 @@ export interface UserProfile {
   id: string;
   fullName: string;
   email: string;
-  role: "EMPLOYEE" | "ADMIN" | "MANAGER";
+  role: "EMPLOYEE" | "MANAGER" | "DIRECTOR" | "ADMIN";
   bio: string;
   phone: string;
   gender: "Nam" | "Nữ" | "Khác";

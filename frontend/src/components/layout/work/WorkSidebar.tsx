@@ -12,7 +12,6 @@ import {
   Search,
   Store,
   Target,
-  UserRound,
   Users,
   X,
   type LucideIcon,
@@ -39,11 +38,45 @@ type NavItem = {
   end?: boolean;
 };
 
-const mainLinks: NavItem[] = [
-  { to: "/work", labelKey: "nav.orgOverview", icon: Building2, end: true },
-  { to: "/work/mine", labelKey: "nav.myWork", icon: Briefcase },
+// Director: Tổng quan tổ chức.
+const directorMainLink: NavItem = {
+  to: "/work",
+  labelKey: "nav.orgOverview",
+  icon: Building2,
+  end: true,
+};
+
+// Director: Quản lý tất cả phòng ban
+const directorLinks: NavItem[] = [
+  {
+    to: "/work/departments",
+    labelKey: "nav.manageDepartments",
+    icon: Building2,
+    end: true,
+  },
+  {
+    to: "/work/departments/kpi",
+    labelKey: "nav.departmentKpiOverview",
+    icon: Target,
+  },
 ];
 
+// Nhân viên: xem chỉ đọc phòng ban của mình.
+const employeeLinks: NavItem[] = [
+  {
+    to: "/work/my-department",
+    labelKey: "nav.myDepartmentMembers",
+    icon: Users,
+    end: true,
+  },
+  {
+    to: "/work/my-department/tasks",
+    labelKey: "nav.myDepartmentTasks",
+    icon: ClipboardList,
+  },
+];
+
+// Manage: Quản lí phòng ban của mình
 const departmentLinks: NavItem[] = [
   {
     to: "/work/department",
@@ -51,7 +84,11 @@ const departmentLinks: NavItem[] = [
     icon: LayoutDashboard,
     end: true,
   },
-  { to: "/work/department/members", labelKey: "nav.departmentMembers", icon: Users },
+  {
+    to: "/work/department/members",
+    labelKey: "nav.departmentMembers",
+    icon: Users,
+  },
   {
     to: "/work/department/tasks",
     labelKey: "nav.departmentTasks",
@@ -60,15 +97,21 @@ const departmentLinks: NavItem[] = [
   { to: "/work/department/kpi", labelKey: "nav.departmentKpi", icon: Target },
 ];
 
+// Ai cũng có
 const spaceLinks: NavItem[] = [
-  { to: "/work/spaces/personal", labelKey: "nav.personal", icon: UserRound },
+  { to: "/work/mine", labelKey: "nav.myWork", icon: Briefcase },
   { to: "/projects", labelKey: "nav.projects", icon: FolderKanban },
   { to: "/work/kpi", labelKey: "nav.kpi", icon: Gauge },
 ];
 
+// Phần thêm
 const moreLinks: NavItem[] = [
   { to: "/work/spaces/sales", labelKey: "nav.salesSpace", icon: Store },
-  { to: "/work/spaces/engineering", labelKey: "nav.engineeringSpace", icon: Code2 },
+  {
+    to: "/work/spaces/engineering",
+    labelKey: "nav.engineeringSpace",
+    icon: Code2,
+  },
 ];
 
 function SidebarLink({
@@ -99,7 +142,7 @@ function SidebarLink({
         )
       }
     >
-      <Icon className="size-[18px] shrink-0" />
+      <Icon className="size-4.5 shrink-0" />
       <span className="truncate">{label}</span>
     </NavLink>
   );
@@ -108,7 +151,7 @@ function SidebarLink({
 function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   const { t } = useTranslation();
   const { pathname } = useLocation();
-  const isLeader = useAuthStore((state) => state.user?.role === "MANAGER");
+  const role = useAuthStore((state) => state.user?.role);
   const [query, setQuery] = useState("");
   const [moreOpen, setMoreOpen] = useState(
     pathname.startsWith("/work/spaces/sales") ||
@@ -119,12 +162,27 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   const matches = (labelKey: string) =>
     !normalized || t(labelKey).toLowerCase().includes(normalized);
 
-  const visibleMain = mainLinks.filter((item) => matches(item.labelKey));
-  const visibleDepartment = isLeader
-    ? departmentLinks.filter(
-        (item) => matches(item.labelKey) || matches("nav.department"),
-      )
-    : [];
+  const visibleMain =
+    role === "DIRECTOR"
+      ? [directorMainLink].filter((item) => matches(item.labelKey))
+      : [];
+  const groupLinks =
+    role === "MANAGER"
+      ? departmentLinks
+      : role === "DIRECTOR"
+        ? directorLinks
+        : role === "EMPLOYEE"
+          ? employeeLinks
+          : [];
+  const groupHeadingKey =
+    role === "DIRECTOR"
+      ? "nav.organization"
+      : role === "EMPLOYEE"
+        ? "nav.myDepartment"
+        : "nav.department";
+  const visibleDepartment = groupLinks.filter(
+    (item) => matches(item.labelKey) || matches(groupHeadingKey),
+  );
   const visibleSpaces = spaceLinks.filter((item) => matches(item.labelKey));
   const visibleMore = moreLinks.filter((item) => matches(item.labelKey));
   const moreRouteActive =
@@ -156,7 +214,9 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
             <p className="truncate text-sm font-bold tracking-tight text-slate-900">
               {APP_CONFIG.appName}
             </p>
-            <p className="truncate text-[11px] text-slate-400">{t("nav.workPlan")}</p>
+            <p className="truncate text-[11px] text-slate-400">
+              {t("nav.workPlan")}
+            </p>
           </div>
         </div>
         <label className="mt-4 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-400">
@@ -183,7 +243,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
         {visibleDepartment.length > 0 && (
           <>
             <p className="px-3 pt-4 pb-1 text-xs font-medium text-slate-400">
-              {t("nav.department")}
+              {t(groupHeadingKey)}
             </p>
             {visibleDepartment.map((item) => (
               <SidebarLink
@@ -213,22 +273,23 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
           />
         ))}
 
-        {(normalized ? visibleMore.length > 0 : true) && matches("nav.seeMore") && (
-          <button
-            type="button"
-            onClick={() => setMoreOpen((open) => !open)}
-            className="ml-2 flex w-[calc(100%-0.5rem)] cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
-          >
-            <Layers className="size-[18px] shrink-0" />
-            <span className="flex-1 text-left">{t("nav.seeMore")}</span>
-            <ChevronDown
-              className={cn(
-                "size-4 text-slate-400 transition-transform",
-                showMore && "rotate-180",
-              )}
-            />
-          </button>
-        )}
+        {(normalized ? visibleMore.length > 0 : true) &&
+          matches("nav.seeMore") && (
+            <button
+              type="button"
+              onClick={() => setMoreOpen((open) => !open)}
+              className="ml-2 flex w-[calc(100%-0.5rem)] cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+            >
+              <Layers className="size-4.5 shrink-0" />
+              <span className="flex-1 text-left">{t("nav.seeMore")}</span>
+              <ChevronDown
+                className={cn(
+                  "size-4 text-slate-400 transition-transform",
+                  showMore && "rotate-180",
+                )}
+              />
+            </button>
+          )}
 
         {showMore &&
           visibleMore.map((item) => (
@@ -268,7 +329,7 @@ export default function WorkSidebar({ open, onClose }: WorkSidebarProps) {
 
   return (
     <>
-      <aside className="sticky top-0 z-20 hidden h-svh w-[248px] shrink-0 border-r border-slate-200 md:block">
+      <aside className="sticky top-0 z-20 hidden h-svh w-62 shrink-0 border-r border-slate-200 md:block">
         <SidebarBody />
       </aside>
 

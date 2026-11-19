@@ -20,6 +20,7 @@ import {
 } from "@/components/shared/Table";
 import { departmentTaskApi } from "@/features/department/api/department-task.api";
 import DepartmentTaskDetailView from "@/features/department/components/DepartmentTaskDetailView";
+import { useDepartmentScope } from "@/features/department/context/department-scope";
 import DepartmentTaskFormModal from "@/features/department/components/DepartmentTaskFormModal";
 import TaskConfigModal from "@/features/department/components/TaskConfigModal";
 import DepartmentPageHeader from "@/features/department/components/DepartmentPageHeader";
@@ -62,6 +63,7 @@ function quickMatchersFor(
 
 export default function DepartmentTasksPage() {
   const { t } = useTranslation();
+  const { readOnly } = useDepartmentScope();
 
   const [tasks, setTasks] = useState<DepartmentTaskItem[]>([]);
   const [members, setMembers] = useState<DepartmentTaskMember[]>([]);
@@ -170,6 +172,19 @@ export default function DepartmentTasksPage() {
 
   const statusSelect = (task: DepartmentTaskItem) => {
     const current = statuses.find((status) => status.id === task.statusId);
+    if (readOnly) {
+      return (
+        <span className="inline-flex items-center gap-2 text-sm text-slate-700">
+          <span
+            className="size-2.5 shrink-0 rounded-full"
+            style={{
+              backgroundColor: current ? taskStatusColor(current) : FALLBACK_COLOR,
+            }}
+          />
+          {current?.name}
+        </span>
+      );
+    }
     return (
       <div className="flex items-center gap-2">
         <span
@@ -226,6 +241,7 @@ export default function DepartmentTasksPage() {
         title={t("department.tasks.title")}
         subtitle={t("department.tasks.subtitle")}
         actions={
+          readOnly ? undefined : (
           <>
             <button
               type="button"
@@ -245,6 +261,7 @@ export default function DepartmentTasksPage() {
               {t("department.createTask.button")}
             </button>
           </>
+          )
         }
       />
 

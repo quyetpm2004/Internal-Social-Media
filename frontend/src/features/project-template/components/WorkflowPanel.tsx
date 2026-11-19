@@ -77,7 +77,6 @@ export default function WorkflowPanel({
     useState<ApproverType>("PROJECT_ROLE");
   const [ruleProjectRoleId, setRuleProjectRoleId] = useState("");
   const [ruleTaskRole, setRuleTaskRole] = useState<TaskRole>("ASSIGNEE");
-  const [ruleMinApprovals, setRuleMinApprovals] = useState("1");
   const [ruleRejectStatusId, setRuleRejectStatusId] = useState("");
 
   const selectedWorkflow = workflows.find((w) => w.id === selectedWorkflowId);
@@ -280,14 +279,13 @@ export default function WorkflowPanel({
               ? Number(ruleProjectRoleId)
               : undefined,
           taskRole: ruleApproverType === "TASK_ROLE" ? ruleTaskRole : undefined,
-          minApprovals: Number(ruleMinApprovals),
+          minApprovals: 1,
           onRejectStatusId: Number(ruleRejectStatusId),
         },
       );
       toast.success(t("pages.admin.projectTemplateApprovalRuleCreated"));
       setRuleTransitionId("");
       setRuleProjectRoleId("");
-      setRuleMinApprovals("1");
       setRuleRejectStatusId("");
       onChanged();
     } catch (error) {
@@ -705,7 +703,7 @@ export default function WorkflowPanel({
                                 rule.projectRoleId,
                                 rule.taskRole,
                               )}{" "}
-                              · min {rule.minApprovals} · reject:{" "}
+                              · reject:{" "}
                               {getStatusName(rule.onRejectStatusId)}
                             </span>
                             {isDraft && (
@@ -809,15 +807,6 @@ export default function WorkflowPanel({
                     <option value="REPORTER">REPORTER</option>
                   </select>
                 )}
-                <Input
-                  type="number"
-                  min={1}
-                  placeholder={t("pages.admin.projectTemplateMinApprovals")}
-                  value={ruleMinApprovals}
-                  onChange={(e) => setRuleMinApprovals(e.target.value)}
-                  className="max-w-[100px]"
-                  required
-                />
                 <select
                   value={ruleRejectStatusId}
                   onChange={(e) => setRuleRejectStatusId(e.target.value)}

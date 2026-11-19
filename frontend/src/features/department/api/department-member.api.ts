@@ -1,4 +1,5 @@
 import { axiosClient } from "@/lib/axios";
+import { departmentApiBase } from "@/features/department/context/department-scope";
 import type { ApiResponse } from "@/types/api.type";
 import type {
   AddMemberPayload,
@@ -16,7 +17,7 @@ type MemberBasic = Omit<DepartmentMemberItem, "score" | "workload">;
 export const departmentMemberApi = {
   list(params: MemberListParams) {
     return axiosClient.get<ApiResponse<DepartmentMemberList>>(
-      "/departments/me/members",
+      `${departmentApiBase()}/members`,
       { params },
     );
   },
@@ -26,14 +27,14 @@ export const departmentMemberApi = {
     params: { page: number; limit: number; projectId?: number },
   ) {
     return axiosClient.get<ApiResponse<DepartmentMemberTaskList>>(
-      `/departments/me/members/${userId}/tasks`,
+      `${departmentApiBase()}/members/${userId}/tasks`,
       { params },
     );
   },
 
   listProjects() {
     return axiosClient.get<ApiResponse<DepartmentProjectOption[]>>(
-      "/departments/me/projects",
+      `${departmentApiBase()}/projects`,
     );
   },
 
@@ -43,21 +44,21 @@ export const departmentMemberApi = {
 
   add(payload: AddMemberPayload) {
     return axiosClient.post<ApiResponse<MemberBasic>>(
-      "/departments/me/members",
+      `${departmentApiBase()}/members`,
       payload,
     );
   },
 
   update(userId: number, payload: UpdateMemberPayload) {
     return axiosClient.patch<ApiResponse<MemberBasic>>(
-      `/departments/me/members/${userId}`,
+      `${departmentApiBase()}/members/${userId}`,
       payload,
     );
   },
 
   remove(userId: number) {
     return axiosClient.delete<ApiResponse<null>>(
-      `/departments/me/members/${userId}`,
+      `${departmentApiBase()}/members/${userId}`,
     );
   },
 };

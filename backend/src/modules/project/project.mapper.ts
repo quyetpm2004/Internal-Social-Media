@@ -13,7 +13,11 @@ export function mapTemplateOptions(templates: any) {
 export function mapProjectDetail(
   project: any,
   currentUserId: number,
-  access: { canEdit: boolean; canReassignManager: boolean },
+  access: {
+    canEdit: boolean;
+    canReassignManager: boolean;
+    isMember: boolean;
+  },
 ) {
   const workflow = project.workflows?.[0];
 
@@ -38,6 +42,7 @@ export function mapProjectDetail(
     createdBy: project.createdBy,
     canEdit: access.canEdit,
     canReassignManager: access.canReassignManager,
+    isMember: access.isMember,
     departmentId: project.departmentId ?? null,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,

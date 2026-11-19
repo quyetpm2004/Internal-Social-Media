@@ -36,7 +36,7 @@ export const adminApi = {
     );
   },
 
-  updateUserRole(userId: number, role: "EMPLOYEE" | "MANAGER" | "ADMIN") {
+  updateUserRole(userId: number, role: "EMPLOYEE" | "DIRECTOR") {
     return axiosClient.patch<ApiResponse<AdminUser>>(
       `/admin/users/${userId}/role`,
       { role },

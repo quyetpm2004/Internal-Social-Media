@@ -144,7 +144,8 @@
       "moderator": "Kiểm duyệt viên",
       "admin": "Quản trị viên",
       "employee": "Nhân viên",
-      "manager": "Quản lý"
+      "manager": "Quản lý",
+      "director": "Giám đốc"
     },
     "time": {
       "justNow": "Vừa xong",
@@ -160,7 +161,8 @@
       "previous": "Trang trước",
       "next": "Trang sau",
       "page": "Trang {{page}}"
-    }
+    },
+    "edit": "Sửa"
   },
   "nav": {
     "home": "Trang chủ",
@@ -192,7 +194,13 @@
     "settings": "Cài đặt",
     "forgotPassword": "Quên mật khẩu",
     "changePassword": "Thay đổi mật khẩu",
-    "languageToggle": "Đổi ngôn ngữ"
+    "languageToggle": "Đổi ngôn ngữ",
+    "organization": "Tổ chức",
+    "manageDepartments": "Quản lý phòng ban",
+    "departmentKpiOverview": "KPI các phòng",
+    "myDepartment": "Phòng ban của tôi",
+    "myDepartmentMembers": "Nhân sự phòng",
+    "myDepartmentTasks": "Công việc phòng"
   },
   "department": {
     "memberStatus": {
@@ -1053,7 +1061,8 @@
       "projectTemplateRejectStatus": "Trạng thái khi từ chối",
       "projectTemplateAdd": "Thêm",
       "projectTemplateEdit": "Sửa",
-      "projectTemplateInactive": "Không hoạt động"
+      "projectTemplateInactive": "Không hoạt động",
+      "roleLockedHint": "Trưởng phòng do Giám đốc bổ nhiệm/miễn nhiệm; quản trị viên không đổi vai trò tại đây"
     },
     "projects": {
       "title": "Dự án",
@@ -1669,7 +1678,20 @@
         "workflow": "Quy trình",
         "sortOrder": "Thứ tự",
         "sortOrderInvalid": "Thứ tự phải là số nguyên không âm"
-      }
+      },
+      "manager": "Quản trị dự án (PM)",
+      "managerHint": "Người chịu trách nhiệm quản lý dự án. Bạn có thể chọn chính mình.",
+      "managerRequired": "Chọn quản trị dự án",
+      "managerSearchPlaceholder": "Tìm theo tên hoặc email",
+      "managerSelf": "Chọn tôi",
+      "department": "Phòng ban",
+      "departmentHint": "Để trống nếu là dự án liên phòng ban.",
+      "crossDepartment": "Liên phòng ban",
+      "ownDepartmentNote": "Dự án sẽ thuộc phòng ban của bạn.",
+      "reassignManager": "Chỉ định lại quản trị",
+      "reassignTitle": "Chỉ định lại quản trị dự án",
+      "reassignDescription": "Người được chọn trở thành PM. PM hiện tại mất quyền PM nhưng vẫn là thành viên của dự án.",
+      "reassignDone": "Đã chỉ định {{name}} làm quản trị dự án"
     },
     "workOverview": {
       "title": "Tổng quan tổ chức",
@@ -1970,6 +1992,104 @@
       "engineeringSubtitle": "Dự án và việc của khối kỹ thuật",
       "members": "{{count}} thành viên",
       "unknown": "Không tìm thấy không gian này."
+    }
+  },
+  "director": {
+    "title": "Quản lý phòng ban",
+    "subtitle": "Cơ cấu tổ chức, trưởng phòng và nhân sự của từng phòng ban",
+    "create": "Tạo phòng ban",
+    "edit": "Sửa phòng ban",
+    "appoint": "Bổ nhiệm trưởng phòng",
+    "dismiss": "Miễn nhiệm",
+    "appointTitle": "Bổ nhiệm trưởng phòng: {{name}}",
+    "appointHint": "Người được chọn sẽ tự động được nâng lên Trưởng phòng và chuyển sang phòng ban này, kể cả khi đang ở phòng khác.",
+    "dismissTitle": "Miễn nhiệm trưởng phòng",
+    "dismissDescription": "Miễn nhiệm {{name}} khỏi vị trí trưởng phòng {{department}}? Người này trở lại làm nhân viên và vẫn ở lại phòng.",
+    "deleteTitle": "Xóa phòng ban",
+    "deleteDescription": "Xóa phòng ban {{name}}? Chỉ xóa được khi phòng không còn nhân sự và công việc.",
+    "noManager": "Chưa có trưởng phòng",
+    "positionManager": "Trưởng phòng",
+    "summary": {
+      "departments": "Phòng ban",
+      "employees": "Nhân sự",
+      "managers": "Trưởng phòng",
+      "departmentsHint": "{{count}} phòng chưa có trưởng phòng",
+      "employeesHint": "Trung bình {{count}} người mỗi phòng",
+      "managersHint": "{{count}}/{{total}} phòng đã có trưởng phòng"
+    },
+    "form": {
+      "name": "Tên phòng ban",
+      "description": "Mô tả",
+      "searchCandidate": "Tìm nhân viên theo tên hoặc email",
+      "noCandidate": "Không có nhân viên phù hợp",
+      "noDepartment": "Chưa có phòng ban"
+    },
+    "transfer": {
+      "open": "Nhân sự và chuyển phòng",
+      "title": "Chuyển nhân sự khỏi {{name}}",
+      "empty": "Phòng ban chưa có nhân sự",
+      "choose": "Chuyển tới phòng...",
+      "action": "Chuyển",
+      "leaderHint": "Miễn nhiệm trưởng phòng trước khi chuyển"
+    },
+    "detail": {
+      "back": "Quay lại danh sách phòng ban",
+      "notFound": "Không tìm thấy phòng ban."
+    },
+    "kpi": {
+      "title": "KPI các phòng ban",
+      "subtitle": "So sánh hiệu quả làm việc giữa các phòng ban",
+      "orgAverage": "Điểm KPI toàn tổ chức",
+      "outOf": "trên thang 100",
+      "memberCount": "{{count}} người",
+      "empty": "Chưa có phòng ban nào",
+      "period": {
+        "week": "Tuần",
+        "month": "Tháng",
+        "quarter": "Quý"
+      },
+      "summary": {
+        "departments": "Phòng ban",
+        "members": "Nhân sự",
+        "late": "Việc trễ hạn",
+        "scoreHint": "Kỳ trước: {{previous}} điểm",
+        "departmentsHint": "Cao nhất: {{name}}",
+        "noData": "Chưa có dữ liệu",
+        "membersHint": "Trung bình {{count}} người mỗi phòng",
+        "lateHint": "Trên {{count}} việc đã giao trong kỳ"
+      },
+      "columns": {
+        "department": "Phòng ban",
+        "manager": "Trưởng phòng",
+        "score": "Điểm KPI",
+        "completion": "Tỉ lệ hoàn thành",
+        "onTime": "Đúng hạn",
+        "change": "So với kỳ trước"
+      }
+    },
+    "toast": {
+      "created": "Đã tạo phòng ban",
+      "updated": "Đã cập nhật phòng ban",
+      "deleted": "Đã xóa phòng ban",
+      "appointed": "Đã bổ nhiệm {{name}} làm trưởng phòng",
+      "dismissed": "Đã miễn nhiệm {{name}}",
+      "transferred": "Đã chuyển {{name}} sang phòng mới"
+    }
+  },
+  "myDepartment": {
+    "membersTitle": "Nhân sự phòng ban",
+    "tasksTitle": "Công việc phòng ban",
+    "readOnly": "Chỉ xem",
+    "canUpdate": "Bạn được giao, có thể cập nhật trạng thái",
+    "statusUpdated": "Đã cập nhật trạng thái",
+    "columns": {
+      "name": "Họ tên",
+      "email": "Email",
+      "position": "Chức danh",
+      "task": "Công việc",
+      "assignee": "Người thực hiện",
+      "status": "Trạng thái",
+      "due": "Hạn"
     }
   }
 }

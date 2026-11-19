@@ -57,11 +57,7 @@ router.get(
   asyncHandler(departmentController.listAppointees),
 );
 
-router.use(
-  "/me",
-  authMiddleware,
-  requirePermission("department.own_workspace"),
-);
+router.use("/me", authMiddleware);
 
 router.get(
   "/me/members",

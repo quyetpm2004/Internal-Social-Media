@@ -81,6 +81,20 @@ export const projectApi = {
     return axiosClient.post<ApiResponse<ProjectDetail>>("/projects", data);
   },
 
+  searchManagerCandidates(keyword: string) {
+    return axiosClient.get<ApiResponse<ProjectMemberCandidate[]>>(
+      "/projects/manager-candidates",
+      { params: { keyword } },
+    );
+  },
+
+  reassignManager(projectId: number, userId: number) {
+    return axiosClient.put<ApiResponse<ProjectDetail>>(
+      `/projects/${projectId}/manager`,
+      { userId },
+    );
+  },
+
   updateProject(id: number, data: UpdateProjectPayload) {
     return axiosClient.patch<ApiResponse<ProjectDetail>>(
       `/projects/${id}`,

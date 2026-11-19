@@ -1,4 +1,5 @@
 import { axiosClient } from "@/lib/axios";
+import { kpiApiBase } from "@/features/department/context/department-scope";
 import type { ApiResponse } from "@/types/api.type";
 import type {
   DepartmentKpi,
@@ -10,14 +11,14 @@ import type { KpiPeriod } from "@/features/work/types/kpi.type";
 export const departmentMemberKpiApi = {
   getMemberKpi(userId: number, period: KpiPeriod) {
     return axiosClient.get<ApiResponse<MemberKpiResponse>>(
-      `/kpi/department/members/${userId}`,
+      `${kpiApiBase()}/members/${userId}`,
       { params: { period } },
     );
   },
 
   getDepartmentKpi(params: KpiQueryParams) {
     return axiosClient.get<ApiResponse<DepartmentKpi>>(
-      "/kpi/department/members",
+      `${kpiApiBase()}/members`,
       { params },
     );
   },

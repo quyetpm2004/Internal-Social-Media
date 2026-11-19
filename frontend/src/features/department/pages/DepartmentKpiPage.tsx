@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/shared/Table";
 import TrendChart from "@/features/work/components/TrendChart";
+import { useDepartmentScope } from "@/features/department/context/department-scope";
 import { departmentMemberKpiApi } from "@/features/department/api/department-member-kpi.api";
 import DepartmentPageHeader from "@/features/department/components/DepartmentPageHeader";
 import FilterSelect from "@/features/department/components/FilterSelect";
@@ -50,6 +51,7 @@ function bucketLabel(from: string) {
 
 export default function DepartmentKpiPage() {
   const { t } = useTranslation();
+  const { basePath } = useDepartmentScope();
 
   const today = todayIso();
   const [range, setRange] = useState<KpiRange>("month");
@@ -301,7 +303,7 @@ export default function DepartmentKpiPage() {
                 <TableRow key={item.id}>
                   <TableCell>
                     <Link
-                      to={`/work/kpi?member=${item.id}`}
+                      to={`${basePath}/member-kpi?member=${item.id}`}
                       className="flex items-center gap-2.5 hover:underline"
                     >
                       <MemberAvatar id={item.id} name={item.name} />

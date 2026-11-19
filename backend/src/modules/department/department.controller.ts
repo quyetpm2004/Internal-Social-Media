@@ -31,7 +31,7 @@ export function departmentIdOf(req: Request) {
   }
   const own = req.user!.departmentId;
   if (own === null) {
-    throw new AppError(404, "Bạn chưa quản lý phòng ban nào");
+    throw new AppError(404, "Bạn chưa thuộc phòng ban nào");
   }
   return own;
 }

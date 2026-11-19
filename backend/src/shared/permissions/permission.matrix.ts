@@ -39,8 +39,6 @@ export const PERMISSION_MATRIX = {
     EMPLOYEE: "OWN",
   },
 
-  "department.own_workspace": { MANAGER: "OWN" },
-
   "self.work": { DIRECTOR: "ALL", MANAGER: "ALL", EMPLOYEE: "ALL" },
 
   "project.view_public": { DIRECTOR: "ALL", MANAGER: "ALL", EMPLOYEE: "ALL" },

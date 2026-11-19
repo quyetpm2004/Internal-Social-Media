@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import Input from "@/components/shared/Input";
 import Modal from "@/components/shared/Modal";
 import Select from "@/components/shared/Select";
 import { projectApi } from "@/features/project/api/project.api";
@@ -191,7 +190,6 @@ function RuleGroup({
   );
   const [projectRoleId, setProjectRoleId] = useState("");
   const [taskRole, setTaskRole] = useState<WorkflowTaskRole>("REVIEWER");
-  const [minApprovals, setMinApprovals] = useState("1");
   const [rejectStatusId, setRejectStatusId] = useState("");
 
   const rejectOptions = workflow.statuses.filter(
@@ -202,8 +200,7 @@ function RuleGroup({
   const handleAdd = async (event: FormEvent) => {
     event.preventDefault();
     if (approverType === "PROJECT_ROLE" && projectRoleLocked) return;
-    const min = Number(minApprovals);
-    if (!Number.isInteger(min) || min < 1 || !rejectStatusId) return;
+    if (!rejectStatusId) return;
     if (approverType === "PROJECT_ROLE" && !projectRoleId) return;
     setBusy(true);
     try {
@@ -216,13 +213,12 @@ function RuleGroup({
           projectRoleId:
             approverType === "PROJECT_ROLE" ? Number(projectRoleId) : null,
           taskRole: approverType === "TASK_ROLE" ? taskRole : null,
-          minApprovals: min,
+          minApprovals: 1,
           onRejectStatusId: Number(rejectStatusId),
         },
       );
       toast.success(t("pages.projects.workflowPanel.ruleCreated"));
       setProjectRoleId("");
-      setMinApprovals("1");
       setRejectStatusId("");
       await onChanged();
     } catch (error) {
@@ -257,10 +253,6 @@ function RuleGroup({
             >
               <span>
                 {approverLabel(rule)} ·{" "}
-                {t("pages.projects.workflowPanel.minShort", {
-                  count: rule.minApprovals,
-                })}{" "}
-                ·{" "}
                 {t("pages.projects.workflowPanel.rejectShort", {
                   status: statusLabel(
                     workflow.statuses,
@@ -351,15 +343,6 @@ function RuleGroup({
               </Select>
             </div>
           )}
-          <Input
-            type="number"
-            min={1}
-            value={minApprovals}
-            aria-label={t("pages.projects.workflowPanel.minApprovals")}
-            onChange={(event) => setMinApprovals(event.target.value)}
-            className="w-24"
-            required
-          />
           <div className="w-44">
             <Select
               aria-label={t("pages.projects.workflowPanel.rejectStatus")}

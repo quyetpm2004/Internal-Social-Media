@@ -137,7 +137,8 @@ export default function KpiPage() {
   const memberParam = searchParams.get("member");
   const memberId = memberParam !== null ? Number(memberParam) : null;
   const forbidden =
-    memberId !== null && (role !== "MANAGER" || !Number.isInteger(memberId));
+    memberId !== null &&
+    ((role !== "MANAGER" && role !== "DIRECTOR") || !Number.isInteger(memberId));
   const [period, setPeriod] = useState<KpiPeriod>("month");
   const [result, setResult] = useState<{
     period: KpiPeriod;

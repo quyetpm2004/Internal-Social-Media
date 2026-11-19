@@ -29,6 +29,7 @@ import {
   UserRound,
   Users,
   type LucideIcon,
+  UserCog,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
@@ -37,6 +38,7 @@ import Input from "@/components/shared/Input";
 import Select from "@/components/shared/Select";
 import Textarea from "@/components/shared/Textarea";
 import { projectApi } from "@/features/project/api/project.api";
+import ReassignManagerModal from "@/features/project/components/ReassignManagerModal";
 import ProjectMembersPanel from "@/features/project/components/members/ProjectMembersPanel";
 import ProjectMilestonesPanel from "@/features/project/components/planning/ProjectMilestonesPanel";
 import ProjectPhasesPanel from "@/features/project/components/planning/ProjectPhasesPanel";
@@ -210,6 +212,7 @@ export default function ProjectDetailPage() {
   const requestedTab = searchParams.get("tab");
   const [taskCreateSignal, setTaskCreateSignal] = useState(0);
   const [editing, setEditing] = useState(false);
+  const [reassigning, setReassigning] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<EditState | null>(null);
   const [formError, setFormError] = useState("");
@@ -348,6 +351,12 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="flex min-h-[calc(100svh-3.5rem)] flex-col md:min-h-svh">
+      <ReassignManagerModal
+        open={reassigning}
+        projectId={project.id}
+        onClose={() => setReassigning(false)}
+        onDone={() => void refreshProject()}
+      />
       <header className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
@@ -401,6 +410,16 @@ export default function ProjectDetailPage() {
           </div>
 
           <div className="flex shrink-0 flex-wrap gap-2">
+            {project.canReassignManager && (
+              <button
+                type="button"
+                onClick={() => setReassigning(true)}
+                className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                <UserCog className="size-4" />
+                {t("pages.projects.reassignManager")}
+              </button>
+            )}
             {project.canEdit && (
               <button
                 type="button"
@@ -411,17 +430,19 @@ export default function ProjectDetailPage() {
                 {t("pages.projects.editInfo")}
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => {
-                setTab("tasks");
-                setTaskCreateSignal((value) => value + 1);
-              }}
-              className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white hover:bg-primary/90"
-            >
-              <Plus className="size-4" />
-              {t("pages.projects.createTask")}
-            </button>
+            {project.isMember && (
+              <button
+                type="button"
+                onClick={() => {
+                  setTab("tasks");
+                  setTaskCreateSignal((value) => value + 1);
+                }}
+                className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white hover:bg-primary/90"
+              >
+                <Plus className="size-4" />
+                {t("pages.projects.createTask")}
+              </button>
+            )}
           </div>
         </div>
 

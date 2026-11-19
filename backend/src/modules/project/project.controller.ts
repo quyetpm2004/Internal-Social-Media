@@ -132,6 +132,19 @@ export async function getProjectMembers(req: Request, res: Response) {
   });
 }
 
+export async function searchProjectManagerCandidates(
+  req: Request,
+  res: Response,
+) {
+  const data = await projectMemberService.searchProjectManagerCandidates(
+    req.validated,
+  );
+  res.status(200).json({
+    message: "Tìm người làm quản trị dự án thành công",
+    data,
+  });
+}
+
 export async function searchMemberCandidates(req: Request, res: Response) {
   const userId = req.user?.id;
   if (!userId) {

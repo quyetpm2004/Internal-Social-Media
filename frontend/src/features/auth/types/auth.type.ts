@@ -34,10 +34,12 @@ export interface RefreshTokenResponse {
   user: UserPublicInfo;
 }
 
+export type SystemRole = "EMPLOYEE" | "MANAGER" | "DIRECTOR" | "ADMIN";
+
 export interface UserPublicInfo {
   id: number;
   fullName: string;
   email: string;
-  role: "EMPLOYEE" | "ADMIN" | "MANAGER";
+  role: SystemRole;
   avatarUrl?: string;
 }

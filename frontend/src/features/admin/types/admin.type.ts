@@ -49,7 +49,7 @@ export type AdminUser = {
   id: number;
   fullName: string;
   email: string;
-  role: "EMPLOYEE" | "MANAGER" | "ADMIN";
+  role: "EMPLOYEE" | "MANAGER" | "DIRECTOR" | "ADMIN";
   status: "ACTIVE" | "INACTIVE" | "PENDING";
   createdAt: string;
   department: { id: number; name: string } | null;

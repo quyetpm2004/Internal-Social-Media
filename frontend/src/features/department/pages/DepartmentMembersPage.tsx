@@ -32,6 +32,7 @@ import {
 } from "@/components/shared/Table";
 import Modal from "@/components/shared/Modal";
 import { departmentMemberApi } from "@/features/department/api/department-member.api";
+import { useDepartmentScope } from "@/features/department/context/department-scope";
 import MemberFormModal from "@/features/department/components/MemberFormModal";
 import DepartmentPageHeader from "@/features/department/components/DepartmentPageHeader";
 import FilterSelect from "@/features/department/components/FilterSelect";
@@ -85,6 +86,7 @@ function LoadBar({ percent }: { percent: number }) {
 
 export default function DepartmentMembersPage() {
   const { t } = useTranslation();
+  const { basePath, readOnly } = useDepartmentScope();
   const navigate = useNavigate();
 
   const [members, setMembers] = useState<DepartmentMemberItem[]>([]);
@@ -281,7 +283,8 @@ export default function DepartmentMembersPage() {
     }
   };
 
-  const renderActions = (member: DepartmentMemberItem) => (
+  const renderActions = (member: DepartmentMemberItem) =>
+    readOnly ? null : (
     <div className="flex items-center justify-end gap-1">
       <button
         type="button"
@@ -339,14 +342,16 @@ export default function DepartmentMembersPage() {
           count: pagination?.total ?? 0,
         })}
         actions={
-          <button
-            type="button"
-            onClick={openAdd}
-            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-white hover:bg-primary/90"
-          >
-            <Plus className="size-4" />
-            {t("department.members.add")}
-          </button>
+          readOnly ? undefined : (
+            <button
+              type="button"
+              onClick={openAdd}
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-white hover:bg-primary/90"
+            >
+              <Plus className="size-4" />
+              {t("department.members.add")}
+            </button>
+          )
         }
       />
 
@@ -649,7 +654,7 @@ export default function DepartmentMembersPage() {
                       navigate(
                         task.project
                           ? `/projects/${task.project.id}?tab=tasks&task=${task.id}`
-                          : `/work/department/tasks?task=${task.id}`,
+                          : `${basePath}/tasks?task=${task.id}`,
                       )
                     }
                     className="-mx-2 cursor-pointer rounded-lg px-2 py-2.5 transition-colors hover:bg-slate-50"

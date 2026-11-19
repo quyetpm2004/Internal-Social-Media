@@ -1,4 +1,5 @@
 import { axiosClient } from "@/lib/axios";
+import { kpiApiBase } from "@/features/department/context/department-scope";
 import type { ApiResponse } from "@/types/api.type";
 import type {
   DepartmentOverview,
@@ -8,7 +9,7 @@ import type {
 export const departmentOverviewApi = {
   getOverview(period: OverviewPeriod) {
     return axiosClient.get<ApiResponse<DepartmentOverview>>(
-      "/kpi/department/overview",
+      `${kpiApiBase()}/overview`,
       { params: { period } },
     );
   },
